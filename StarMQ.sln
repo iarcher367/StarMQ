@@ -1,0 +1,32 @@
+﻿
+Microsoft Visual Studio Solution File, Format Version 12.00
+# Visual Studio 2012
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarMQ", "StarMQ\StarMQ.csproj", "{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarMQ.Test", "StarMQ.Test\StarMQ.Test.csproj", "{0400AD55-C36C-4B35-82C7-10E57B8D8A14}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "StarMQ.TestClient", "StarMQ.TestClient\StarMQ.TestClient.csproj", "{3ABFF5DC-1DDB-4170-8AE6-21ED82794874}"
+EndProject
+Global
+	GlobalSection(SolutionConfigurationPlatforms) = preSolution
+		Debug|Any CPU = Debug|Any CPU
+		Release|Any CPU = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(ProjectConfigurationPlatforms) = postSolution
+		{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}.Release|Any CPU.Build.0 = Release|Any CPU
+		{0400AD55-C36C-4B35-82C7-10E57B8D8A14}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{0400AD55-C36C-4B35-82C7-10E57B8D8A14}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{0400AD55-C36C-4B35-82C7-10E57B8D8A14}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{0400AD55-C36C-4B35-82C7-10E57B8D8A14}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3ABFF5DC-1DDB-4170-8AE6-21ED82794874}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3ABFF5DC-1DDB-4170-8AE6-21ED82794874}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3ABFF5DC-1DDB-4170-8AE6-21ED82794874}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3ABFF5DC-1DDB-4170-8AE6-21ED82794874}.Release|Any CPU.Build.0 = Release|Any CPU
+	EndGlobalSection
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
+	EndGlobalSection
+EndGlobal
