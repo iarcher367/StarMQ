@@ -1,0 +1,104 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <ProjectGuid>{27E9B2A4-B3B5-41B2-ABE8-DABAF3CA7025}</ProjectGuid>
+    <OutputType>Library</OutputType>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <RootNamespace>StarMQ</RootNamespace>
+    <AssemblyName>StarMQ</AssemblyName>
+    <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
+    <FileAlignment>512</FileAlignment>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <OutputPath>bin\Debug\</OutputPath>
+    <DefineConstants>DEBUG;TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <OutputPath>bin\Release\</OutputPath>
+    <DefineConstants>TRACE</DefineConstants>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Include="log4net, Version=1.2.13.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
+    </Reference>
+    <Reference Include="Microsoft.CSharp" />
+    <Reference Include="Newtonsoft.Json">
+      <HintPath>..\packages\Newtonsoft.Json.6.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
+    </Reference>
+    <Reference Include="RabbitMQ.Client">
+      <HintPath>..\packages\RabbitMQ.Client.3.3.2\lib\net30\RabbitMQ.Client.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleInjector">
+      <HintPath>..\packages\SimpleInjector.2.5.2\lib\net45\SimpleInjector.dll</HintPath>
+    </Reference>
+    <Reference Include="SimpleInjector.Advanced">
+      <HintPath>..\packages\SimpleInjector.Advanced.0.1.4.0\lib\net45\SimpleInjector.Advanced.dll</HintPath>
+    </Reference>
+    <Reference Include="System" />
+    <Reference Include="System.Core" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="AdvancedBus.cs" />
+    <Compile Include="Consume\BaseConsumer.cs" />
+    <Compile Include="Consume\ConsumerFactory.cs" />
+    <Compile Include="Consume\BasicConsumer.cs" />
+    <Compile Include="Consume\HandlerManager.cs" />
+    <Compile Include="Consume\PersistentConsumerDecorator.cs" />
+    <Compile Include="Core\OutboundDispatcher.cs" />
+    <Compile Include="Core\ConnectionConfiguration.cs" />
+    <Compile Include="Exception\PublishException.cs" />
+    <Compile Include="Exception\InvalidValueException.cs" />
+    <Compile Include="Message\AesInterceptor.cs" />
+    <Compile Include="Message\CompressionInterceptor.cs" />
+    <Compile Include="Message\IMessagingInterceptor.cs" />
+    <Compile Include="Message\InterceptorPipeline.cs" />
+    <Compile Include="Model\BaseResponse.cs" />
+    <Compile Include="Model\ExchangeType.cs" />
+    <Compile Include="Core\NamingStrategy.cs" />
+    <Compile Include="Model\Exchange.cs" />
+    <Compile Include="Core\PersistentConnection.cs" />
+    <Compile Include="Exception\MaxLengthException.cs" />
+    <Compile Include="Exception\StarMqException.cs" />
+    <Compile Include="Global.cs" />
+    <Compile Include="Message\CorrelationStrategy.cs" />
+    <Compile Include="Model\Queue.cs" />
+    <Compile Include="Publish\BasicPublisher.cs" />
+    <Compile Include="Publish\ConfirmPublisherDecorator.cs" />
+    <Compile Include="Publish\BasePublisher.cs" />
+    <Compile Include="Factory.cs" />
+    <Compile Include="Message\JsonSerializer.cs" />
+    <Compile Include="Model\Properties.cs" />
+    <Compile Include="Message\TypeNameSerializer.cs" />
+    <Compile Include="SimpleBus.cs" />
+    <Compile Include="Model\Message.cs" />
+    <Compile Include="Message\SerializationStrategy.cs" />
+    <Compile Include="Properties\AssemblyInfo.cs" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="packages.config" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="License.txt" />
+  </ItemGroup>
+  <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
+  <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
+       Other similar extension points exist, see Microsoft.Common.targets.
+  <Target Name="BeforeBuild">
+  </Target>
+  <Target Name="AfterBuild">
+  </Target>
+  -->
+</Project>
