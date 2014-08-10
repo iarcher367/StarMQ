@@ -41,7 +41,7 @@ namespace StarMQ.Core
         public ConnectionConfiguration()        // TODO: read from appSettings
         {
             Heartbeat = 10;
-            Host = "Lx0711";
+            Host = "localhost";
             Password = "password";
             PersistMessages = true;
             Port = 5672;

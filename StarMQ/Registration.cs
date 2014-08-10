@@ -16,10 +16,10 @@
                 throw new ArgumentNullException("container");
 
             container.RegisterSingle<IAdvancedBus, AdvancedBus>();
-            container.RegisterSingle<IBus, RabbitBus>();
             container.RegisterSingle<ICommandDispatcher, CommandDispatcher>();
             container.RegisterSingle<IConnection, PersistentConnection>();
             container.RegisterSingle<IConnectionConfiguration, ConnectionConfiguration>();
+            container.RegisterSingle<ISimpleBus, SimpleBus>();
 
             container.Register<IChannel, PersistentChannel>();
             container.Register(() =>
@@ -29,14 +29,12 @@
                     return PublisherFactory.CreatePublisher(config, log);
                 });
 
-            /* Messaging */
             container.Register<ICorrelationStrategy, CorrelationStrategy>();
             container.Register<INamingStrategy, NamingStrategy>();
             container.Register<ISerializationStrategy, SerializationStrategy>();
             container.Register<ISerializer, JsonSerializer>();
             container.Register<ITypeNameSerializer, TypeNameSerializer>();
 
-            /* Miscellany */
             container.RegisterWithContext(context => LogManager.GetLogger(context.ImplementationType));
 
             // allows application to use custom implementations

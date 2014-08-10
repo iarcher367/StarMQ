@@ -1,5 +1,6 @@
 ﻿namespace StarMQ.Message
 {
+    using Model;
     using System;
 
     public class SerializationStrategy : ISerializationStrategy

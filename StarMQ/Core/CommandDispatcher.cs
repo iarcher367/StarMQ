@@ -10,8 +10,8 @@
     /// <summary>
     /// All publishes are done over a single channel and on a single thread to enforce clear ownership
     /// of thread-unsafe IModel instances; see RabbitMQ .NET client documentation section 2.10. A
-    /// long-running thread is used to prevent blocking the main application when RabbitMQ exerts TCP
-    /// back-pressure.
+    /// long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the main
+    /// application when it exerts TCP back-pressure.
     /// </summary>
     public interface ICommandDispatcher : IDisposable
     {
@@ -20,11 +20,9 @@
 
     public class CommandDispatcher : ICommandDispatcher
     {
-        private const int MaxCapacity = 1; // TODO: configurable queue size; limits memory impact
-
         private readonly ILog _log;
         private readonly IChannel _channel;
-        private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>(MaxCapacity);
+        private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
         public CommandDispatcher(IChannel channel, ILog log)
@@ -39,20 +37,21 @@
         {
             Task.Factory.StartNew(() =>
                 {
-                    while (!_tokenSource.IsCancellationRequested)
+                    try
                     {
-                        try
+                        foreach (var action in _queue.GetConsumingEnumerable(_tokenSource.Token))
                         {
-                            var action = _queue.Take(_tokenSource.Token);
-                            action();
+                            if (!_tokenSource.IsCancellationRequested)
+                            {
+                                action();
 
-                            _log.Debug("Action processed.");
+                                _log.Debug("Action processed.");
+                            }
                         }
-                        catch (OperationCanceledException)
-                        {
-                            _log.Info("Dispatch loop cancelled.");
-                            break;
-                        }
+                    }
+                    catch (OperationCanceledException)
+                    {
+                        _log.Info("Dispatcher terminated.");
                     }
                 }, TaskCreationOptions.LongRunning);
         }
@@ -93,7 +92,7 @@
             _tokenSource.Cancel();
             _channel.Dispose();
 
-            _log.Info("Disposed.");
+            _log.Info("Disposal complete.");
         }
     }
 }

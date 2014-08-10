@@ -7,6 +7,9 @@
     {
         public Type Deserialize(string name)
         {
+            if (name == null)
+                throw new ArgumentNullException("name");
+
             var parts = name.Split(':');
 
             if (parts.Length != 2)

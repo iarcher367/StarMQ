@@ -1,7 +1,7 @@
-﻿namespace StarMQ.Test.Message
+﻿namespace StarMQ.Test.Model
 {
     using NUnit.Framework;
-    using StarMQ.Message;
+    using StarMQ.Model;
     using System;
 
     public class MessageTest

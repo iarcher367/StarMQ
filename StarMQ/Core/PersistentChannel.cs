@@ -128,7 +128,7 @@ namespace StarMQ.Core
 
             _channel.Dispose();
 
-            _log.Info("Channel disposed.");
+            _log.Info("Disposal complete.");
         }
     }
 }

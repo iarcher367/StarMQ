@@ -1,4 +1,4 @@
-﻿namespace StarMQ.Core
+﻿namespace StarMQ.Model
 {
     public class Exchange
     {
@@ -10,7 +10,9 @@
         public bool AutoDelete { get; set; }
 
         /// <summary>
-        /// Set true to prevent server restarts from purging the exchange. Default is true.
+        /// Set true to prevent broker restarts from purging the exchange.
+        ///
+        /// Default true.
         /// </summary>
         public bool Durable { get; set; }
 
@@ -23,8 +25,7 @@
 
         public Exchange(string name)
         {
-            Global.Validate(name, "name");
-            Name = name;
+            Name = Global.Validate("name", name);
             Durable = true;
         }
     }

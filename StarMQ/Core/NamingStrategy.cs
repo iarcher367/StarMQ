@@ -5,6 +5,8 @@
 
     public interface INamingStrategy
     {
+        string GetConsumerTag();
+        string GetDeadLetterExchangeName(Type messageType);
         string GetExchangeName(Type messageType);
         string GetQueueName(Type messageType, string subscriberId);
     }
@@ -16,6 +18,16 @@
         public NamingStrategy(ITypeNameSerializer typeNameSerializer)
         {
             _typeNameSerializer = typeNameSerializer;
+        }
+
+        public string GetConsumerTag()
+        {
+            return Guid.NewGuid().ToString();
+        }
+
+        public string GetDeadLetterExchangeName(Type messageType)
+        {
+            return String.Format("DLX:{0}", _typeNameSerializer.Serialize(messageType));
         }
 
         public string GetExchangeName(Type messageType)

@@ -18,7 +18,7 @@
         [Test]
         public void ShouldUseTypeNameHandlingAuto()
         {
-            Assert.Fail();
+            Assert.Inconclusive();
         }
 
         [Test]
@@ -32,13 +32,34 @@
         }
 
         [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldToObjectThrowExceptionIfContentIsNull()
+        {
+            _sut.ToObject<string>(null);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldToObjectThrowExceptionIfContentIsEmpty()
+        {
+            _sut.ToObject<string>(new byte[0]);
+        }
+
+        [Test]
         public void ShouldSerializeObjectToByteArray()
         {
-            var expected = new Byte[] {34, 72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33, 34};
+            var expected = new Byte[] { 34, 72, 101, 108, 108, 111, 32, 119, 111, 114, 108, 100, 33, 34 };
 
             var actual = _sut.ToBytes(Content);
 
             Assert.That(actual, Is.EquivalentTo(expected));
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldToBytesThrowExceptionIfContentIsNull()
+        {
+            _sut.ToBytes<string>(null);
         }
     }
 }

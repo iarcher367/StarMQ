@@ -1,5 +1,7 @@
 ﻿namespace StarMQ.Message
 {
+    using Model;
+
     public interface ISerializationStrategy
     {
         IMessage<byte[]> Serialize<T>(IMessage<T> message) where T : class;

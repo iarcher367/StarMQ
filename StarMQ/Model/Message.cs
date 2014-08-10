@@ -1,4 +1,4 @@
-namespace StarMQ.Message
+namespace StarMQ.Model
 {
     using System;
 

@@ -1,5 +1,6 @@
-namespace StarMQ.Message
+namespace StarMQ.Model
 {
+    using Exception;
     using RabbitMQ.Client;
     using System;
     using System.Collections.Generic;
@@ -32,7 +33,7 @@ namespace StarMQ.Message
         public string ContentEncoding
         {
             get { return _contentEncoding; }
-            set { _contentEncoding = Global.Validate(value, "ContentEncoding"); _contentEncodingPresent = true; }
+            set { _contentEncoding = Global.Validate("ContentEncoding", value); _contentEncodingPresent = true; }
         }
 
         /// <summary>
@@ -41,7 +42,7 @@ namespace StarMQ.Message
         public string ContentType
         {
             get { return _contentType; }
-            set { _contentType = Global.Validate(value, "ContentType"); _contentTypePresent = true; }
+            set { _contentType = Global.Validate("ContentType", value); _contentTypePresent = true; }
         }
 
         /// <summary>
@@ -50,7 +51,7 @@ namespace StarMQ.Message
         public string CorrelationId
         {
             get { return _correlationId; }
-            set { _correlationId = Global.Validate(value, "CorrelationId"); _correlationIdPresent = true; }
+            set { _correlationId = Global.Validate("CorrelationId", value); _correlationIdPresent = true; }
         }
 
         /// <summary>
@@ -59,7 +60,14 @@ namespace StarMQ.Message
         public byte DeliveryMode
         {
             get { return _deliveryMode; }
-            set { _deliveryMode = value; _deliveryModePresent = true; }
+            set
+            {
+                if (value != 1 && value != 2)
+                    throw new InvalidValueException("DeliveryMode", value.ToString());
+
+                _deliveryMode = value;
+                _deliveryModePresent = true;
+            }
         }
 
         public IDictionary<string, object> Headers
@@ -74,7 +82,7 @@ namespace StarMQ.Message
         public string MessageId
         {
             get { return _messageId; }
-            set { _messageId = Global.Validate(value, "MessageId"); _messageIdPresent = true; }
+            set { _messageId = Global.Validate("MessageId", value); _messageIdPresent = true; }
         }
 
         /// <summary>
@@ -83,7 +91,14 @@ namespace StarMQ.Message
         public byte Priority
         {
             get { return _priority; }
-            set { _priority = value; _priorityPresent = true; }
+            set
+            {
+                if (value > 9)
+                    throw new InvalidValueException("Priority", value.ToString());
+
+                _priority = value;
+                _priorityPresent = true;
+            }
         }
 
         /// <summary>
@@ -92,7 +107,7 @@ namespace StarMQ.Message
         public string ReplyTo
         {
             get { return _replyTo; }
-            set { _replyTo = Global.Validate(value, "ReplyTo"); _replyToPresent = true; }
+            set { _replyTo = Global.Validate("ReplyTo", value); _replyToPresent = true; }
         }
 
         /// <summary>
@@ -101,12 +116,12 @@ namespace StarMQ.Message
         public string Type
         {
             get { return _type; }
-            set { _type = Global.Validate(value, "Type"); _typePresent = true; }
+            set { _type = Global.Validate("Type", value); _typePresent = true; }
         }
 
         public Properties()
         {
-            Headers = new Dictionary<string, object>();
+            _headers = new Dictionary<string, object>();
         }
 
         public void CopyTo(IBasicProperties target)

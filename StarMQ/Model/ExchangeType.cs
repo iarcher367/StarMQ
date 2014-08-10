@@ -1,4 +1,4 @@
-﻿namespace StarMQ.Core
+﻿namespace StarMQ.Model
 {
     public enum ExchangeType
     {

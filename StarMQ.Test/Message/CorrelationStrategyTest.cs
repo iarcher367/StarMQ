@@ -20,7 +20,7 @@
             Guid guid;
             var actual = _sut.GenerateCorrelationId();
 
-            Assert.That(Guid.TryParse(actual, out guid));
+            Assert.That(Guid.TryParse(actual, out guid), Is.True);
         }
     }
 }

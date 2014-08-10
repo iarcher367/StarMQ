@@ -30,6 +30,7 @@
         public void ShouldReturnConfirmsPublisherIfConfirmsEnabled()
         {
             _configuration.PublisherConfirms = true;
+
             var actual = PublisherFactory.CreatePublisher(_configuration, _log.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(ConfirmPublisher)));

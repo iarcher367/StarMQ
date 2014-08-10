@@ -24,7 +24,7 @@ namespace StarMQ.Core
         /// in milliseconds
         /// </summary>
         private const int RetryInterval = 5000;
-        private const string RetryMsg = "Failed to connect to server. Retrying in {0} ms.";
+        private const string RetryMsg = "Failed to connect to broker. Retrying in {0} ms.";
 
         private readonly ConnectionFactory _factory;
         private readonly ILog _log;
@@ -60,7 +60,7 @@ namespace StarMQ.Core
         {
             if (_disposed) return;
 
-            _log.Info("Attempting to connect to server.");
+            _log.Info("Attempting to connect to broker.");
 
             try
             {
@@ -82,15 +82,13 @@ namespace StarMQ.Core
 
         private void CreateConnection()
         {
-            _log.Info(String.Format("Server connection created to {0}:{1}:{2}", _factory.HostName,
+            _log.Info(String.Format("Broker connection created to {0}:{1}:{2}", _factory.HostName,
                 Convert.ToString(_factory.Port), Convert.ToString(_factory.VirtualHost)));
 
             _connection = _factory.CreateConnection();
             _connection.ConnectionShutdown += OnConnectionShutdown;
 
-            OnConnected();
-
-            _log.Info("Connection to server successful.");
+            _log.Info("Connection to broker established.");
         }
 
         private void OnConnectionShutdown(RabbitMQ.Client.IConnection _, ShutdownEventArgs args)
@@ -99,14 +97,9 @@ namespace StarMQ.Core
 
             OnDisconnected();
 
-            _log.Info("Server terminated connection. Reconnecting...");
+            _log.Info("Broker terminated connection. Reconnecting...");
 
             Connect();
-        }
-
-        private void OnConnected()
-        {
-            _log.Debug("OnConnected event fired.");     // TODO: publish to event bus
         }
 
         private void OnDisconnected()
@@ -117,6 +110,7 @@ namespace StarMQ.Core
         private async void Retry()
         {
             await Task.Delay(RetryInterval);
+
             Connect();
         }
         #endregion
@@ -145,6 +139,8 @@ namespace StarMQ.Core
             {
                 _log.Debug("Caught IOException - this is expected when disposing a connection.");
             }
+
+            _log.Info("Disposal complete.");
         }
     }
 }

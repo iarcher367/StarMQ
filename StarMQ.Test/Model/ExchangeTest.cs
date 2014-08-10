@@ -1,8 +1,8 @@
-﻿namespace StarMQ.Test.Core
+﻿namespace StarMQ.Test.Model
 {
     using Exception;
     using NUnit.Framework;
-    using StarMQ.Core;
+    using StarMQ.Model;
     using System;
 
     public class ExchangeTest
@@ -18,11 +18,10 @@
         }
 
         [Test]
-        public void ShouldDefaultDurableToTrue()
+        [ExpectedException(typeof (ArgumentNullException))]
+        public void ShouldThrowExceptionIfNameIsNull()
         {
-            var exchange = new Exchange(Expected);
-
-            Assert.That(exchange.Durable, Is.True);
+            var exchange = new Exchange(null);
         }
 
         [Test]
@@ -30,6 +29,14 @@
         public void ShouldThrowExceptionIfNameIsTooLong()
         {
             var exchange = new Exchange(new String('*', 256));
+        }
+
+        [Test]
+        public void ShouldDefaultDurableToTrue()
+        {
+            var exchange = new Exchange(Expected);
+
+            Assert.That(exchange.Durable, Is.True);
         }
     }
 }

@@ -51,27 +51,32 @@
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AdvancedBusTest.cs" />
+    <Compile Include="Model\ResponseActionTest.cs" />
+    <Compile Include="Model\ResponseTypeTest.cs" />
+    <Compile Include="Publish\PublisherTest.cs" />
+    <Compile Include="SimpleBusTest.cs" />
     <Compile Include="Core\ConnectionConfigurationTest.cs" />
     <Compile Include="Core\CommandDispatcherTest.cs" />
     <Compile Include="Core\PersistentChannelTest.cs" />
     <Compile Include="Core\PersistentConnectionTest.cs" />
-    <Compile Include="Core\ExchangeTest.cs" />
+    <Compile Include="Model\QueueTest.cs" />
+    <Compile Include="Model\ExchangeTest.cs" />
     <Compile Include="Core\NamingStrategyTest.cs" />
     <Compile Include="Message\JsonSerializerTest.cs" />
-    <Compile Include="Message\MessageTest.cs" />
+    <Compile Include="Model\MessageTest.cs" />
     <Compile Include="Message\CorrelationStrategyTest.cs" />
-    <Compile Include="Message\PropertiesTest.cs" />
+    <Compile Include="Model\PropertiesTest.cs" />
     <Compile Include="Publish\PublisherFactoryTest.cs" />
     <Compile Include="Message\SerializationStrategyTest.cs" />
     <Compile Include="Message\TypeNameSerializerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="Subscribe\SubscriberTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
   </ItemGroup>
-  <ItemGroup>
-    <Folder Include="Subscribe\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\StarMQ\StarMQ.csproj">
       <Project>{27e9b2a4-b3b5-41b2-abe8-dabaf3ca7025}</Project>

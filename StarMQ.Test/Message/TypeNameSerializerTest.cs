@@ -3,6 +3,7 @@
     using Exception;
     using NUnit.Framework;
     using StarMQ.Message;
+    using StarMQ.Model;
     using System;
     using System.Collections.Concurrent;
 
@@ -10,7 +11,7 @@
     {
         private ITypeNameSerializer _sut;
 
-        private const string Name = "StarMQ.Message.Properties:StarMQ";
+        private const string Name = "StarMQ.Model.Properties:StarMQ";
 
         [SetUp]
         public void Setup()
@@ -24,6 +25,13 @@
             var actual = _sut.Deserialize(Name);
 
             Assert.That(actual, Is.EqualTo(typeof(Properties)));
+        }
+
+        [Test]
+        [ExpectedException(typeof (ArgumentNullException))]
+        public void ShouldThrowExceptionIfNameIsNull()
+        {
+            _sut.Deserialize(null);
         }
 
         [Test]
@@ -44,7 +52,7 @@
 
         [Test]
         [ExpectedException(typeof(StarMqException))]
-        public void ShouldThrowExceptionForUnknownType()
+        public void ShouldThrowExceptionIfTypeIsUnknown()
         {
             const string input = "StarMQ.Swords.Excalibur:StarMQ";
 
@@ -61,7 +69,7 @@
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionForNullTypeParameter()
+        public void ShouldThrowExceptionIfTypeIsNull()
         {
             _sut.Serialize(null);
         }
