@@ -52,6 +52,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AdvancedBusTest.cs" />
+    <Compile Include="Message\CompressionInterceptorTest.cs" />
+    <Compile Include="Message\InterceptorPipelineTest.cs" />
     <Compile Include="Model\ResponseActionTest.cs" />
     <Compile Include="Model\ResponseTypeTest.cs" />
     <Compile Include="Publish\PublisherTest.cs" />

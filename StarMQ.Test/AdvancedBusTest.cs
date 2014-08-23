@@ -18,6 +18,7 @@
         private Mock<ICommandDispatcher> _commandDispatcher;
         private Mock<ILog> _log;
         private Mock<INamingStrategy> _namingStrategy;
+        private Mock<IPipeline> _pipeline;
         private Mock<IPublisher> _publisher;
         private Mock<ISerializationStrategy> _serializationStrategy;
         private IAdvancedBus _sut;
@@ -31,11 +32,12 @@
             _commandDispatcher = new Mock<ICommandDispatcher>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
+            _pipeline = new Mock<IPipeline>(MockBehavior.Strict);
             _publisher = new Mock<IPublisher>(MockBehavior.Strict);
             _serializationStrategy = new Mock<ISerializationStrategy>(MockBehavior.Strict);
 
             _sut = new AdvancedBus(_commandDispatcher.Object, _log.Object, _namingStrategy.Object,
-                _publisher.Object, _serializationStrategy.Object);
+                _pipeline.Object, _publisher.Object, _serializationStrategy.Object);
 
             _exchange = new Exchange("StarMQ.Master");
             _message = new Message<string>("Hello World!");
@@ -96,14 +98,19 @@
         [Test]
         public async Task PublishAsyncShouldPublishMessage()
         {
+            var data = new Message<byte[]>(new byte[0]);
+
             _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
-            _serializationStrategy.Setup(x => x.Serialize(_message))
+            _pipeline.Setup(x => x.OnSend(data))
                 .Returns(new Message<byte[]>(new byte[0]));
+            _serializationStrategy.Setup(x => x.Serialize(_message))
+                .Returns(data);
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 
             _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _pipeline.Verify(x => x.OnSend(data), Times.Once);
             _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once());
         }
 

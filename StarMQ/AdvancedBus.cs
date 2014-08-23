@@ -40,6 +40,7 @@ namespace StarMQ
         private readonly ConcurrentDictionary<string, Task> _exchanges = new ConcurrentDictionary<string, Task>();
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
+        private readonly IPipeline _pipeline;
         private readonly IPublisher _publisher;
         private readonly ISerializationStrategy _serializationStrategy;
 
@@ -48,11 +49,12 @@ namespace StarMQ
         public event Action BasicReturnEvent;       // TODO: event to be fired by publisher and re-fired here
 
         public AdvancedBus(ICommandDispatcher commandDispatcher, ILog log, INamingStrategy namingStrategy,
-            IPublisher publisher, ISerializationStrategy serializationStrategy)
+            IPipeline pipeline, IPublisher publisher, ISerializationStrategy serializationStrategy)
         {
             _commandDispatcher = commandDispatcher;
             _log = log;
             _namingStrategy = namingStrategy;
+            _pipeline = pipeline;
             _publisher = publisher;
             _serializationStrategy = serializationStrategy;
         }
@@ -70,6 +72,8 @@ namespace StarMQ
             var consumer = ConsumerFactory.CreateConsumer(queue, null, _log);
 
             consumer.Consume();
+
+            //_pipeline.OnReceive(null);
 
             throw new NotImplementedException();
         }
@@ -92,7 +96,7 @@ namespace StarMQ
             }
             else
             {
-                // TODO: alternate exchange support?
+                // TODO: support alternate exchanges
 
                 await _commandDispatcher.Invoke(x =>
                     x.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
@@ -112,6 +116,7 @@ namespace StarMQ
                 throw new ArgumentNullException("message");
 
             var serialized = _serializationStrategy.Serialize(message);
+            var data = _pipeline.OnSend(serialized);
 
             await _commandDispatcher.Invoke(x =>
             {
@@ -119,7 +124,7 @@ namespace StarMQ
                 message.Properties.CopyTo(properties);
 
                 _publisher.Publish(x, a => a.BasicPublish(exchange.Name, routingKey,
-                        mandatory, immediate, properties, serialized.Body));
+                        mandatory, immediate, properties, data.Body));
             });
 
             _log.Debug(String.Format("Message published to '{0}' with routing key '{1}'",

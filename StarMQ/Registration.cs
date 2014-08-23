@@ -19,6 +19,7 @@
             container.RegisterSingle<ICommandDispatcher, CommandDispatcher>();
             container.RegisterSingle<IConnection, PersistentConnection>();
             container.RegisterSingle<IConnectionConfiguration, ConnectionConfiguration>();
+            container.RegisterSingle<IPipeline, InterceptorPipeline>();
             container.RegisterSingle<ISimpleBus, SimpleBus>();
 
             container.Register<IChannel, PersistentChannel>();
@@ -39,6 +40,9 @@
 
             // allows application to use custom implementations
             container.Options.AllowOverridingRegistrations = true;
+
+            var pipeline = container.GetInstance<IPipeline>();  // TODO: make configuration flexible
+            pipeline.Add(new CompressionInterceptor());
         }
     }
 }

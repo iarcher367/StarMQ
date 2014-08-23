@@ -54,6 +54,10 @@
     <Compile Include="Core\CommandDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
+    <Compile Include="Message\CompressionInterceptor.cs" />
+    <Compile Include="Message\IMessagingInterceptor.cs" />
+    <Compile Include="Message\InterceptorPipeline.cs" />
+    <Compile Include="Message\IPipeline.cs" />
     <Compile Include="Model\ExchangeType.cs" />
     <Compile Include="Core\NamingStrategy.cs" />
     <Compile Include="Model\Exchange.cs" />
@@ -68,7 +72,7 @@
     <Compile Include="Model\Response.cs" />
     <Compile Include="Publish\BasicPublisher.cs" />
     <Compile Include="Publish\ConfirmPublisher.cs" />
-    <Compile Include="Publish\IPublisher.cs" />
+    <Compile Include="Publish\BasePublisher.cs" />
     <Compile Include="Publish\PublisherFactory.cs" />
     <Compile Include="Registration.cs" />
     <Compile Include="Message\ISerializer.cs" />
