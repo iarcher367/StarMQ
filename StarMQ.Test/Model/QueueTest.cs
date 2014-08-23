@@ -38,5 +38,13 @@
 
             Assert.That(queue.Durable, Is.True);
         }
+
+        [Test]
+        public void ShouldDefaultMessageTimeToLiveToMaxValue()
+        {
+            var queue = new Queue(Expected);
+
+            Assert.That(queue.MessageTimeToLive, Is.EqualTo(uint.MaxValue));
+        }
     }
 }

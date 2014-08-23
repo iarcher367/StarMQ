@@ -28,6 +28,7 @@
         /// </summary>
         public bool Passive { get; set; }
 
+        #region Args
         /// <summary>
         /// Set to enable dead-lettering.
         /// </summary>
@@ -38,12 +39,27 @@
         /// </summary>
         public string DeadLetterExchangeRoutingKey { get; set; }
 
-        // TODO: perQueueTTL, expires
+        /// <summary>
+        /// Set to have queue deleted if it has no consumers, has not been re-declared, and has not
+        /// had a basic.get invoked for specified duration in milliseconds.
+        ///
+        /// Cannot be zero.
+        /// </summary>
+        public uint Expiry { get; set; }
+
+        /// <summary>
+        /// Set to specify time to live for messages in milliseconds.
+        ///
+        /// If zero, message is expired if it cannot be immediately delivered.
+        /// </summary>
+        public uint MessageTimeToLive { get; set; }
+        #endregion
 
         public Queue(string name)
         {
             Name = Global.Validate("name", name);
             Durable = true;
+            MessageTimeToLive = uint.MaxValue;
         }
     }
 }

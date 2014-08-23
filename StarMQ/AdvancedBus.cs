@@ -26,6 +26,11 @@ namespace StarMQ
         /// <param name="immediate">If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
         Task PublishAsync<T>(Exchange exchange, string routingKey, bool mandatory, bool immediate, IMessage<T> message) where T : class;
 
+        /// <summary>
+        /// Allows a queue to begin receiving messages matching the routing key from specified exchange.
+        /// </summary>
+        Task QueueBindAsync(Exchange exchange, Queue queue, string routingKey);
+
         Task QueueDeclareAsync(Queue queue);
 
         /// <summary>
@@ -102,7 +107,7 @@ namespace StarMQ
                     x.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
                         exchange.Durable, exchange.AutoDelete, null));
 
-                _log.Debug(String.Format("Exchange '{0}' declared.", exchange.Name));
+                _log.Info(String.Format("Exchange '{0}' declared.", exchange.Name));
             }
         }
 
@@ -131,6 +136,21 @@ namespace StarMQ
                 exchange.Name, routingKey));
         }
 
+        public async Task QueueBindAsync(Exchange exchange, Queue queue, string routingKey)
+        {
+            if (exchange == null)
+                throw new ArgumentNullException("exchange");
+            if (queue == null)
+                throw new ArgumentNullException("queue");
+            if (routingKey == null)
+                throw new ArgumentNullException("routingKey");
+
+            await _commandDispatcher.Invoke(x => x.QueueBind(queue.Name, exchange.Name, routingKey));
+
+            _log.Info(String.Format("Queue '{0}' bound to exchange '{1}' with routing key '{2}'.",
+                queue.Name, exchange.Name, routingKey));
+        }
+
         public async Task QueueDeclareAsync(Queue queue)
         {
             if (queue == null)
@@ -142,19 +162,21 @@ namespace StarMQ
             }
             else
             {
-                // TODO: set TTL, expires
-
                 var args = new Dictionary<string, object>();
 
                 if (!String.IsNullOrEmpty(queue.DeadLetterExchangeName))
                     args.Add("x-dead-letter-exchange", queue.DeadLetterExchangeName);
                 if (!String.IsNullOrEmpty(queue.DeadLetterExchangeRoutingKey))
                     args.Add("x-dead-letter-routing-key", queue.DeadLetterExchangeRoutingKey);
+                if (queue.Expiry > 0)
+                    args.Add("x-expires", queue.Expiry);
+                if (queue.MessageTimeToLive != uint.MaxValue)
+                    args.Add("x-message-ttl", queue.MessageTimeToLive);
 
                 await _commandDispatcher.Invoke(x =>
                     x.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, args));
 
-                _log.Debug(String.Format("Queue '{0}' declared.", queue.Name));
+                _log.Info(String.Format("Queue '{0}' declared.", queue.Name));
             }
         }
 

@@ -11,7 +11,7 @@
     using System;
     using System.Threading.Tasks;
 
-    public class AdvancedBusTest    // TODO: wip
+    public class AdvancedBusTest
     {
         private const string RoutingKey = "x.y";
 
@@ -25,6 +25,7 @@
 
         private Exchange _exchange;
         private IMessage<string> _message;
+        private Queue _queue;
 
         [SetUp]
         public void Setup()
@@ -41,6 +42,7 @@
 
             _exchange = new Exchange("StarMQ.Master");
             _message = new Message<string>("Hello World!");
+            _queue = new Queue("StarMQ.Slave");
         }
 
         [Test]
@@ -49,7 +51,7 @@
             Assert.Fail();
         }
 
-        #region ExchangeDeclare
+        #region ExchangeDeclareAsync
         [Test]
         public async Task ExchangeDeclareAsyncShouldDeclareExchange()
         {
@@ -136,11 +138,44 @@
         }
         #endregion
 
+        #region QueueDeclareAsync
         [Test]
-        public void ShouldQueueDeclare()
+        public async Task QueueDeclareAsyncShouldDeclareQueue()
         {
-            Assert.Fail();
+            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+                .Returns(Task.FromResult(0));
+
+            await _sut.QueueDeclareAsync(_queue);
+
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
         }
+
+        [Test]
+        public async Task QueueDeclareAsyncShouldDeclareQueuePassive()
+        {
+            _queue.Passive = true;
+
+            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+                .Returns(Task.FromResult(0));
+
+            await _sut.QueueDeclareAsync(_queue);
+
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+        }
+
+        [Test]
+        public async Task QueueDeclareAsyncShouldSetArgs()
+        {
+            Assert.Inconclusive();
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task QueueDeclareAsyncShouldThrowExceptionIfQueueIsNull()
+        {
+            await _sut.QueueDeclareAsync(null);
+        }
+        #endregion
 
         [Test]
         public void ShouldDisposeCommandDispatcher()
