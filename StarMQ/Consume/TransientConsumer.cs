@@ -1,0 +1,62 @@
+namespace StarMQ.Consume
+{
+    using Core;
+    using log4net;
+    using Model;
+    using System;
+    using System.Collections.Generic;
+    using System.Threading.Tasks;
+    using IConnection = Core.IConnection;
+
+    public class TransientConsumer : BaseConsumer
+    {
+        public TransientConsumer(IConnection connection, IConsumerDispatcher dispatcher, ILog log,
+            INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
+        {
+        }
+
+        public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
+        {
+            if (queue == null)
+                throw new ArgumentNullException("queue");
+            if (messageHandler == null)
+                throw new ArgumentNullException("messageHandler");
+
+            MessageHandler = messageHandler;
+
+            return Consume(queue);
+        }
+
+        protected Task Consume(Queue queue)
+        {
+            if (queue == null)
+                throw new ArgumentNullException("queue");
+
+            ConsumerCancelled += (o, args) => Dispose();
+
+            var tcs = new TaskCompletionSource<object>();
+
+            try
+            {
+                if (Model.IsOpen)
+                {
+                    var args = new Dictionary<string, object>();
+
+                    Model.BasicQos(0, 50, false); // TODO: refactor hardcode
+
+                    // TODO: add args - priority, cancel
+
+                    Model.BasicConsume(queue.Name, false, ConsumerTag, args, this);
+
+                    Log.Info(String.Format("Consumer '{0}' declared on queue '{1}'.", ConsumerTag, queue.Name));
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Error(String.Format("Consumer '{0}' failed to consume queue '{1}'.", queue.Name, ConsumerTag), ex);
+            }
+
+            return tcs.Task;
+        }
+    }
+}

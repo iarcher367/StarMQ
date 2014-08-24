@@ -6,14 +6,12 @@
     using Publish;
     using SimpleInjector;
     using SimpleInjector.Advanced.Extensions;
-    using System;
 
     public class Registration
     {
-        public static void RegisterServices(Container container)
+        public static Container RegisterServices()
         {
-            if (container == null)
-                throw new ArgumentNullException("container");
+            var container = new Container();
 
             container.RegisterSingle<IAdvancedBus, AdvancedBus>();
             container.RegisterSingle<ICommandDispatcher, CommandDispatcher>();
@@ -26,7 +24,9 @@
             container.Register(() =>
                 {
                     var config = container.GetInstance<IConnectionConfiguration>();
-                    var log = LogManager.GetLogger(typeof(IPublisher));        // TODO: inject Log
+                    var log = LogManager.GetLogger(config.PublisherConfirms
+                        ? typeof(ConfirmPublisher)
+                        : typeof(BasicPublisher));
                     return PublisherFactory.CreatePublisher(config, log);
                 });
 
@@ -43,6 +43,8 @@
 
             var pipeline = container.GetInstance<IPipeline>();  // TODO: make configuration flexible
             pipeline.Add(new CompressionInterceptor());
+
+            return container;
         }
     }
 }

@@ -51,6 +51,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AdvancedBus.cs" />
+    <Compile Include="Consume\BaseConsumer.cs" />
+    <Compile Include="Consume\ConsumerDispatcher.cs" />
+    <Compile Include="Consume\ConsumerFactory.cs" />
+    <Compile Include="Consume\PersistentConsumer.cs" />
+    <Compile Include="Consume\TransientConsumer.cs" />
     <Compile Include="Core\CommandDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
@@ -58,6 +63,7 @@
     <Compile Include="Message\IMessagingInterceptor.cs" />
     <Compile Include="Message\InterceptorPipeline.cs" />
     <Compile Include="Message\IPipeline.cs" />
+    <Compile Include="Model\BaseResponse.cs" />
     <Compile Include="Model\ExchangeType.cs" />
     <Compile Include="Core\NamingStrategy.cs" />
     <Compile Include="Model\Exchange.cs" />
@@ -69,7 +75,6 @@
     <Compile Include="Message\CorrelationStrategy.cs" />
     <Compile Include="Message\ICorrelationStrategy.cs" />
     <Compile Include="Model\Queue.cs" />
-    <Compile Include="Model\Response.cs" />
     <Compile Include="Publish\BasicPublisher.cs" />
     <Compile Include="Publish\ConfirmPublisher.cs" />
     <Compile Include="Publish\BasePublisher.cs" />
@@ -86,8 +91,7 @@
     <Compile Include="Model\Message.cs" />
     <Compile Include="Message\SerializationStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Subscribe\ConsumerFactory.cs" />
-    <Compile Include="Subscribe\PersistentConsumer.cs" />
+    <Compile Include="SimpleBusFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />

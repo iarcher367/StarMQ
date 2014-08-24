@@ -32,7 +32,7 @@ namespace StarMQ.Core
         private RabbitMQ.Client.IConnection _connection;
         private bool _disposed;
 
-        public bool IsConnected     // TODO: no external callers?
+        public bool IsConnected
         {
             get { return _connection != null && _connection.IsOpen && !_disposed; }
         }
@@ -137,7 +137,7 @@ namespace StarMQ.Core
             }
             catch (IOException)
             {
-                _log.Debug("Caught IOException - this is expected when disposing a connection.");
+                _log.Info("Caught IOException - this is expected when disposing a connection.");
             }
 
             _log.Info("Disposal complete.");

@@ -11,26 +11,29 @@
     {
         /// <summary>
         /// Publishes a message with given routing key and contents.
-        /// If publisher acknowledgements are enabled, task only completes publish is confirmed.
+        /// If publisher acknowledgements are enabled, task only completes once publish is confirmed.
         ///
         /// To call synchronously and ensure order, use Wait() to block before publishing again.
         /// </summary>
         Task PublishAsync<T>(T content, string routingKey) where T : class;
 
         /// <summary>
+        /// Subscribes to messages of type T matching any routing key.
         /// Sends a nack to the broker for unhandled exceptions and an ack otherwise.
+        ///
+        /// Subscribers with different subscriptionIds receive copies of each message.
+        /// Subscribers with the same subscriptionIds compete for messages.
         /// </summary>
         Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Action<T> messageHandler) where T : class;
 
         /// <summary>
         /// Subscribes to messages of type T matching any routing key.
+        /// Allows custom responses to be sent to the broker.
         ///
         /// Subscribers with different subscriptionIds receive copies of each message.
         /// Subscribers with the same subscriptionIds compete for messages.
-        ///
-        /// Allows custom responses to be sent to the broker.
         /// </summary>
-        Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, Response> messageHandler) where T : class;
+        Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, BaseResponse> messageHandler) where T : class;
     }
 
     public class SimpleBus : ISimpleBus
@@ -72,16 +75,16 @@
                     {
                         messageHandler(x);
 
-                        return new Response();
+                        return new AckResponse();
                     }
                     catch (System.Exception)
                     {
-                        return new Response { Type = ResponseType.Nack };
+                        return new NackResponse();
                     }
                 });
         }
 
-        public async Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, Response> messageHandler) where T : class
+        public async Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, BaseResponse> messageHandler) where T : class
         {
             if (subscriptionId == null)
                 throw new ArgumentNullException("subscriptionId");
@@ -91,7 +94,7 @@
                 throw new ArgumentNullException("messageHandler");
 
             var exchangeName = _namingStrategy.GetExchangeName(typeof(T));
-            var exchange = new Exchange(exchangeName);
+            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Topic };
 
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
@@ -108,7 +111,23 @@
             foreach (var key in routingKeys.DefaultIfEmpty("#"))
                 await _advancedBus.QueueBindAsync(exchange, queue, key);
 
+            await ConfigureDeadLettering<T>(subscriptionId, routingKeys);
+
             await _advancedBus.ConsumeAsync(queue, messageHandler);
+        }
+
+        private async Task ConfigureDeadLettering<T>(string subscriptionId, IEnumerable<string> routingKeys)
+        {
+            var exchangeName = _namingStrategy.GetDeadLetterExchangeName(typeof(T));
+            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Topic };
+            await _advancedBus.ExchangeDeclareAsync(exchange);
+
+            var queueName = _namingStrategy.GetDeadLetterQueueName(typeof(T), subscriptionId);
+            var queue = new Queue(queueName);
+            await _advancedBus.QueueDeclareAsync(queue);
+
+            foreach (var key in routingKeys.DefaultIfEmpty("#"))
+                await _advancedBus.QueueBindAsync(exchange, queue, key);
         }
 
         public void Dispose()

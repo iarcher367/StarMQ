@@ -23,11 +23,10 @@ For HA clusters, set the connection string to connect to the load balancer.
 
 Todo:
 - supports Publisher Confirms
-- able to control response back to server: nack, reject, 
 - able to trigger unsubscribe from queue
 - built-in DLX handling
-- supports HA, clusters
 - pipeline design for consumers; insertion points to register strategy for cross-cutting concerns: de-dup, auth
+- supports HA, clusters
 - ability to send derived types over base-type-bound queue
 - ability to set TTL or custom headers (e.g. auth) per message
 - implement pre-processing steps

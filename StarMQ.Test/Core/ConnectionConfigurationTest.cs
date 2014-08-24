@@ -16,7 +16,7 @@
         [Test]
         public void ShouldSetDefaultPassword()
         {
-            Assert.That(_sut.Password, Is.EqualTo("password"));
+            Assert.That(_sut.Password, Is.EqualTo("guest"));
         }
 
         [Test]
@@ -28,7 +28,7 @@
         [Test]
         public void ShouldSetDefaultUsername()
         {
-            Assert.That(_sut.Username, Is.EqualTo("admin"));
+            Assert.That(_sut.Username, Is.EqualTo("guest"));
         }
     }
 }

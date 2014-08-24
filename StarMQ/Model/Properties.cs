@@ -124,6 +124,22 @@ namespace StarMQ.Model
             _headers = new Dictionary<string, object>();
         }
 
+        public void CopyFrom(IBasicProperties source)
+        {
+            if (source == null)
+                throw new ArgumentNullException("source");
+
+            if (source.IsContentEncodingPresent()) ContentEncoding = source.ContentEncoding;
+            if (source.IsContentTypePresent()) ContentType = source.ContentType;
+            if (source.IsCorrelationIdPresent()) CorrelationId = source.CorrelationId;
+            if (source.IsDeliveryModePresent()) DeliveryMode = source.DeliveryMode;
+            if (source.IsHeadersPresent()) Headers = source.Headers;
+            if (source.IsMessageIdPresent()) MessageId = source.MessageId;
+            if (source.IsPriorityPresent()) Priority = source.Priority;
+            if (source.IsReplyToPresent()) ReplyTo = source.ReplyTo;
+            if (source.IsTypePresent()) Type = source.Type;
+        }
+
         public void CopyTo(IBasicProperties target)
         {
             if (target == null)

@@ -10,12 +10,14 @@
     using StarMQ.Publish;
     using System;
     using System.Threading.Tasks;
+    using IConnection = StarMQ.Core.IConnection;
 
     public class AdvancedBusTest
     {
         private const string RoutingKey = "x.y";
 
         private Mock<ICommandDispatcher> _commandDispatcher;
+        private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private Mock<INamingStrategy> _namingStrategy;
         private Mock<IPipeline> _pipeline;
@@ -31,14 +33,16 @@
         public void Setup()
         {
             _commandDispatcher = new Mock<ICommandDispatcher>(MockBehavior.Strict);
+            _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
             _pipeline = new Mock<IPipeline>(MockBehavior.Strict);
             _publisher = new Mock<IPublisher>(MockBehavior.Strict);
             _serializationStrategy = new Mock<ISerializationStrategy>(MockBehavior.Strict);
 
-            _sut = new AdvancedBus(_commandDispatcher.Object, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _publisher.Object, _serializationStrategy.Object);
+            _sut = new AdvancedBus(_commandDispatcher.Object, _connection.Object, _log.Object,
+                _namingStrategy.Object, _pipeline.Object, _publisher.Object,
+                _serializationStrategy.Object);
 
             _exchange = new Exchange("StarMQ.Master");
             _message = new Message<string>("Hello World!");
@@ -181,10 +185,12 @@
         public void ShouldDisposeCommandDispatcher()
         {
             _commandDispatcher.Setup(x => x.Dispose());
+            _connection.Setup(x => x.Dispose());
 
             _sut.Dispose();
 
             _commandDispatcher.Verify(x => x.Dispose(), Times.Once());
+            _connection.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

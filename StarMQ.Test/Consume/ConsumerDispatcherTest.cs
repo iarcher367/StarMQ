@@ -1,8 +1,8 @@
-﻿namespace StarMQ.Test.Subscribe
+﻿namespace StarMQ.Test.Consume
 {
     using NUnit.Framework;
 
-    public class SubscriberTest
+    public class ConsumerDispatcherTest
     {
         [Test]
         public void ShouldSendAndReceive100MessagesInOrder()

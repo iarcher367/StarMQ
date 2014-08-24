@@ -48,6 +48,13 @@
         }
 
         [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void DeserializeShouldThrowExceptionIfMessageIsNull()
+        {
+            _sut.Deserialize<string>(null);
+        }
+
+        [Test]
         public void ShouldSerializeMessageToByteArrayMessage()
         {
             var serializedBody = new byte[5];
@@ -121,6 +128,13 @@
             _correlationStrategy.Verify(x => x.GenerateCorrelationId(), Times.Never());
             _serializer.VerifyAll();
             _typeNameSerializer.VerifyAll();
+        }
+
+        [Test]
+        [ExpectedException(typeof (ArgumentNullException))]
+        public void SerializeShouldThrowExceptionIfMessageIsNull()
+        {
+            _sut.Serialize<string>(null);
         }
     }
 }

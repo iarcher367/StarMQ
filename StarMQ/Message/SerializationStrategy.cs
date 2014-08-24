@@ -19,6 +19,9 @@
 
         public IMessage<T> Deserialize<T>(IMessage<byte[]> message) where T : class
         {
+            if (message == null)
+                throw new ArgumentNullException("message");
+
             var body = _serializer.ToObject<T>(message.Body);
 
             return new Message<T>(body) { Properties = message.Properties };
@@ -26,6 +29,9 @@
 
         public IMessage<byte[]> Serialize<T>(IMessage<T> message) where T : class
         {
+            if (message == null)
+                throw new ArgumentNullException("message");
+
             var body = _serializer.ToBytes(message.Body);
 
             var properties = message.Properties;

@@ -1,11 +1,11 @@
 namespace StarMQ
 {
+    using Consume;
     using Core;
     using log4net;
     using Message;
     using Model;
     using Publish;
-    using Subscribe;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -14,7 +14,7 @@ namespace StarMQ
 
     public interface IAdvancedBus : IDisposable
     {
-        Task ConsumeAsync<T>(Queue queue, Func<T, Response> messageHandler) where T : class;
+        Task ConsumeAsync<T>(Queue queue, Func<T, BaseResponse> messageHandler) where T : class;
 
         Task ExchangeDeclareAsync(Exchange exchange);
 
@@ -42,6 +42,7 @@ namespace StarMQ
     public class AdvancedBus : IAdvancedBus
     {
         private readonly ICommandDispatcher _commandDispatcher;
+        private readonly IConnection _connection;
         private readonly ConcurrentDictionary<string, Task> _exchanges = new ConcurrentDictionary<string, Task>();
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
@@ -53,10 +54,12 @@ namespace StarMQ
 
         public event Action BasicReturnEvent;       // TODO: event to be fired by publisher and re-fired here
 
-        public AdvancedBus(ICommandDispatcher commandDispatcher, ILog log, INamingStrategy namingStrategy,
-            IPipeline pipeline, IPublisher publisher, ISerializationStrategy serializationStrategy)
+        public AdvancedBus(ICommandDispatcher commandDispatcher, IConnection connection, ILog log,
+            INamingStrategy namingStrategy, IPipeline pipeline, IPublisher publisher,
+            ISerializationStrategy serializationStrategy)   // TODO: support confirms & basic publishers
         {
             _commandDispatcher = commandDispatcher;
+            _connection = connection;
             _log = log;
             _namingStrategy = namingStrategy;
             _pipeline = pipeline;
@@ -64,23 +67,24 @@ namespace StarMQ
             _serializationStrategy = serializationStrategy;
         }
 
-        public async Task ConsumeAsync<T>(Queue queue, Func<T, Response> messageHandler) where T : class
+        public async Task ConsumeAsync<T>(Queue queue, Func<T, BaseResponse> messageHandler) where T : class
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
             if (messageHandler == null)
                 throw new ArgumentNullException("messageHandler");
 
-            // TODO: map message type to message handler
+            // TODO: support derived types on same subscription and multiple handlers
 
-            // TODO: null is connection
-            var consumer = ConsumerFactory.CreateConsumer(queue, null, _log);
+            var consumer = ConsumerFactory.CreateConsumer(queue, _connection, _log, _namingStrategy);
 
-            consumer.Consume();
+            await consumer.Consume(queue, message =>
+                {
+                    var data = _pipeline.OnReceive(message);
+                    var deserialized = _serializationStrategy.Deserialize<T>(data);
 
-            //_pipeline.OnReceive(null);
-
-            throw new NotImplementedException();
+                    return messageHandler(deserialized.Body);
+                });
         }
 
         public async Task ExchangeDeclareAsync(Exchange exchange)
@@ -187,6 +191,7 @@ namespace StarMQ
             _disposed = true;
 
             _commandDispatcher.Dispose();
+            _connection.Dispose();
 
             _log.Info("Disposal complete.");
         }

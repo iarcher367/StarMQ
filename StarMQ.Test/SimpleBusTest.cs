@@ -8,7 +8,7 @@
     using System.Collections.Generic;
     using System.Threading.Tasks;
 
-    public class SimpleBusTest      // TODO: wip
+    public class SimpleBusTest
     {
         private const string Content = "Hello Earth!";
         private const string RoutingKey = "x.y";
@@ -68,14 +68,15 @@
         {
             RunSubscribeSetup();
 
-            await _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new Response());
+            await _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new AckResponse());
 
             RunSubscribeVerify();
         }
 
         private void RunSubscribeSetup()
         {
-            _advancedBus.Setup(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, Response>>()))
+            _advancedBus.Setup(x =>
+                x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
                 .Returns(Task.FromResult(0));
             _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
                 .Returns(Task.FromResult(0));
@@ -94,8 +95,9 @@
 
         private void RunSubscribeVerify()
         {
-            _advancedBus.Verify(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, Response>>())
-                , Times.Once);
+            _advancedBus.Verify(x =>
+                x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()),
+                Times.Once);
             _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Once);
             _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Once);
             _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
@@ -117,7 +119,7 @@
         {
             RunSubscribeSetup();
 
-            _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new Response());
+            _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new AckResponse());
 
             RunSubscribeVerify();
         }
@@ -126,21 +128,21 @@
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncFuncShouldThrowExceptionIfSubscriptionIdIsNull()
         {
-            await _sut.SubscribeAsync<string>(null, new List<string>(), x => new Response());
+            await _sut.SubscribeAsync<string>(null, new List<string>(), x => new AckResponse());
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncFuncShouldThrowExceptionIfRoutingKeysAreNull()
         {
-            await _sut.SubscribeAsync<string>(String.Empty, null, x => new Response());
+            await _sut.SubscribeAsync<string>(String.Empty, null, x => new AckResponse());
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncFuncShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Func<string, Response>)null);
+            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Func<string, BaseResponse>)null);
         }
         #endregion
 

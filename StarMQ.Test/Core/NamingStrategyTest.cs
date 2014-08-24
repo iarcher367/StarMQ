@@ -44,6 +44,43 @@
         }
 
         [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetDeadLetterExchangeNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetDeadLetterExchangeName(null);
+        }
+
+        [Test]
+        public void ShouldGenerateDeadLetterQueueName()
+        {
+            const string id = "InstanceA";
+
+            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
+                .Returns(SerializedName);
+
+            var actual = _sut.GetDeadLetterQueueName(typeof(string), id);
+
+            Assert.That(actual, Is.EqualTo(String.Format("DLX:{0}:{1}", SerializedName, id)));
+
+            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
+                Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetDeadLetterQueueNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetDeadLetterQueueName(null, String.Empty);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetDeadLetterQueueNameShouldThrowExceptionIfSubscriberIdIsNull()
+        {
+            _sut.GetDeadLetterQueueName(typeof(string), null);
+        }
+
+        [Test]
         public void ShouldGenerateExchangeName()
         {
             _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
@@ -55,6 +92,13 @@
 
             _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
                 Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetExchangeNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetExchangeName(null);
         }
 
         [Test]
@@ -71,6 +115,20 @@
 
             _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
                 Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetQueueNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetQueueName(null, String.Empty);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetQueueNameShouldThrowExceptionIfSubscriberIdIsNull()
+        {
+            _sut.GetQueueName(typeof(string), null);
         }
     }
 }

@@ -132,7 +132,10 @@
         [Test]
         public void ShouldSetHeaders()
         {
-            var headers = new Dictionary<string, object>();
+            var headers = new Dictionary<string, object>
+                {
+                    { "hello", "world" }
+                };
 
             _sut.Headers = headers;
 
@@ -241,16 +244,214 @@
         }
         #endregion
 
+        #region CopyFrom
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void CopyFromShouldThrowExceptionIfTargetIsNull()
+        {
+            _sut.CopyFrom(null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetContentEncoding()
+        {
+            const string expected = "UTF-8";
+
+            _basicProperties.Setup(x => x.IsContentEncodingPresent()).Returns(true);
+            _basicProperties.Setup(x => x.ContentEncoding).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ContentEncoding, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetContentEncodingIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ContentEncoding, Is.Null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetContentType()
+        {
+            const string expected = "application/json";
+
+            _basicProperties.Setup(x => x.IsContentTypePresent()).Returns(true);
+            _basicProperties.Setup(x => x.ContentType).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ContentType, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetContentTypeIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ContentType, Is.Null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetCorrelationId()
+        {
+            var expected = Guid.NewGuid().ToString();
+
+            _basicProperties.Setup(x => x.IsCorrelationIdPresent()).Returns(true);
+            _basicProperties.Setup(x => x.CorrelationId).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.CorrelationId, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetCorrelationIdIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.CorrelationId, Is.Null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetDeliveryMode()
+        {
+            const byte expected = 1;
+
+            _basicProperties.Setup(x => x.IsDeliveryModePresent()).Returns(true);
+            _basicProperties.Setup(x => x.DeliveryMode).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.DeliveryMode, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetDeliveryModeIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.DeliveryMode, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void CopyFromShouldSetHeaders()
+        {
+            var expected = new Dictionary<string, object>();
+
+            _basicProperties.Setup(x => x.IsHeadersPresent()).Returns(true);
+            _basicProperties.Setup(x => x.Headers).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Headers, Is.SameAs(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetHeadersIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Headers, Is.Empty);
+        }
+
+        [Test]
+        public void CopyFromShouldSetMessageId()
+        {
+            var expected = Guid.NewGuid().ToString();
+
+            _basicProperties.Setup(x => x.IsMessageIdPresent()).Returns(true);
+            _basicProperties.Setup(x => x.MessageId).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.MessageId, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetMessageIdIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.MessageId, Is.Null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetPriority()
+        {
+            const byte expected = 1;
+
+            _basicProperties.Setup(x => x.IsPriorityPresent()).Returns(true);
+            _basicProperties.Setup(x => x.Priority).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Priority, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetPriorityIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Priority, Is.EqualTo(0));
+        }
+
+        [Test]
+        public void CopyFromShouldSetReplyTo()
+        {
+            const string expected = "unique.routing.key";
+
+            _basicProperties.Setup(x => x.IsReplyToPresent()).Returns(true);
+            _basicProperties.Setup(x => x.ReplyTo).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ReplyTo, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetReplyToIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.ReplyTo, Is.Null);
+        }
+
+        [Test]
+        public void CopyFromShouldSetType()
+        {
+            const string expected = "StarMQ.Model.Properties";
+
+            _basicProperties.Setup(x => x.IsTypePresent()).Returns(true);
+            _basicProperties.Setup(x => x.Type).Returns(expected);
+
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Type, Is.EqualTo(expected));
+        }
+
+        [Test]
+        public void CopyFromShouldNotSetTypeIfNotSet()
+        {
+            _sut.CopyFrom(_basicProperties.Object);
+
+            Assert.That(_sut.Type, Is.Null);
+        }
+        #endregion
+
         #region CopyTo
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfTargetIsNull()
+        public void CopyToShouldThrowExceptionIfTargetIsNull()
         {
             _sut.CopyTo(null);
         }
 
         [Test]
-        public void ShouldCopyContentEncoding()
+        public void CopyToShouldSetContentEncoding()
         {
             _sut.ContentEncoding = "UTF-8";
 
@@ -260,7 +461,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyContentEncodingIfNotSet()
+        public void CopyToShouldNotSetContentEncodingIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -268,7 +469,7 @@
         }
 
         [Test]
-        public void ShouldCopyContentType()
+        public void CopyToShouldSetContentType()
         {
             _sut.ContentType = "application/json";
 
@@ -278,7 +479,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyContentTypeIfNotSet()
+        public void CopyToShouldNotSetContentTypeIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -286,7 +487,7 @@
         }
 
         [Test]
-        public void ShouldCopyCorrelationId()
+        public void CopyToShouldSetCorrelationId()
         {
             _sut.CorrelationId = Guid.NewGuid().ToString();
 
@@ -296,7 +497,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyCorrelationIdIfNotSet()
+        public void CopyToShouldNotSetCorrelationIdIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -304,7 +505,7 @@
         }
 
         [Test]
-        public void ShouldCopyDeliveryMode()
+        public void CopyToShouldSetDeliveryMode()
         {
             _sut.DeliveryMode = 1;
 
@@ -314,7 +515,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyDeliveryModeIfNotSet()
+        public void CopyToShouldNotSetDeliveryModeIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -322,7 +523,7 @@
         }
 
         [Test]
-        public void ShouldCopyHeaders()
+        public void CopyToShouldSetHeaders()
         {
             _sut.Headers = new Dictionary<string, object>();
 
@@ -332,7 +533,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyHeadersIfNotSet()
+        public void CopyToShouldNotSetHeadersIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -340,7 +541,7 @@
         }
 
         [Test]
-        public void ShouldCopyMessageId()
+        public void CopyToShouldSetMessageId()
         {
             _sut.MessageId = Guid.NewGuid().ToString();
 
@@ -350,7 +551,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyMessageIdIfNotSet()
+        public void CopyToShouldNotSetMessageIdIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -358,7 +559,7 @@
         }
 
         [Test]
-        public void ShouldCopyPriority()
+        public void CopyToShouldSetPriority()
         {
             _sut.Priority = 0;
 
@@ -368,7 +569,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyPriorityIfNotSet()
+        public void CopyToShouldNotSetPriorityIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -376,7 +577,7 @@
         }
 
         [Test]
-        public void ShouldCopyReplyTo()
+        public void CopyToShouldSetReplyTo()
         {
             _sut.ReplyTo = "unique.routing.key";
 
@@ -386,7 +587,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyReplyToIfNotSet()
+        public void CopyToShouldNotSetReplyToIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 
@@ -394,7 +595,7 @@
         }
 
         [Test]
-        public void ShouldCopyType()
+        public void CopyToShouldSetType()
         {
             _sut.Type = "StarMQ.Model.Properties";
 
@@ -404,7 +605,7 @@
         }
 
         [Test]
-        public void ShouldNotCopyTypeIfNotSet()
+        public void CopyToShouldNotSetTypeIfNotSet()
         {
             _sut.CopyTo(_basicProperties.Object);
 

@@ -38,17 +38,17 @@ namespace StarMQ.Core
         public string Username { get; set; }
         public string VirtualHost { get; set; }
 
-        public ConnectionConfiguration()        // TODO: read from appSettings
+        public ConnectionConfiguration()    // TODO: verify these are being used
         {
             Heartbeat = 10;
             Host = "localhost";
-            Password = "password";
+            Password = "guest";
             PersistMessages = true;
             Port = 5672;
-            PrefetchCount = 50;     // tweak this value to optimize subscriber performance
+            PrefetchCount = 50;                 // TODO: tweak to optimize subscriber performance
             PublisherConfirms = false;
             Timeout = 10;
-            Username = "admin";
+            Username = "guest";
             VirtualHost = "/";
         }
     }

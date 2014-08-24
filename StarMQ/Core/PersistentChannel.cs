@@ -16,22 +16,11 @@ namespace StarMQ.Core
 
     public class PersistentChannel : IChannel
     {
-        private readonly IConnection _connection;
         private readonly IConnectionConfiguration _configuration;
+        private readonly IConnection _connection;
         private readonly ILog _log;
 
         private IModel _channel;
-
-        public IModel Channel     // TODO: no external callers?
-        {
-            get
-            {
-                if (_channel == null)
-                    OpenChannel();
-
-                return _channel;
-            }
-        }
 
         public PersistentChannel(IConnectionConfiguration configuration, IConnection connection,
             ILog log)
@@ -64,9 +53,9 @@ namespace StarMQ.Core
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            _log.Debug("Channel action invoked.");
-
             InvokeChannelAction(action, DateTime.Now);
+
+            _log.Debug("Channel action invoked.");
         }
 
         private void InvokeChannelAction(Action<IModel> action, DateTime startTime)
@@ -76,7 +65,10 @@ namespace StarMQ.Core
 
             try
             {
-                action(Channel);
+                if (_channel == null || _channel.IsClosed)
+                    OpenChannel();
+
+                action(_channel);
             }
 //            catch (OperationInterruptedException ex)
 //            {
