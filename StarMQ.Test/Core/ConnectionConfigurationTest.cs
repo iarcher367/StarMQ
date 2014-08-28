@@ -14,9 +14,21 @@
         }
 
         [Test]
+        public void ShouldSetDefaultHost()
+        {
+            Assert.That(_sut.Host, Is.EqualTo("localhost"));
+        }
+
+        [Test]
         public void ShouldSetDefaultPassword()
         {
             Assert.That(_sut.Password, Is.EqualTo("guest"));
+        }
+
+        [Test]
+        public void ShouldSetDefaultPersistMessages()
+        {
+            Assert.That(_sut.PersistMessages, Is.True);
         }
 
         [Test]
@@ -30,5 +42,12 @@
         {
             Assert.That(_sut.Username, Is.EqualTo("guest"));
         }
+
+        [Test]
+        public void ShouldSetDefaultVirtualHost()
+        {
+            Assert.That(_sut.VirtualHost, Is.EqualTo("/"));
+        }
+
     }
 }

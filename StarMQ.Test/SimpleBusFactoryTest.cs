@@ -9,6 +9,7 @@ namespace StarMQ.Test
         public void ShouldGetBus()
         {
             var actual = SimpleBusFactory.GetBus();
+
             Assert.That(actual, Is.Not.Null);
         }
 

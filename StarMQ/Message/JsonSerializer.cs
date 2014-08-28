@@ -4,6 +4,12 @@ namespace StarMQ.Message
     using System;
     using System.Text;
 
+    public interface ISerializer
+    {
+        byte[] ToBytes<T>(T content) where T : class;
+        T ToObject<T>(byte[] content) where T : class;
+    }
+
     public class JsonSerializer : ISerializer
     {
         private readonly JsonSerializerSettings _settings = new JsonSerializerSettings

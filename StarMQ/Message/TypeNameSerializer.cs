@@ -3,6 +3,12 @@
     using Exception;
     using System;
 
+    public interface ITypeNameSerializer
+    {
+        Type Deserialize(string name);
+        string Serialize(Type type);
+    }
+
     public class TypeNameSerializer : ITypeNameSerializer
     {
         public Type Deserialize(string name)

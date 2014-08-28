@@ -3,6 +3,12 @@
     using Model;
     using System;
 
+    public interface ISerializationStrategy
+    {
+        IMessage<byte[]> Serialize<T>(IMessage<T> message) where T : class;
+        IMessage<T> Deserialize<T>(IMessage<byte[]> message) where T : class;
+    }
+
     public class SerializationStrategy : ISerializationStrategy
     {
         private readonly ICorrelationStrategy _correlationStrategy;

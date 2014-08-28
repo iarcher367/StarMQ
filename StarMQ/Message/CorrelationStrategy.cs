@@ -2,6 +2,11 @@
 {
     using System;
 
+    public interface ICorrelationStrategy
+    {
+        string GenerateCorrelationId();
+    }
+
     public class CorrelationStrategy : ICorrelationStrategy
     {
         public string GenerateCorrelationId()

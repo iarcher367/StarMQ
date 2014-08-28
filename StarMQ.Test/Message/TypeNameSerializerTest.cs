@@ -28,7 +28,7 @@
         }
 
         [Test]
-        [ExpectedException(typeof (ArgumentNullException))]
+        [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfNameIsNull()
         {
             _sut.Deserialize(null);

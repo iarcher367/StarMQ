@@ -44,7 +44,7 @@
             Assert.That(actual.Body, Is.EqualTo(Content));
             Assert.That(actual.Properties, Is.SameAs(properties));
 
-            _serializer.Verify(x => x.ToObject<string>(data), Times.Once());
+            _serializer.Verify(x => x.ToObject<string>(data), Times.Once);
         }
 
         [Test]
@@ -70,7 +70,7 @@
             Assert.That(actual.Properties, Is.SameAs(properties));
 
             _correlationStrategy.VerifyAll();
-            _serializer.Verify(x => x.ToBytes(_message.Body), Times.Once());
+            _serializer.Verify(x => x.ToBytes(_message.Body), Times.Once);
             _typeNameSerializer.VerifyAll();
         }
 

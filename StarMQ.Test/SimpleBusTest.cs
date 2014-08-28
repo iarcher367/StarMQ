@@ -41,10 +41,10 @@
 
             await _sut.PublishAsync(Content, RoutingKey);
 
-            _namingStrategy.Verify(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Once());
-            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Once());
+            _namingStrategy.Verify(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Once);
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Once);
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false,
-                It.IsAny<Message<string>>()), Times.Once());
+                It.IsAny<Message<string>>()), Times.Once);
         }
 
         [Test]
@@ -87,6 +87,8 @@
                 .Returns(Task.FromResult(0));
             _namingStrategy.Setup(x => x.GetDeadLetterExchangeName(typeof(string)))
                 .Returns(String.Empty);
+            _namingStrategy.Setup(x => x.GetDeadLetterQueueName(typeof(string), String.Empty))
+                .Returns(String.Empty);
             _namingStrategy.Setup(x => x.GetExchangeName(typeof(string)))
                 .Returns(String.Empty);
             _namingStrategy.Setup(x => x.GetQueueName(typeof(string), String.Empty))
@@ -98,11 +100,13 @@
             _advancedBus.Verify(x =>
                 x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()),
                 Times.Once);
-            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Once);
-            _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Once);
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(2));
+            _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Exactly(2));
             _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
-                                                        It.IsAny<string>()), Times.Once());
-            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Once);
+                It.IsAny<string>()), Times.Exactly(2));
+            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Exactly(2));
+            _namingStrategy.Verify(x => x.GetDeadLetterQueueName(typeof(string), String.Empty),
+                Times.Once);
             _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Once);
             _namingStrategy.Verify(x => x.GetQueueName(typeof(string), String.Empty), Times.Once);
         }
@@ -153,7 +157,7 @@
 
             _sut.Dispose();
 
-            _advancedBus.Verify(x => x.Dispose(), Times.Once());
+            _advancedBus.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

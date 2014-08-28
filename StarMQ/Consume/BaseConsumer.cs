@@ -60,7 +60,7 @@ namespace StarMQ.Consume
 
             Log.Warn(String.Format("Cancel confirmed for consumer '{0}' - research required!", consumerTag));
 
-            throw new NotImplementedException();
+            Dispose();
         }
 
         public void HandleBasicConsumeOk(string consumerTag)
@@ -91,7 +91,7 @@ namespace StarMQ.Consume
                 var message = new Message<byte[]>(body);
                 message.Properties.CopyFrom(properties);
 
-                Dispatcher.Invoke(async () =>
+                Dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
                     {
                         BaseResponse response;
 
@@ -105,21 +105,24 @@ namespace StarMQ.Consume
                             response = new NackResponse { DeliveryTag = deliveryTag };
                         }
 
-                        await SendResponse(Model, response);
+                        await SendResponse(response);
                     });
             }
         }
 
-        private Task SendResponse(IModel channel, BaseResponse response)
+        private Task SendResponse(BaseResponse response)
         {
             var tcs = new TaskCompletionSource<object>();
 
             try
             {
-                response.Send(channel, Log);
+                response.Send(Model, Log);
 
                 if (response.Action == ResponseAction.Unsubscribe)
+                {
+                    Model.BasicCancel(ConsumerTag);
                     Dispose();
+                }
 
                 tcs.SetResult(null);
             }

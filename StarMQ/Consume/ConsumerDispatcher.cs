@@ -11,7 +11,7 @@ namespace StarMQ.Consume
         Task Invoke(Action action);
     }
 
-    public class ConsumerDispatcher : IConsumerDispatcher   // TODO: DispatcherStrategy for TPl
+    public class ConsumerDispatcher : IConsumerDispatcher   // TODO: DispatcherStrategy for TPL
     {
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();

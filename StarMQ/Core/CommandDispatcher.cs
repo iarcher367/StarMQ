@@ -27,8 +27,8 @@
 
         public CommandDispatcher(IChannel channel, ILog log)
         {
-            _log = log;
             _channel = channel;
+            _log = log;
 
             Dispatch();
         }

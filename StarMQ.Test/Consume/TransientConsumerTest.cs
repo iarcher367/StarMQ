@@ -42,7 +42,7 @@
         [TearDown]
         public void Teardown()
         {
-            _connection.Verify(x => x.CreateModel(), Times.Once());
+            _connection.Verify(x => x.CreateModel(), Times.Once);
             _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
         }
 

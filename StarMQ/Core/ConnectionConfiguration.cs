@@ -30,15 +30,15 @@ namespace StarMQ.Core
         public ushort Heartbeat { get; set; }
         public string Host { get; set; }
         public string Password { get; set; }
-        public bool PersistMessages { get; set; }
+        public bool PersistMessages { get; set; }       // TODO: implement
         public ushort Port { get; set; }
-        public ushort PrefetchCount { get; set; }
+        public ushort PrefetchCount { get; set; }       // TODO: reference
         public bool PublisherConfirms { get; set; }
         public ushort Timeout { get; set; }
         public string Username { get; set; }
         public string VirtualHost { get; set; }
 
-        public ConnectionConfiguration()    // TODO: verify these are being used
+        public ConnectionConfiguration()
         {
             Heartbeat = 10;
             Host = "localhost";

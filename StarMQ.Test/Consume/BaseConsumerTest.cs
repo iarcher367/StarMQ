@@ -6,7 +6,9 @@
     using RabbitMQ.Client;
     using StarMQ.Consume;
     using StarMQ.Core;
+    using StarMQ.Model;
     using System;
+    using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BaseConsumerTest
@@ -39,7 +41,7 @@
         [TearDown]
         public void Teardown()
         {
-            _connection.Verify(x => x.CreateModel(), Times.Once());
+            _connection.Verify(x => x.CreateModel(), Times.Once);
             _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
         }
 
@@ -71,9 +73,16 @@
         }
 
         [Test]
-        public void DeliverShould()
+        public void DeliverShouldQueueMessageToDispatcher()
         {
-            Assert.Fail();
+            var properties = new Mock<IBasicProperties>();
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Returns(Task.FromResult(0));
+
+            _sut.Consume(new Queue(String.Empty), x => new AckResponse());
+            _sut.HandleBasicDeliver(ConsumerTag, 0, false, String.Empty, String.Empty,
+                properties.Object, new byte[0]);
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
         }
 
         [Test]
@@ -86,7 +95,7 @@
                 new ShutdownEventArgs(ShutdownInitiator.Application, 0, String.Empty));
 
             _dispatcher.Verify(x => x.Dispose(), Times.Once);
-            _model.Verify(x => x.Dispose(), Times.Once());
+            _model.Verify(x => x.Dispose(), Times.Once);
         }
 
         [Test]

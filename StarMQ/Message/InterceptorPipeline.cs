@@ -5,6 +5,11 @@
     using System.Collections.Generic;
     using System.Linq;
 
+    public interface IPipeline : IMessagingInterceptor
+    {
+        void Add(IMessagingInterceptor interceptor);
+    }
+
     public class InterceptorPipeline : IPipeline
     {
         private readonly IList<IMessagingInterceptor> _pipeline = new List<IMessagingInterceptor>();

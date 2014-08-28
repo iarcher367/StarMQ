@@ -52,7 +52,9 @@
         [Test]
         public void ShouldConsume()
         {
-            Assert.Fail();
+            _sut.ConsumeAsync<string>(_queue, x => new AckResponse());
+
+            Assert.Inconclusive();
         }
 
         #region ExchangeDeclareAsync
@@ -64,7 +66,7 @@
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -77,7 +79,7 @@
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -89,7 +91,7 @@
             await _sut.ExchangeDeclareAsync(_exchange);
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -115,9 +117,9 @@
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
             _pipeline.Verify(x => x.OnSend(data), Times.Once);
-            _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once());
+            _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
         }
 
         [Test]
@@ -151,7 +153,7 @@
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -164,7 +166,7 @@
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once());
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -189,7 +191,7 @@
 
             _sut.Dispose();
 
-            _commandDispatcher.Verify(x => x.Dispose(), Times.Once());
+            _commandDispatcher.Verify(x => x.Dispose(), Times.Once);
             _connection.Verify(x => x.Dispose(), Times.Once);
         }
     }
