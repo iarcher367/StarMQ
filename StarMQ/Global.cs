@@ -19,8 +19,15 @@
 
             var settings = connectionString.Split(new[] { ';' }, StringSplitOptions.RemoveEmptyEntries);
 
-            foreach (var kvp in settings.Select(x => x.Split(new[] { '=' })))
-                configuration.GetType().GetProperty(kvp[0], flags).SetValue(configuration, kvp[1]);
+            foreach (var kvp in settings.Select(x => x.Split(new[] {'='})))
+            {
+                var property = configuration.GetType().GetProperty(kvp[0], flags);
+
+                if (property == null)
+                    throw new StarMqException("Unknown setting found in connection string: {0}", kvp[0]);
+
+                property.SetValue(configuration, Convert.ChangeType(kvp[1], property.PropertyType));
+            }
         }
 
         public static string Validate(string field, string value)

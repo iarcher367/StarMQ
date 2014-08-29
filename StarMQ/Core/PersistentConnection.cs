@@ -34,7 +34,7 @@ namespace StarMQ.Core
 
         public bool IsConnected
         {
-            get { return _connection != null && _connection.IsOpen && !_disposed; }
+            get { return _connection.IsOpen && !_disposed; }
         }
 
         public PersistentConnection(IConnectionConfiguration configuration, ILog log)
@@ -129,16 +129,7 @@ namespace StarMQ.Core
 
             _disposed = true;
 
-            if (_connection == null) return;
-
-            try
-            {
-                _connection.Dispose();
-            }
-            catch (IOException)
-            {
-                _log.Info("Caught IOException - this is expected when disposing a connection.");
-            }
+            _connection.Dispose();
 
             _log.Info("Disposal complete.");
         }

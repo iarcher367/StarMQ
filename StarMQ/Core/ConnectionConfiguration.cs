@@ -17,7 +17,7 @@ namespace StarMQ.Core
         /// <summary>
         /// in seconds
         /// </summary>
-        ushort Timeout { get; }
+        int Timeout { get; }
 
         string Username { get; }
         string VirtualHost { get; }
@@ -34,7 +34,7 @@ namespace StarMQ.Core
         public ushort Port { get; set; }
         public ushort PrefetchCount { get; set; }       // TODO: reference
         public bool PublisherConfirms { get; set; }
-        public ushort Timeout { get; set; }
+        public int Timeout { get; set; }
         public string Username { get; set; }
         public string VirtualHost { get; set; }
 

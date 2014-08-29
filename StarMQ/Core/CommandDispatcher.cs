@@ -25,6 +25,8 @@
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
+        private bool _disposed;
+
         public CommandDispatcher(IChannel channel, ILog log)
         {
             _channel = channel;
@@ -84,6 +86,10 @@
 
         public void Dispose()
         {
+            if (_disposed) return;
+
+            _disposed = true;
+
             _queue.CompleteAdding();
             _tokenSource.Cancel();
             _channel.Dispose();
