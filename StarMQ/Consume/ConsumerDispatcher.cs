@@ -43,7 +43,7 @@ namespace StarMQ.Consume
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatcher terminated.");
+                        _log.Info("Dispatching terminated.");
                     }
                 });
         }
@@ -71,7 +71,7 @@ namespace StarMQ.Consume
                 }
             }, _tokenSource.Token);
 
-            _log.Debug("Action added to queue");
+            _log.Debug("Action added to queue.");
 
             return tcs.Task;
         }

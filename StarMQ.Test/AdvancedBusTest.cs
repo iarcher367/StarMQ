@@ -172,6 +172,8 @@
         [Test]
         public async Task QueueDeclareAsyncShouldSetArgs()
         {
+            await Task.FromResult(0);
+
             Assert.Inconclusive();
         }
 

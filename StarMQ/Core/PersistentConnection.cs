@@ -5,7 +5,6 @@ namespace StarMQ.Core
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
     using System;
-    using System.IO;
     using System.Net.Sockets;
     using System.Threading.Tasks;
 
@@ -13,6 +12,9 @@ namespace StarMQ.Core
     {
         bool IsConnected { get; }
         IModel CreateModel();
+
+        event Action OnConnected;
+        event Action OnDisconnected;
     }
 
     /// <summary>
@@ -31,6 +33,9 @@ namespace StarMQ.Core
 
         private RabbitMQ.Client.IConnection _connection;
         private bool _disposed;
+
+        public event Action OnConnected;
+        public event Action OnDisconnected;
 
         public bool IsConnected
         {
@@ -88,23 +93,22 @@ namespace StarMQ.Core
             _connection = _factory.CreateConnection();
             _connection.ConnectionShutdown += OnConnectionShutdown;
 
+            var onConnected = OnConnected;
+            if (onConnected != null)
+                onConnected();
+
             _log.Info("Connection to broker established.");
         }
 
         private void OnConnectionShutdown(RabbitMQ.Client.IConnection _, ShutdownEventArgs args)
         {
-            if (_disposed) return;
+            _log.Info("Lost connection to broker.");
 
-            OnDisconnected();
-
-            _log.Info("Broker terminated connection. Reconnecting...");
+            var onDisconnected = OnDisconnected;
+            if (onDisconnected != null)
+                onDisconnected();
 
             Connect();
-        }
-
-        private void OnDisconnected()
-        {
-            _log.Debug("OnDisconnected event fired.");  // TODO: publish to event bus
         }
 
         private async void Retry()

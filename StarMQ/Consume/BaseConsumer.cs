@@ -1,5 +1,6 @@
 namespace StarMQ.Consume
 {
+    using System.IO;
     using Core;
     using Exception;
     using log4net;
@@ -93,19 +94,21 @@ namespace StarMQ.Consume
 
                 Dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
                     {
-                        BaseResponse response;
-
                         try
                         {
-                            response = MessageHandler(message);
+                            var response = MessageHandler(message);
                             response.DeliveryTag = deliveryTag;
+
+                            await SendResponse(response);
+                        }
+                        catch (IOException)
+                        {
+                            Log.Info("Lost connection to broker.");
                         }
                         catch (Exception)
                         {
-                            response = new NackResponse { DeliveryTag = deliveryTag };
+                            SendResponse(new NackResponse { DeliveryTag = deliveryTag }).Wait();
                         }
-
-                        await SendResponse(response);
                     });
             }
         }
@@ -136,7 +139,7 @@ namespace StarMQ.Consume
 
         public void HandleModelShutdown(IModel model, ShutdownEventArgs args)
         {
-            Log.Info(String.Format("Consumer '{0}' has been shutdown by '{1}' due to '{2}'",
+            Log.Info(String.Format("Consumer '{0}' shutdown by '{1}' due to '{2}'",
                 ConsumerTag, args.Initiator, args.Cause));
 
             Dispose();

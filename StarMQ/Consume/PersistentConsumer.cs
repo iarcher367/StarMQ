@@ -13,6 +13,8 @@
         public PersistentConsumer(IConnection connection, IConsumerDispatcher dispatcher, ILog log,
             INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
         {
+            connection.OnConnected += OnConnected;
+            connection.OnDisconnected += OnDisconnected;
         }
 
         public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
@@ -32,8 +34,7 @@
 
         private void OnDisconnected()
         {
-            // TODO: wipe dispatcher message queue since unack'd messages are re-sent
-            // TODO: dispose consumers?
+            Dispatcher.Dispose();
         }
     }
 }

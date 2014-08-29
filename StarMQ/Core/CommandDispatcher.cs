@@ -23,16 +23,22 @@
         private readonly IChannel _channel;
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
-        private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
+        private CancellationTokenSource _tokenSource = new CancellationTokenSource();
         private bool _disposed;
 
-        public CommandDispatcher(IChannel channel, ILog log)
+        public CommandDispatcher(IChannel channel, IConnection connection, ILog log)
         {
             _channel = channel;
             _log = log;
 
             Dispatch();
+            connection.OnDisconnected += _tokenSource.Cancel;
+            connection.OnConnected += () =>
+                {
+                    _tokenSource = new CancellationTokenSource();
+                    Dispatch();
+                };
         }
 
         private void Dispatch()

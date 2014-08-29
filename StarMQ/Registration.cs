@@ -1,5 +1,6 @@
 ﻿namespace StarMQ
 {
+    using Consume;
     using Core;
     using log4net;
     using Message;
@@ -17,6 +18,7 @@
             container.RegisterSingle<ICommandDispatcher, CommandDispatcher>();
             container.RegisterSingle<IConnection, PersistentConnection>();
             container.RegisterSingle<IConnectionConfiguration, ConnectionConfiguration>();
+            container.RegisterSingle<IConsumerDispatcher, ConsumerDispatcher>();
             container.RegisterSingle<IPipeline, InterceptorPipeline>();
             container.RegisterSingle<ISimpleBus, SimpleBus>();
 

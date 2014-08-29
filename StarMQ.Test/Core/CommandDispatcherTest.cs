@@ -9,6 +9,7 @@
     public class CommandDispatcherTest
     {
         private Mock<IChannel> _channel;
+        private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private ICommandDispatcher _sut;
 
@@ -16,12 +17,19 @@
         public void Setup()
         {
             _channel = new Mock<IChannel>(MockBehavior.Strict);
+            _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
-            _sut = new CommandDispatcher(_channel.Object, _log.Object);
+            _sut = new CommandDispatcher(_channel.Object, _connection.Object, _log.Object);
         }
 
         [Test]
         public void Should()
+        {
+            Assert.Fail();
+        }
+
+        [Test]
+        public void ShouldDoSomethingWhenOnConnectEventFires()
         {
             Assert.Fail();
         }
