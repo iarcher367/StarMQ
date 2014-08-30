@@ -165,6 +165,18 @@
         }
 
         [Test]
+        public async Task QueueBindAsyncShouldOnlyDeclareOnce()
+        {
+            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+                .Returns(Task.FromResult(0));
+
+            await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
+            await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
+
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task QueueBindAsyncShouldThrowExceptionIfExchangeIsNull()
         {
@@ -217,6 +229,18 @@
             await Task.FromResult(0);
 
             Assert.Inconclusive();
+        }
+
+        [Test]
+        public async Task QueueDeclareAsyncShouldOnlyDeclareOnce()
+        {
+            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+                .Returns(Task.FromResult(0));
+
+            await _sut.QueueDeclareAsync(_queue);
+            await _sut.QueueDeclareAsync(_queue);
+
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]

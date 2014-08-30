@@ -34,15 +34,28 @@
         {
             _namingStrategy.Setup(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))))
                 .Returns("StarMQ.Master");
+            _namingStrategy.Setup(x => x.GetAlternateExchangeName(It.Is<Type>(y => y == typeof(string))))
+                .Returns("AE:StarMQ.Master");
+            _namingStrategy.Setup(x => x.GetAlternateQueueName(It.Is<Type>(y => y == typeof(string))))
+                .Returns("AE:StarMQ.Master");
             _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.QueueDeclareAsync(It.IsAny<Queue>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), String.Empty))
                 .Returns(Task.FromResult(0));
             _advancedBus.Setup(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false, It.IsAny<Message<string>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.PublishAsync(Content, RoutingKey);
 
+            _namingStrategy.Verify(x => x.GetAlternateExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Exactly(2));
+            _namingStrategy.Verify(x => x.GetAlternateQueueName(It.Is<Type>(y => y == typeof(string))), Times.Once);
             _namingStrategy.Verify(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Once);
-            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Once);
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(2));
+            _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Once);
+            _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
+                String.Empty), Times.Once);
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false,
                 It.IsAny<Message<string>>()), Times.Once);
         }
@@ -85,6 +98,10 @@
             _advancedBus.Setup(x =>
                 x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), It.IsAny<string>()))
                 .Returns(Task.FromResult(0));
+            _namingStrategy.Setup(x => x.GetAlternateExchangeName(typeof(string)))
+                .Returns(String.Empty);
+            _namingStrategy.Setup(x => x.GetAlternateQueueName(typeof(string)))
+                .Returns(String.Empty);
             _namingStrategy.Setup(x => x.GetDeadLetterExchangeName(typeof(string)))
                 .Returns(String.Empty);
             _namingStrategy.Setup(x => x.GetDeadLetterQueueName(typeof(string), String.Empty))
@@ -100,10 +117,12 @@
             _advancedBus.Verify(x =>
                 x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()),
                 Times.Once);
-            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(2));
-            _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Exactly(2));
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(3));
+            _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Exactly(3));
             _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
-                It.IsAny<string>()), Times.Exactly(2));
+                It.IsAny<string>()), Times.Exactly(3));
+            _namingStrategy.Verify(x => x.GetAlternateExchangeName(typeof(string)), Times.Exactly(2));
+            _namingStrategy.Verify(x => x.GetAlternateQueueName(typeof(string)), Times.Once);
             _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Exactly(2));
             _namingStrategy.Verify(x => x.GetDeadLetterQueueName(typeof(string), String.Empty),
                 Times.Once);

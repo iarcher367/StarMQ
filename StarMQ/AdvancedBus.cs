@@ -9,6 +9,7 @@ namespace StarMQ
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
+    using System.Text;
     using System.Threading.Tasks;
     using Queue = Model.Queue;
 
@@ -41,14 +42,16 @@ namespace StarMQ
 
     public class AdvancedBus : IAdvancedBus
     {
+        private const string KeyFormat = "{0}:{1}:{2}";
+
         private readonly ICommandDispatcher _commandDispatcher;
         private readonly IConnection _connection;
-        private readonly ConcurrentDictionary<string, Task> _exchanges = new ConcurrentDictionary<string, Task>();
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
         private readonly IPipeline _pipeline;
         private readonly IPublisher _publisher;
         private readonly ISerializationStrategy _serializationStrategy;
+        private readonly ConcurrentDictionary<string, Task> _tasks = new ConcurrentDictionary<string, Task>();
 
         private bool _disposed;
 
@@ -94,26 +97,36 @@ namespace StarMQ
             if (exchange == null)
                 throw new ArgumentNullException("exchange");
 
-            await _exchanges.AddOrUpdate(exchange.Name,
+            await _tasks.AddOrUpdate(String.Format(KeyFormat, exchange.Name, String.Empty, String.Empty),
                 x => InvokeExchangeDeclareAsync(exchange),
                 (_, existing) => existing);
         }
 
         private async Task InvokeExchangeDeclareAsync(Exchange exchange)
         {
+            if (exchange == null)
+                throw new ArgumentNullException("exchange");
+
             if (exchange.Passive)
             {
                 await _commandDispatcher.Invoke(x => x.ExchangeDeclarePassive(exchange.Name));
             }
             else
             {
-                // TODO: support alternate exchanges
+                var args = new Dictionary<string, object>();
+                var config = new StringBuilder();
+
+                if (!String.IsNullOrEmpty(exchange.AlternateExchangeName))
+                {
+                    args.Add("alternate-exchange", exchange.AlternateExchangeName);
+                    config.Append(" [AE]=").Append(exchange.AlternateExchangeName);
+                }
 
                 await _commandDispatcher.Invoke(x =>
                     x.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
-                        exchange.Durable, exchange.AutoDelete, null));
+                        exchange.Durable, exchange.AutoDelete, args));
 
-                _log.Info(String.Format("Exchange '{0}' declared.", exchange.Name));
+                _log.Info(String.Format("Exchange '{0}' declared.{1}", exchange.Name, config));
             }
         }
 
@@ -151,6 +164,20 @@ namespace StarMQ
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
+            await _tasks.AddOrUpdate(String.Format(KeyFormat, exchange.Name, queue.Name, routingKey),
+                x => InvokeQueueBindAsync(exchange, queue, routingKey),
+                (_, existing) => existing);
+        }
+
+        private async Task InvokeQueueBindAsync(Exchange exchange, Queue queue, string routingKey)
+        {
+            if (exchange == null)
+                throw new ArgumentNullException("exchange");
+            if (queue == null)
+                throw new ArgumentNullException("queue");
+            if (routingKey == null)
+                throw new ArgumentNullException("routingKey");
+
             await _commandDispatcher.Invoke(x => x.QueueBind(queue.Name, exchange.Name, routingKey));
 
             _log.Info(String.Format("Queue '{0}' bound to exchange '{1}' with routing key '{2}'.",
@@ -162,6 +189,16 @@ namespace StarMQ
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
+            await _tasks.AddOrUpdate(String.Format(KeyFormat, String.Empty, queue.Name, String.Empty),
+                x => InvokeQueueDeclareAsync(queue),
+                (_, existing) => existing);
+        }
+
+        private async Task InvokeQueueDeclareAsync(Queue queue)
+        {
+            if (queue == null)
+                throw new ArgumentNullException("queue");
+
             if (queue.Passive)
             {
                 await _commandDispatcher.Invoke(x => x.QueueDeclarePassive(queue.Name));
@@ -169,20 +206,31 @@ namespace StarMQ
             else
             {
                 var args = new Dictionary<string, object>();
+                var config = new StringBuilder();
 
                 if (!String.IsNullOrEmpty(queue.DeadLetterExchangeName))
+                {
                     args.Add("x-dead-letter-exchange", queue.DeadLetterExchangeName);
+                    config.Append(" [DLX]=").Append(queue.DeadLetterExchangeName);
+                }
                 if (!String.IsNullOrEmpty(queue.DeadLetterExchangeRoutingKey))
                     args.Add("x-dead-letter-routing-key", queue.DeadLetterExchangeRoutingKey);
                 if (queue.Expiry > 0)
+                {
                     args.Add("x-expires", queue.Expiry);
+                    config.Append(" [Expiry]=").Append(queue.Expiry);
+                }
                 if (queue.MessageTimeToLive != uint.MaxValue)
+                {
                     args.Add("x-message-ttl", queue.MessageTimeToLive);
+                    config.Append(" [TTL]=").Append(queue.MessageTimeToLive);
+                }
 
                 await _commandDispatcher.Invoke(x =>
-                    x.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, args));
+                    x.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete,
+                        args));
 
-                _log.Info(String.Format("Queue '{0}' declared.", queue.Name));
+                _log.Info(String.Format("Queue '{0}' declared.{1}", queue.Name, config));
             }
         }
 

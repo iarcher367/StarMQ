@@ -23,6 +23,13 @@
 
         public ExchangeType Type { get; set; }
 
+        #region Args
+        /// <summary>
+        /// Set to have unroutable messages forwarded to an alternate exchange.
+        /// </summary>
+        public string AlternateExchangeName { get; set; }
+        #endregion
+
         public Exchange(string name)
         {
             Name = Global.Validate("name", name);

@@ -57,11 +57,36 @@
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
-            var name = _namingStrategy.GetExchangeName(typeof(T));
-            var exchange = new Exchange(name) { Type = ExchangeType.Topic };
+            var exchange = await ConfigureExchange<T>();
 
-            await _advancedBus.ExchangeDeclareAsync(exchange);
             await _advancedBus.PublishAsync(exchange, routingKey, false, false, new Message<T>(content));
+        }
+
+        private async Task<Exchange> ConfigureExchange<T>()
+        {
+            var name = _namingStrategy.GetExchangeName(typeof(T));
+            var exchange = new Exchange(name)
+            {
+                AlternateExchangeName = _namingStrategy.GetAlternateExchangeName(typeof(T)),
+                Type = ExchangeType.Topic
+            };
+
+            await ConfigureAlternateExchange<T>();
+            await _advancedBus.ExchangeDeclareAsync(exchange);
+
+            return exchange;
+        }
+
+        private async Task ConfigureAlternateExchange<T>()
+        {
+            var exchangeName = _namingStrategy.GetAlternateExchangeName(typeof(T));
+            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Fanout };
+            await _advancedBus.ExchangeDeclareAsync(exchange);
+
+            var queueName = _namingStrategy.GetAlternateQueueName(typeof(T));
+            var queue = new Queue(queueName);
+            await _advancedBus.QueueDeclareAsync(queue);
+            await _advancedBus.QueueBindAsync(exchange, queue, String.Empty);
         }
 
         public async Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Action<T> messageHandler) where T : class
@@ -93,10 +118,7 @@
             if (messageHandler == null)
                 throw new ArgumentNullException("messageHandler");
 
-            var exchangeName = _namingStrategy.GetExchangeName(typeof(T));
-            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Topic };
-
-            await _advancedBus.ExchangeDeclareAsync(exchange);
+            var exchange = await ConfigureExchange<T>();
 
             // TODO: support prefetchcount, priority, cancelOnHaFailover?
 

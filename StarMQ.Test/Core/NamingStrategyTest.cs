@@ -21,6 +21,48 @@
         }
 
         [Test]
+        public void ShouldGenerateAlternateExchangeName()
+        {
+            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
+                .Returns(SerializedName);
+
+            var actual = _sut.GetAlternateExchangeName(typeof(string));
+
+            Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
+
+            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
+                Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetAlternateExchangeNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetAlternateExchangeName(null);
+        }
+
+        [Test]
+        public void ShouldGenerateAlternateQueueName()
+        {
+            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
+                .Returns(SerializedName);
+
+            var actual = _sut.GetAlternateQueueName(typeof(string));
+
+            Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
+
+            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
+                Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void GetAlternateQueueNameShouldThrowExceptionIfTypeIsNull()
+        {
+            _sut.GetAlternateQueueName(null);
+        }
+
+        [Test]
         public void ShouldGetConsumerTag()
         {
             Guid result;

@@ -5,6 +5,8 @@
 
     public interface INamingStrategy
     {
+        string GetAlternateExchangeName(Type messageType);
+        string GetAlternateQueueName(Type messageType);
         string GetConsumerTag();
         string GetDeadLetterExchangeName(Type messageType);
         string GetDeadLetterQueueName(Type messageType, string subscriberId);
@@ -19,6 +21,22 @@
         public NamingStrategy(ITypeNameSerializer typeNameSerializer)
         {
             _typeNameSerializer = typeNameSerializer;
+        }
+
+        public string GetAlternateExchangeName(Type messageType)
+        {
+            if (messageType == null)
+                throw new ArgumentNullException("messageType");
+
+            return String.Format("AE:{0}", _typeNameSerializer.Serialize(messageType));
+        }
+
+        public string GetAlternateQueueName(Type messageType)
+        {
+            if (messageType == null)
+                throw new ArgumentNullException("messageType");
+
+            return String.Format("AE:{0}", _typeNameSerializer.Serialize(messageType));
         }
 
         public string GetConsumerTag()
