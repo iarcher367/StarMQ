@@ -2,6 +2,12 @@ namespace StarMQ.Model
 {
     using System;
 
+    public interface IMessage<out T>
+    {
+        T Body { get; }
+        Properties Properties { get; set; }
+    }
+
     public class Message<T> : IMessage<T> where T : class
     {
         private Properties _properties;

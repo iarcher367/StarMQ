@@ -51,7 +51,7 @@ namespace StarMQ.Consume
                     Log.Info(String.Format("Consumer '{0}' declared on queue '{1}'.", ConsumerTag, queue.Name));
                 }
             }
-            catch (Exception ex)
+            catch (Exception ex)    // TODO: research what kind of exceptions can be thrown
             {
                 Log.Error(String.Format("Consumer '{0}' failed to consume queue '{1}'.", queue.Name, ConsumerTag), ex);
             }

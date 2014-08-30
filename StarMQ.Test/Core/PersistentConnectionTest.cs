@@ -19,6 +19,12 @@
             _sut = new PersistentConnection(configuration, _log.Object);
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            _sut.Dispose();
+        }
+
         [Test]
         public void ShouldOpenAChannel()
         {

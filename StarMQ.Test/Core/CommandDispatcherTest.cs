@@ -3,8 +3,10 @@
     using log4net;
     using Moq;
     using NUnit.Framework;
+    using RabbitMQ.Client;
     using StarMQ.Core;
     using System;
+    using IConnection = StarMQ.Core.IConnection;
 
     public class CommandDispatcherTest
     {
@@ -20,6 +22,14 @@
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _sut = new CommandDispatcher(_channel.Object, _connection.Object, _log.Object);
+
+            _channel.Setup(x => x.Dispose());
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _sut.Dispose();
         }
 
         [Test]
@@ -37,6 +47,8 @@
         [Test]
         public void ShouldQueueAction()
         {
+            _channel.Setup(x => x.InvokeChannelAction(It.IsAny<Action<IModel>>()));
+
             _sut.Invoke(x => { });
 
             Assert.Inconclusive();

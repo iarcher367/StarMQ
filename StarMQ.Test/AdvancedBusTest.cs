@@ -70,6 +70,14 @@
         }
 
         [Test]
+        public async Task ExchangeDeclareAsyncShouldSetArgs()
+        {
+            await Task.FromResult(0);
+
+            Assert.Inconclusive();
+        }
+
+        [Test]
         public async Task ExchangeDeclareAsyncShouldDeclarePassive()
         {
             _exchange.Passive = true;
@@ -144,6 +152,40 @@
         }
         #endregion
 
+        #region QueueBindAsync
+        [Test]
+        public async Task QueueBindAsyncShouldBindQueue()
+        {
+            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+                .Returns(Task.FromResult(0));
+
+            await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
+
+            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task QueueBindAsyncShouldThrowExceptionIfExchangeIsNull()
+        {
+            await _sut.QueueBindAsync(null, _queue, RoutingKey);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task QueueBindAsyncShouldThrowExceptionIfQueueIsNull()
+        {
+            await _sut.QueueBindAsync(_exchange, null, RoutingKey);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task QueueBindAsyncShouldThrowExceptionIfRoutingKeyIsNull()
+        {
+            await _sut.QueueBindAsync(_exchange, _queue, null);
+        }
+        #endregion
+
         #region QueueDeclareAsync
         [Test]
         public async Task QueueDeclareAsyncShouldDeclareQueue()
@@ -186,7 +228,7 @@
         #endregion
 
         [Test]
-        public void ShouldDisposeCommandDispatcher()
+        public void ShouldDispose()
         {
             _commandDispatcher.Setup(x => x.Dispose());
             _connection.Setup(x => x.Dispose());

@@ -14,14 +14,17 @@ namespace StarMQ.Publish
 
         public override Task Publish(IModel model, Action<IModel> action)
         {
+            if (model == null)
+                throw new ArgumentNullException("model");
+            if (action == null)
+                throw new ArgumentNullException("action");
+
             var tcs = new TaskCompletionSource<object>();
 
             try
             {
                 SynchronizeModel(model);
                 action(model);
-
-                Log.Info("Published message.");
 
                 tcs.SetResult(null);
             }

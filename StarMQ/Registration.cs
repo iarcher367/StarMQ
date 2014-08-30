@@ -24,13 +24,13 @@
 
             container.Register<IChannel, PersistentChannel>();
             container.Register(() =>
-                {
-                    var config = container.GetInstance<IConnectionConfiguration>();
-                    var log = LogManager.GetLogger(config.PublisherConfirms
-                        ? typeof(ConfirmPublisher)
-                        : typeof(BasicPublisher));
-                    return PublisherFactory.CreatePublisher(config, log);
-                });
+            {
+                var config = container.GetInstance<IConnectionConfiguration>();
+
+                return config.PublisherConfirms
+                    ? new ConfirmPublisher(config, LogManager.GetLogger(typeof(ConfirmPublisher)))
+                    : (IPublisher)new BasicPublisher(LogManager.GetLogger(typeof(BasicPublisher)));
+            });
 
             container.Register<ICorrelationStrategy, CorrelationStrategy>();
             container.Register<INamingStrategy, NamingStrategy>();
@@ -43,10 +43,13 @@
             // allows application to use custom implementations
             container.Options.AllowOverridingRegistrations = true;
 
-            var pipeline = container.GetInstance<IPipeline>();  // TODO: make configuration flexible
-            pipeline.Add(new CompressionInterceptor());
-
             return container;
+        }
+
+        public static void EnableCompression(Container container)      // TODO: refactor to fluent
+        {
+            var pipeline = container.GetInstance<IPipeline>();
+            pipeline.Add(new CompressionInterceptor());
         }
     }
 }

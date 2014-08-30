@@ -96,11 +96,11 @@ namespace StarMQ.Core
         {
             _log.Info("Attempting to reconnect.");
 
-            var delayInterval = 10;
+            var delayInterval = 100;
 
             while (_channel != null && _channel.IsClosed && !IsTimedOut(startTime))
             {
-                Thread.Sleep(delayInterval);
+                Thread.Sleep(Math.Min(delayInterval, 5000));
                 delayInterval *= 2;
 
                 try

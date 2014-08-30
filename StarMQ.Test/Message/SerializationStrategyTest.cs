@@ -117,7 +117,7 @@
 
             _message.Properties.CorrelationId = guid;
 
-            _correlationStrategy.Setup(x => x.GenerateCorrelationId()).Returns(Guid.NewGuid().ToString);
+            _correlationStrategy.Setup(x => x.GenerateCorrelationId());
             _serializer.Setup(x => x.ToBytes(It.IsAny<string>())).Returns(new byte[0]);
             _typeNameSerializer.Setup(x => x.Serialize(It.IsAny<Type>())).Returns(String.Empty);
 
@@ -125,7 +125,7 @@
 
             Assert.That(actual.Properties.CorrelationId, Is.EqualTo(guid));
 
-            _correlationStrategy.Verify(x => x.GenerateCorrelationId(), Times.Never());
+            _correlationStrategy.Verify(x => x.GenerateCorrelationId(), Times.Never);
             _serializer.VerifyAll();
             _typeNameSerializer.VerifyAll();
         }

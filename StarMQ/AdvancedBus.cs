@@ -85,6 +85,8 @@ namespace StarMQ
 
                     return messageHandler(deserialized.Body);
                 });
+
+            _log.Info(String.Format("Consumption from queue '{0}' started.", queue.Name));
         }
 
         public async Task ExchangeDeclareAsync(Exchange exchange)
@@ -136,7 +138,7 @@ namespace StarMQ
                         mandatory, immediate, properties, data.Body));
             });
 
-            _log.Debug(String.Format("Message published to '{0}' with routing key '{1}'",
+            _log.Info(String.Format("Message published to '{0}' with routing key '{1}'",
                 exchange.Name, routingKey));
         }
 

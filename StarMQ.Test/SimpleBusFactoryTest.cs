@@ -11,6 +11,8 @@ namespace StarMQ.Test
             var actual = SimpleBusFactory.GetBus();
 
             Assert.That(actual, Is.Not.Null);
+
+            actual.Dispose();
         }
 
         [Test]
@@ -19,6 +21,9 @@ namespace StarMQ.Test
             var actual = SimpleBusFactory.GetBus(String.Empty);
 
             Assert.That(actual, Is.Not.Null);
+
+            actual.Dispose();
+
             Assert.Inconclusive();
         }
     }

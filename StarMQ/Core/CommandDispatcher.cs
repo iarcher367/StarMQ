@@ -58,9 +58,9 @@
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatcher terminated.");
+                        _log.Info("Dispatching terminated.");
                     }
-                }, TaskCreationOptions.LongRunning);
+                }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         public Task Invoke(Action<IModel> action)
@@ -72,12 +72,17 @@
 
             _queue.Add(() =>
             {
-                _tokenSource.Token.ThrowIfCancellationRequested();
-
                 try
                 {
+                    _tokenSource.Token.ThrowIfCancellationRequested();
+
                     _channel.InvokeChannelAction(action);
+
                     tcs.SetResult(null);
+                }
+                catch (OperationCanceledException)
+                {
+                    _log.Info("Action cancelled.");
                 }
                 catch (Exception ex)
                 {

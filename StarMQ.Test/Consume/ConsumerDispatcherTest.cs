@@ -18,6 +18,12 @@
             _sut = new ConsumerDispatcher(_log.Object);
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            _sut.Dispose();
+        }
+
         [Test]
         public void ShouldQueueAction()
         {

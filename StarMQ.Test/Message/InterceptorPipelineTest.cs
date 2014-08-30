@@ -24,13 +24,17 @@ namespace StarMQ.Test.Message
         [Test]
         public void AddShouldAddInterceptor()
         {
+            _interceptorA.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()));
+
             _sut.Add(_interceptorA.Object);
 
-            Assert.Inconclusive();
+            _sut.OnSend(new Message<byte[]>(new byte[0]));
+
+            _interceptorA.Verify(x => x.OnSend(It.IsAny<IMessage<byte[]>>()), Times.Once);
         }
 
         [Test]
-        [ExpectedException(typeof (ArgumentNullException))]
+        [ExpectedException(typeof(ArgumentNullException))]
         public void AddShouldThrowExceptionIfInterceptorIsNull()
         {
             _sut.Add(null);

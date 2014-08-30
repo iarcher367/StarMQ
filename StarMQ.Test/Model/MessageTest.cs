@@ -17,6 +17,14 @@
         }
 
         [Test]
+        public void ShouldSetDefaultProperties()
+        {
+            var sut = new Message<string>(String.Empty);
+
+            Assert.That(sut.Properties, Is.Not.Null);
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfBodyIsNull()
         {

@@ -45,7 +45,7 @@ namespace StarMQ.Consume
                     {
                         _log.Info("Dispatching terminated.");
                     }
-                });
+                }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         public Task Invoke(Action action)
@@ -57,13 +57,17 @@ namespace StarMQ.Consume
 
             _queue.Add(() =>
             {
-                _tokenSource.Token.ThrowIfCancellationRequested();
-
                 try
                 {
+                    _tokenSource.Token.ThrowIfCancellationRequested();
+
                     action();
 
                     tcs.SetResult(null);
+                }
+                catch (OperationCanceledException)
+                {
+                    _log.Info("Action cancelled.");
                 }
                 catch (Exception ex)
                 {

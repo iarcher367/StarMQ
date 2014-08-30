@@ -129,7 +129,7 @@ namespace StarMQ.Consume
 
                 tcs.SetResult(null);
             }
-            catch (Exception ex)
+            catch (Exception ex)    // TODO: research what kind of exceptions may be thrown here
             {
                 tcs.SetException(ex);
             }

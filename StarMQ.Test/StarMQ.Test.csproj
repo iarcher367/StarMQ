@@ -62,7 +62,9 @@
     <Compile Include="Message\InterceptorPipelineTest.cs" />
     <Compile Include="Model\AckResponseTest.cs" />
     <Compile Include="Model\NackResponseTest.cs" />
-    <Compile Include="Publish\PublisherTest.cs" />
+    <Compile Include="Publish\BasicPublisherTest.cs" />
+    <Compile Include="Publish\ConfirmPublisherTest.cs" />
+    <Compile Include="RegistrationTest.cs" />
     <Compile Include="SimpleBusFactoryTest.cs" />
     <Compile Include="SimpleBusTest.cs" />
     <Compile Include="Core\ConnectionConfigurationTest.cs" />
@@ -76,7 +78,6 @@
     <Compile Include="Model\MessageTest.cs" />
     <Compile Include="Message\CorrelationStrategyTest.cs" />
     <Compile Include="Model\PropertiesTest.cs" />
-    <Compile Include="Publish\PublisherFactoryTest.cs" />
     <Compile Include="Message\SerializationStrategyTest.cs" />
     <Compile Include="Message\TypeNameSerializerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

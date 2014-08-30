@@ -15,6 +15,7 @@ namespace StarMQ.Test
             _configuration = new ConnectionConfiguration();
         }
 
+        #region ParseConfiguration
         [Test]
         public void ParseConfigurationShouldSetHeartbeat()
         {
@@ -239,6 +240,7 @@ namespace StarMQ.Test
         {
             Global.ParseConfiguration(new ConnectionConfiguration(), null);
         }
+        #endregion
 
         [Test]
         public void ShouldReturnValue()

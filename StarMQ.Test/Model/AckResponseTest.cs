@@ -37,6 +37,14 @@ namespace StarMQ.Test.Model
         }
 
         [Test]
+        public void ShouldDefaultActionToDoNothing()
+        {
+            var actual = new AckResponse();
+
+            Assert.That(actual.Action, Is.EqualTo(ResponseAction.DoNothing));
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfChannelIsNull()
         {
