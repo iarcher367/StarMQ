@@ -8,9 +8,13 @@ namespace StarMQ.Consume
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
-    public class TransientConsumer : BaseConsumer
+    /// <summary>
+    /// This consumer is designed for exclusive or self-destructing queues as it does not re-subscribe
+    /// to the specified queue after the system recovers the connection to the broker.
+    /// </summary>
+    public class BasicConsumer : BaseConsumer
     {
-        public TransientConsumer(IConnectionConfiguration configuration, IConnection connection,
+        public BasicConsumer(IConnectionConfiguration configuration, IConnection connection,
             IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
             : base(configuration, connection, dispatcher, log, namingStrategy)
         {
@@ -54,7 +58,7 @@ namespace StarMQ.Consume
             }
             catch (Exception ex)    // TODO: research what kind of exceptions can be thrown
             {
-                Log.Error(String.Format("Consumer '{0}' failed to consume queue '{1}'.", queue.Name, ConsumerTag), ex);
+                Log.Error(String.Format("Consumer '{0}' failed to consume queue '{1}'.", ConsumerTag, queue.Name), ex);
             }
 
             return tcs.Task;

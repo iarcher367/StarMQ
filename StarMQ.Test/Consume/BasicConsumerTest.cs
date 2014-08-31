@@ -11,7 +11,7 @@
     using System.Collections.Generic;
     using IConnection = StarMQ.Core.IConnection;
 
-    public class TransientConsumerTest
+    public class BasicConsumerTest
     {
         private const string ConsumerTag = "a3467096-7250-47b8-b5d7-08472505fc2d";
         private const string QueueName = "StarMQ.Master";
@@ -37,7 +37,7 @@
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
 
-            _sut = new TransientConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 _log.Object, _namingStrategy.Object);
         }
 
@@ -62,7 +62,7 @@
             _model.Verify(x => x.IsOpen, Times.Once);
             _model.Verify(x => x.BasicQos(0, prefetchCount, It.IsAny<bool>()), Times.Once);
             _model.Verify(x => x.BasicConsume(QueueName, false, ConsumerTag,
-                It.IsAny<Dictionary<string, object>>(), It.IsAny<TransientConsumer>()), Times.Once);
+                It.IsAny<Dictionary<string, object>>(), It.IsAny<BasicConsumer>()), Times.Once);
         }
 
         [Test]

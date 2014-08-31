@@ -84,7 +84,7 @@
     <Compile Include="Consume\ConsumerFactoryTest.cs" />
     <Compile Include="Consume\PersistentConsumerTest.cs" />
     <Compile Include="Core\InboundDispatcherTest.cs" />
-    <Compile Include="Consume\TransientConsumerTest.cs" />
+    <Compile Include="Consume\BasicConsumerTest.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="App.config" />

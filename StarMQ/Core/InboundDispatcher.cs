@@ -27,7 +27,6 @@ namespace StarMQ.Core
             Dispatch();
 
             connection.OnDisconnected += OnDisconnected;
-            connection.OnConnected += OnConnected;
         }
 
         private void Dispatch()
@@ -52,25 +51,20 @@ namespace StarMQ.Core
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
-        private void OnConnected()
-        {
-            _signal.Set();
-
-            _log.Warn("Dispatch unblocked.");
-        }
-
         private void OnDisconnected()
         {
             Action action;
+
+            _signal.Reset();
 
             while (_queue.TryTake(out action))
             {
                 _log.Info("Message discarded.");
             }
 
-            _signal.Reset();
+            _signal.Set();
 
-            _log.Warn("Dispatch blocked.");
+            _log.Info("Dispatch queue cleared.");
         }
 
         public Task Invoke(Action action)

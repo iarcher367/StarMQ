@@ -55,7 +55,7 @@
     <Compile Include="Core\InboundDispatcher.cs" />
     <Compile Include="Consume\ConsumerFactory.cs" />
     <Compile Include="Consume\PersistentConsumer.cs" />
-    <Compile Include="Consume\TransientConsumer.cs" />
+    <Compile Include="Consume\BasicConsumer.cs" />
     <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />

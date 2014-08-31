@@ -11,6 +11,10 @@
         Task Publish(IModel model, Action<IModel> action);
     }
 
+    /// <summary>
+    /// All publishes are done over a single channel and on a single thread to enforce clear ownership
+    /// of thread-unsafe IModel instances; see RabbitMQ .NET client documentation section 2.10. 
+    /// </summary>
     public abstract class BasePublisher : IPublisher
     {
         protected readonly ILog Log;
@@ -32,11 +36,11 @@
             if (_cachedModel != null)
                 OnChannelClosed(_cachedModel);
 
-            Log.Warn("Synchronizing model.");
-
             _cachedModel = model;
 
             OnChannelOpened(model);
+
+            Log.Info("Synchronized model.");
         }
 
         protected virtual void OnChannelClosed(IModel model)

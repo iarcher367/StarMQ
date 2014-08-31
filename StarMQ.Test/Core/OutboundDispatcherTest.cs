@@ -39,7 +39,13 @@
         }
 
         [Test]
-        public void ShouldDoSomethingWhenOnConnectEventFires()
+        public void ShouldBlockWhenOnConnectEventFires()
+        {
+            Assert.Fail();
+        }
+
+        [Test]
+        public void ShouldUnblockWhenOnDisconnectEventFires()
         {
             Assert.Fail();
         }

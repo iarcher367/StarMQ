@@ -8,9 +8,7 @@
     using System.Threading.Tasks;
 
     /// <summary>
-    /// All publishes are done over a single channel and on a single thread to enforce clear ownership
-    /// of thread-unsafe IModel instances; see RabbitMQ .NET client documentation section 2.10. A
-    /// long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the main
+    /// A long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the main
     /// application when it exerts TCP back-pressure.
     /// </summary>
     public interface IOutboundDispatcher : IDisposable
@@ -65,14 +63,14 @@
         {
             _signal.Set();
 
-            _log.Warn("Dispatch unblocked.");
+            _log.Info("Dispatch unblocked.");
         }
 
         private void OnDisconnected()
         {
             _signal.Reset();
 
-            _log.Warn("Dispatch blocked.");
+            _log.Info("Dispatch blocked.");
         }
 
         public Task Invoke(Action<IModel> action)

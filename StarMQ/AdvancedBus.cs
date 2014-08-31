@@ -46,6 +46,7 @@ namespace StarMQ
 
         private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;
+        private readonly IInboundDispatcher _inboundDispatcher;
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
         private readonly IOutboundDispatcher _outboundDispatcher;
@@ -58,12 +59,14 @@ namespace StarMQ
 
         public event Action BasicReturnEvent;       // TODO: event to be fired by publisher and re-fired here
 
-        public AdvancedBus(IConnectionConfiguration configuration, IConnection connection, ILog log, 
-            INamingStrategy namingStrategy, IOutboundDispatcher outboundDispatcher, IPipeline pipeline,
-            IPublisher publisher, ISerializationStrategy serializationStrategy)
-        {                                           // TODO: support confirms & basic publishers
+        public AdvancedBus(IConnectionConfiguration configuration, IConnection connection,
+            IInboundDispatcher inboundDispatcher, ILog log, INamingStrategy namingStrategy, 
+            IOutboundDispatcher outboundDispatcher, IPipeline pipeline, IPublisher publisher,
+            ISerializationStrategy serializationStrategy)   // TODO: support confirms & basic publishers
+        {
             _configuration = configuration;
             _connection = connection;
+            _inboundDispatcher = inboundDispatcher;
             _log = log;
             _namingStrategy = namingStrategy;
             _outboundDispatcher = outboundDispatcher;
@@ -81,8 +84,8 @@ namespace StarMQ
 
             // TODO: support derived types on same subscription and multiple handlers
 
-            var consumer = ConsumerFactory.CreateConsumer(queue, _configuration, _connection, _log,
-                _namingStrategy);
+            var consumer = ConsumerFactory.CreateConsumer(queue, _configuration, _connection,
+                _inboundDispatcher, _namingStrategy);
 
             await consumer.Consume(queue, message =>
                 {
@@ -252,6 +255,7 @@ namespace StarMQ
 
             _disposed = true;
 
+            _inboundDispatcher.Dispose();
             _outboundDispatcher.Dispose();
             _connection.Dispose();
 

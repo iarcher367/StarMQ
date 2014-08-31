@@ -6,7 +6,7 @@
     using System;
     using System.Threading.Tasks;
 
-    public class PersistentConsumer : TransientConsumer
+    public class PersistentConsumer : BasicConsumer
     {
         private Queue _queue;
 
@@ -14,7 +14,7 @@
             IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
             : base(configuration, connection, dispatcher, log, namingStrategy)
         {
-            connection.OnConnected += OnConnected;
+            Connection.OnConnected += OnConnected;
         }
 
         public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
@@ -29,6 +29,10 @@
 
         private void OnConnected()
         {
+            Model = Connection.CreateModel();
+
+            Log.Info("Synchronized model.");
+
             Consume(_queue);
         }
     }

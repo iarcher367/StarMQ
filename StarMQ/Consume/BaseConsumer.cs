@@ -6,6 +6,7 @@ namespace StarMQ.Consume
     using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
+    using RabbitMQ.Client.Exceptions;
     using System;
     using System.IO;
     using System.Threading.Tasks;
@@ -23,23 +24,25 @@ namespace StarMQ.Consume
     public abstract class BaseConsumer : IConsumer
     {
         protected readonly IConnectionConfiguration Configuration;
-        protected readonly IInboundDispatcher Dispatcher;
+        protected readonly IConnection Connection;
         protected readonly ILog Log;
-
-        protected bool Disposed;
         protected Func<IMessage<byte[]>, BaseResponse> MessageHandler;
+
+        private readonly IInboundDispatcher _dispatcher;
+        private bool _disposed;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
 
         public string ConsumerTag { get; private set; }
-        public IModel Model { get; private set; }
+        public IModel Model { get; protected set; }
 
         protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
             IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
         {
             Configuration = configuration;
+            Connection = connection;
             ConsumerTag = namingStrategy.GetConsumerTag();
-            Dispatcher = dispatcher;
+            _dispatcher = dispatcher;
             Log = log;
             Model = connection.CreateModel();
         }
@@ -96,18 +99,22 @@ namespace StarMQ.Consume
                 var message = new Message<byte[]>(body);
                 message.Properties.CopyFrom(properties);
 
-                Dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
+                _dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
                     {
+                        var response = MessageHandler(message);
+                        response.DeliveryTag = deliveryTag;
+
                         try
                         {
-                            var response = MessageHandler(message);
-                            response.DeliveryTag = deliveryTag;
-
                             await SendResponse(response);
                         }
-                        catch (IOException)
+                        catch (AlreadyClosedException ex)
                         {
-                            Log.Info("Lost connection to broker.");
+                            Log.Info(String.Format("Lost connection to broker - {0}.", ex.GetType().Name));
+                        }
+                        catch (NotSupportedException ex)
+                        {
+                            Log.Info(String.Format("Lost connection to broker - {0}.", ex.GetType().Name));
                         }
                     });
             }
@@ -122,14 +129,11 @@ namespace StarMQ.Consume
                 response.Send(Model, Log);
 
                 if (response.Action == ResponseAction.Unsubscribe)
-                {
                     Model.BasicCancel(ConsumerTag);
-                    Dispose();
-                }
 
                 tcs.SetResult(null);
             }
-            catch (Exception ex)    // TODO: research what kind of exceptions may be thrown here
+            catch (Exception ex)
             {
                 tcs.SetException(ex);
             }
@@ -139,19 +143,16 @@ namespace StarMQ.Consume
 
         public void HandleModelShutdown(IModel model, ShutdownEventArgs args)
         {
-            Log.Info(String.Format("Consumer '{0}' shutdown by '{1}' due to '{2}'",
+            Log.Info(String.Format("Consumer '{0}' was shutdown by '{1}' due to '{2}'",
                 ConsumerTag, args.Initiator, args.Cause));
-
-            Dispose();
         }
 
         public void Dispose()
         {
-            if (Disposed) return;
+            if (_disposed) return;
 
-            Disposed = true;
+            _disposed = true;
 
-            Dispatcher.Dispose();
             Model.Dispose();
 
             Log.Info("Dispose completed.");

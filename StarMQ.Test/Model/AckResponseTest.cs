@@ -30,10 +30,12 @@ namespace StarMQ.Test.Model
         public void ShouldSendAnAck()
         {
             _channel.Setup(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple));
+            _channel.Setup(x => x.IsClosed).Returns(false);
 
             _sut.Send(_channel.Object, _log.Object);
 
             _channel.Verify(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple), Times.Once);
+            _channel.Verify(x => x.IsClosed, Times.Once);
         }
 
         [Test]

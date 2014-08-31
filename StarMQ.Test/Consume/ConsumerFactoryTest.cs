@@ -1,6 +1,5 @@
 ﻿namespace StarMQ.Test.Consume
 {
-    using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
@@ -14,7 +13,7 @@
     {
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
-        private Mock<ILog> _log;
+        private Mock<IInboundDispatcher> _dispatcher;
         private Mock<INamingStrategy> _namingStrategy;
         private Queue _queue;
 
@@ -23,7 +22,7 @@
         {
             _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
-            _log = new Mock<ILog>();
+            _dispatcher = new Mock<IInboundDispatcher>(MockBehavior.Strict);
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
 
             var model = new Mock<IModel>();
@@ -44,7 +43,7 @@
         public void ShouldCreatePersistentConsumer()
         {
             var actual = ConsumerFactory.CreateConsumer(_queue, _configuration.Object,
-                _connection.Object, _log.Object, _namingStrategy.Object);
+                _connection.Object, _dispatcher.Object, _namingStrategy.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(PersistentConsumer)));
         }
@@ -55,9 +54,9 @@
             _queue.Exclusive = true;
 
             var actual = ConsumerFactory.CreateConsumer(_queue, _configuration.Object,
-                _connection.Object, _log.Object, _namingStrategy.Object);
+                _connection.Object, _dispatcher.Object, _namingStrategy.Object);
 
-            Assert.That(actual, Is.TypeOf(typeof(TransientConsumer)));
+            Assert.That(actual, Is.TypeOf(typeof(BasicConsumer)));
         }
     }
 }

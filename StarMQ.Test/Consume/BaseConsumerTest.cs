@@ -36,7 +36,7 @@
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
 
-            _sut = new TransientConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 _log.Object, _namingStrategy.Object);
         }
 
@@ -88,27 +88,31 @@
         }
 
         [Test]
-        public void ModelShutdownShouldDispose()
+        public void DeliverShouldCancelOnUnsubscribeAction()
         {
-            _dispatcher.Setup(x => x.Dispose());
-            _model.Setup(x => x.Dispose());
+            Assert.Fail();  // TODO: move to integration
+        }
 
+        [Test]
+        public void ConsumeShouldSendNackResponseIfHandlerThrowsException()
+        {
+            Assert.Fail();  // TODO: move to integration
+        }
+
+        [Test]
+        public void ModelShutdownShouldDoNothing()
+        {
             _sut.HandleModelShutdown(It.IsAny<IModel>(),
                 new ShutdownEventArgs(ShutdownInitiator.Application, 0, String.Empty));
-
-            _dispatcher.Verify(x => x.Dispose(), Times.Once);
-            _model.Verify(x => x.Dispose(), Times.Once);
         }
 
         [Test]
         public void ShouldDispose()
         {
-            _dispatcher.Setup(x => x.Dispose());
             _model.Setup(x => x.Dispose());
 
             _sut.Dispose();
 
-            _dispatcher.Verify(x => x.Dispose(), Times.Once);
             _model.Verify(x => x.Dispose(), Times.Once);
         }
     }

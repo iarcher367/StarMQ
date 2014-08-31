@@ -35,7 +35,7 @@
         {
             var container = Registration.RegisterServices();
 
-            Registration.EnableCompression(container);
+//            Registration.EnableCompression(container);
 
             return container;
         }

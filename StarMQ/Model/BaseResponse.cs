@@ -35,9 +35,11 @@
         {
             base.Send(model, log);
 
+            if (model.IsClosed) return;
+
             model.BasicAck(DeliveryTag, Multiple);
 
-            log.Info(String.Format("Message #{0} successfully processed - basic.ack sent.", DeliveryTag));
+            log.Info(String.Format("Message #{0} processing succeeded - basic.ack sent.", DeliveryTag));
         }
     }
 
@@ -52,6 +54,8 @@
         public override void Send(IModel model, ILog log)
         {
             base.Send(model, log);
+
+            if (model.IsClosed) return;
 
             model.BasicNack(DeliveryTag, Multiple, Requeue);
 

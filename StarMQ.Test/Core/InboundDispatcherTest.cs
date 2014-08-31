@@ -5,6 +5,7 @@
     using NUnit.Framework;
     using StarMQ.Core;
     using System;
+    using System.Threading.Tasks;
 
     public class InboundDispatcherTest
     {
@@ -27,29 +28,15 @@
         }
 
         [Test]
-        public void ShouldQueueAction()
+        public async Task ShouldDispatchAction()
         {
-            _sut.Invoke(() => { });
+            var flag = false;
 
-            Assert.Inconclusive();
-        }
+            await _sut.Invoke(() => { flag = true; });
 
-        [Test]
-        public void ShouldSendAckResponse()
-        {
-            Assert.Fail();
-        }
+            await Task.Delay(10);
 
-        [Test]
-        public void ShouldSendNackResponseOnException()
-        {
-            Assert.Fail();
-        }
-
-        [Test]
-        public void ShouldCancelAndCallDisposeForUnsubscribeAction()
-        {
-            Assert.Fail();
+            Assert.That(flag, Is.True);
         }
 
         [Test]
@@ -65,6 +52,15 @@
             _sut.Dispose();
 
             Assert.Inconclusive();
+        }
+
+        [Test]
+        [ExpectedException(typeof(InvalidOperationException))]
+        public void ShouldThrowExceptionIfInvokeIsCalledAfterDispose()
+        {
+            _sut.Dispose();
+
+            _sut.Invoke(() => { });
         }
     }
 }
