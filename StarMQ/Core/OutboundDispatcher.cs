@@ -13,12 +13,12 @@
     /// long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the main
     /// application when it exerts TCP back-pressure.
     /// </summary>
-    public interface ICommandDispatcher : IDisposable
+    public interface IOutboundDispatcher : IDisposable
     {
         Task Invoke(Action<IModel> action);
     }
 
-    public class CommandDispatcher : ICommandDispatcher     // TODO: rename to PublisherDispatcher?
+    public class OutboundDispatcher : IOutboundDispatcher
     {
         private readonly IChannel _channel;
         private readonly ILog _log;
@@ -28,7 +28,7 @@
 
         private bool _disposed;
 
-        public CommandDispatcher(IChannel channel, IConnection connection, ILog log)
+        public OutboundDispatcher(IChannel channel, IConnection connection, ILog log)
         {
             _channel = channel;
             _log = log;
@@ -56,7 +56,7 @@
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatching cancelled.");
+                        _log.Info("Dispatch cancelled.");
                     }
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
@@ -111,7 +111,7 @@
             _tokenSource.Cancel();
             _channel.Dispose();
 
-            _log.Info("Disposal complete.");
+            _log.Info("Dispose completed.");
         }
     }
 }

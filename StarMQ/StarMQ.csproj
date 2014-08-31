@@ -52,11 +52,11 @@
   <ItemGroup>
     <Compile Include="AdvancedBus.cs" />
     <Compile Include="Consume\BaseConsumer.cs" />
-    <Compile Include="Consume\ConsumerDispatcher.cs" />
+    <Compile Include="Core\InboundDispatcher.cs" />
     <Compile Include="Consume\ConsumerFactory.cs" />
     <Compile Include="Consume\PersistentConsumer.cs" />
     <Compile Include="Consume\TransientConsumer.cs" />
-    <Compile Include="Core\CommandDispatcher.cs" />
+    <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
     <Compile Include="Message\CompressionInterceptor.cs" />

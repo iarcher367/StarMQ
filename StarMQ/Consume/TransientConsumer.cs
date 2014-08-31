@@ -10,7 +10,7 @@ namespace StarMQ.Consume
 
     public class TransientConsumer : BaseConsumer
     {
-        public TransientConsumer(IConnection connection, IConsumerDispatcher dispatcher, ILog log,
+        public TransientConsumer(IConnection connection, IInboundDispatcher dispatcher, ILog log,
             INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
         {
         }

@@ -28,24 +28,6 @@ namespace StarMQ.Core
             _configuration = configuration;
             _connection = connection;
             _log = log;
-
-            // TODO: event subscriptions
-        }
-
-        private void OnDisconnect()
-        {
-            if (_channel == null || _channel.IsClosed) return;
-
-            _channel.Dispose();
-
-            _log.Info("Channel disconnected.");
-        }
-
-        private void OpenChannel()
-        {
-            _channel = _connection.CreateModel();
-
-            _log.Info("Channel opened.");
         }
 
         public void InvokeChannelAction(Action<IModel> action)
@@ -74,7 +56,7 @@ namespace StarMQ.Core
 //            {
                 // TODO: parse AMQP exception text, possible retry
 //            }
-            catch (Exception ex)
+            catch (Exception ex)    // TODO: limit scope to only channel exceptions
             {
                 _log.Warn("Channel failed.", ex);
 
@@ -87,6 +69,22 @@ namespace StarMQ.Core
         private bool IsTimedOut(DateTime startTime)
         {
             return startTime.AddSeconds(_configuration.Timeout) < DateTime.Now;
+        }
+
+        private void OpenChannel()
+        {
+            _channel = _connection.CreateModel();
+
+            _log.Info("Channel opened.");
+        }
+
+        private void OnDisconnect()
+        {
+            if (_channel == null || _channel.IsClosed) return;
+
+            _channel.Dispose();
+
+            _log.Info("Channel disconnected.");
         }
 
         /// <summary>
@@ -120,7 +118,7 @@ namespace StarMQ.Core
 
             _channel.Dispose();
 
-            _log.Info("Disposal complete.");
+            _log.Info("Dispose completed.");
         }
     }
 }

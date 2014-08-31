@@ -1,6 +1,5 @@
 namespace StarMQ.Consume
 {
-    using System.IO;
     using Core;
     using Exception;
     using log4net;
@@ -8,6 +7,7 @@ namespace StarMQ.Consume
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using System;
+    using System.IO;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
@@ -22,16 +22,18 @@ namespace StarMQ.Consume
 
     public abstract class BaseConsumer : IConsumer
     {
-        protected readonly IConsumerDispatcher Dispatcher;
+        protected readonly IInboundDispatcher Dispatcher;
         protected readonly ILog Log;
+
         protected bool Disposed;
         protected Func<IMessage<byte[]>, BaseResponse> MessageHandler;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
+
         public string ConsumerTag { get; private set; }
         public IModel Model { get; private set; }
 
-        protected BaseConsumer(IConnection connection, IConsumerDispatcher dispatcher, ILog log,
+        protected BaseConsumer(IConnection connection, IInboundDispatcher dispatcher, ILog log,
             INamingStrategy namingStrategy)
         {
             ConsumerTag = namingStrategy.GetConsumerTag();
@@ -105,10 +107,6 @@ namespace StarMQ.Consume
                         {
                             Log.Info("Lost connection to broker.");
                         }
-                        catch (Exception)
-                        {
-                            SendResponse(new NackResponse { DeliveryTag = deliveryTag }).Wait();
-                        }
                     });
             }
         }
@@ -154,7 +152,7 @@ namespace StarMQ.Consume
             Dispatcher.Dispose();
             Model.Dispose();
 
-            Log.Info("Disposal complete.");
+            Log.Info("Dispose completed.");
         }
     }
 }

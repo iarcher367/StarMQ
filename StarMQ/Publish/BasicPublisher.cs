@@ -28,7 +28,7 @@ namespace StarMQ.Publish
 
                 tcs.SetResult(null);
             }
-            catch (Exception ex)
+            catch (Exception ex)    // TODO: limit scope to only channel exceptions
             {
                 tcs.SetException(ex);
             }

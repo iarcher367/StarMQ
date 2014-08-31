@@ -16,10 +16,10 @@
     {
         private const string RoutingKey = "x.y";
 
-        private Mock<ICommandDispatcher> _commandDispatcher;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private Mock<INamingStrategy> _namingStrategy;
+        private Mock<IOutboundDispatcher> _outboundDispatcher;
         private Mock<IPipeline> _pipeline;
         private Mock<IPublisher> _publisher;
         private Mock<ISerializationStrategy> _serializationStrategy;
@@ -32,16 +32,16 @@
         [SetUp]
         public void Setup()
         {
-            _commandDispatcher = new Mock<ICommandDispatcher>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
+            _outboundDispatcher = new Mock<IOutboundDispatcher>(MockBehavior.Strict);
             _pipeline = new Mock<IPipeline>(MockBehavior.Strict);
             _publisher = new Mock<IPublisher>(MockBehavior.Strict);
             _serializationStrategy = new Mock<ISerializationStrategy>(MockBehavior.Strict);
 
-            _sut = new AdvancedBus(_commandDispatcher.Object, _connection.Object, _log.Object,
-                _namingStrategy.Object, _pipeline.Object, _publisher.Object,
+            _sut = new AdvancedBus(_connection.Object, _log.Object, _namingStrategy.Object,
+                _outboundDispatcher.Object, _pipeline.Object, _publisher.Object,
                 _serializationStrategy.Object);
 
             _exchange = new Exchange("StarMQ.Master");
@@ -61,12 +61,12 @@
         [Test]
         public async Task ExchangeDeclareAsyncShouldDeclareExchange()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -82,24 +82,24 @@
         {
             _exchange.Passive = true;
 
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
         public async Task ExchangeDeclareAsyncShouldOnlyDeclareOnce()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.ExchangeDeclareAsync(_exchange);
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -116,7 +116,7 @@
         {
             var data = new Message<byte[]>(new byte[0]);
 
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
             _pipeline.Setup(x => x.OnSend(data))
                 .Returns(new Message<byte[]>(new byte[0]));
@@ -125,7 +125,7 @@
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
             _pipeline.Verify(x => x.OnSend(data), Times.Once);
             _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
         }
@@ -156,24 +156,24 @@
         [Test]
         public async Task QueueBindAsyncShouldBindQueue()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
         public async Task QueueBindAsyncShouldOnlyDeclareOnce()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -202,12 +202,12 @@
         [Test]
         public async Task QueueDeclareAsyncShouldDeclareQueue()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -215,12 +215,12 @@
         {
             _queue.Passive = true;
 
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -234,13 +234,13 @@
         [Test]
         public async Task QueueDeclareAsyncShouldOnlyDeclareOnce()
         {
-            _commandDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
+            _outboundDispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0));
 
             await _sut.QueueDeclareAsync(_queue);
             await _sut.QueueDeclareAsync(_queue);
 
-            _commandDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -254,13 +254,13 @@
         [Test]
         public void ShouldDispose()
         {
-            _commandDispatcher.Setup(x => x.Dispose());
             _connection.Setup(x => x.Dispose());
+            _outboundDispatcher.Setup(x => x.Dispose());
 
             _sut.Dispose();
 
-            _commandDispatcher.Verify(x => x.Dispose(), Times.Once);
             _connection.Verify(x => x.Dispose(), Times.Once);
+            _outboundDispatcher.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

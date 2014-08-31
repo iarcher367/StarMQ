@@ -14,6 +14,7 @@
     public abstract class BasePublisher : IPublisher
     {
         protected readonly ILog Log;
+
         private IModel _cachedModel;
 
         protected BasePublisher(ILog log)
@@ -31,7 +32,7 @@
             if (_cachedModel != null)
                 OnChannelClosed(_cachedModel);
 
-            Log.Info("Synchronizing model.");
+            Log.Warn("Synchronizing model.");
 
             _cachedModel = model;
 

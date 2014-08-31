@@ -25,6 +25,7 @@ Todo:
 - ability to send derived types over base-type-bound queue
 - ability to set TTL or custom headers (e.g. auth) per message
 - implement pre-processing steps
+- support TPL inbound dispatcher strategy
 
 For HA clusters, set the connection string to connect to the load balancer. StarMQ will detect the connection loss on failover and automatically recover.
 

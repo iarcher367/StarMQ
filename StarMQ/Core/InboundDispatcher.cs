@@ -1,18 +1,17 @@
-namespace StarMQ.Consume
+namespace StarMQ.Core
 {
-    using Core;
     using log4net;
     using System;
     using System.Collections.Concurrent;
     using System.Threading;
     using System.Threading.Tasks;
 
-    public interface IConsumerDispatcher : IDisposable
+    public interface IInboundDispatcher : IDisposable
     {
         Task Invoke(Action action);
     }
 
-    public class ConsumerDispatcher : IConsumerDispatcher   // TODO: DispatcherStrategy for TPL
+    public class InboundDispatcher : IInboundDispatcher
     {
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
@@ -21,7 +20,7 @@ namespace StarMQ.Consume
 
         private bool _disposed;
 
-        public ConsumerDispatcher(IConnection connection, ILog log)
+        public InboundDispatcher(IConnection connection, ILog log)
         {
             _log = log;
 
@@ -39,16 +38,16 @@ namespace StarMQ.Consume
                     {
                         foreach (var action in _queue.GetConsumingEnumerable(_tokenSource.Token))
                         {
-                            _signal.WaitOne(-1);
-
                             action();
 
                             _log.Debug("Action processed.");
+
+                            _signal.WaitOne(-1);
                         }
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatching cancelled.");
+                        _log.Info("Dispatch cancelled.");
                     }
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
@@ -93,7 +92,7 @@ namespace StarMQ.Consume
                 {
                     tcs.SetException(ex);
                 }
-            }, _tokenSource.Token);
+            });
 
             _log.Debug("Action added to queue.");
 
@@ -109,7 +108,7 @@ namespace StarMQ.Consume
             _queue.CompleteAdding();
             _tokenSource.Cancel();
 
-            _log.Info("Disposal complete.");
+            _log.Info("Dispose completed.");
         }
     }
 }

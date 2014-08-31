@@ -17,7 +17,7 @@
         private const string QueueName = "StarMQ.Master";
 
         private Mock<IConnection> _connection;
-        private Mock<IConsumerDispatcher> _dispatcher;
+        private Mock<IInboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<INamingStrategy> _namingStrategy;
@@ -27,7 +27,7 @@
         public void Setup()
         {
             _connection = new Mock<IConnection>(MockBehavior.Strict);
-            _dispatcher = new Mock<IConsumerDispatcher>(MockBehavior.Strict);
+            _dispatcher = new Mock<IInboundDispatcher>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);

@@ -1,6 +1,5 @@
 ﻿namespace StarMQ
 {
-    using Consume;
     using Core;
     using log4net;
     using Message;
@@ -15,10 +14,10 @@
             var container = new Container();
 
             container.RegisterSingle<IAdvancedBus, AdvancedBus>();
-            container.RegisterSingle<ICommandDispatcher, CommandDispatcher>();
             container.RegisterSingle<IConnection, PersistentConnection>();
             container.RegisterSingle<IConnectionConfiguration, ConnectionConfiguration>();
-            container.RegisterSingle<IConsumerDispatcher, ConsumerDispatcher>();
+            container.RegisterSingle<IInboundDispatcher, InboundDispatcher>();
+            container.RegisterSingle<IOutboundDispatcher, OutboundDispatcher>();
             container.RegisterSingle<IPipeline, InterceptorPipeline>();
             container.RegisterSingle<ISimpleBus, SimpleBus>();
 
@@ -40,7 +39,6 @@
 
             container.RegisterWithContext(context => LogManager.GetLogger(context.ImplementationType));
 
-            // allows application to use custom implementations
             container.Options.AllowOverridingRegistrations = true;
 
             return container;

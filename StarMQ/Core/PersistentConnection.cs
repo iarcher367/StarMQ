@@ -120,7 +120,7 @@ namespace StarMQ.Core
         public IModel CreateModel()
         {
             if (!IsConnected)
-                throw new StarMqException("Not connected.");
+                throw new StarMqException("Not connected.");    // TODO: research and deprecate
 
             return _connection.CreateModel();
         }
@@ -133,7 +133,7 @@ namespace StarMQ.Core
 
             _connection.Dispose();
 
-            _log.Info("Disposal complete.");
+            _log.Info("Dispose completed.");
         }
     }
 }
