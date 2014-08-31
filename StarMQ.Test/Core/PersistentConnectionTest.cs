@@ -34,6 +34,12 @@
         }
 
         [Test]
+        public void ShouldFireOnConnected()
+        {
+            Assert.Inconclusive();
+        }
+
+        [Test]
         public void ShouldFireOnDisconnected()
         {
             Assert.Inconclusive();
@@ -41,12 +47,6 @@
 
         [Test]
         public void ShouldReconnectWhenDisconnected()
-        {
-            Assert.Inconclusive();
-        }
-
-        [Test]
-        public void ShouldFireOnConnected()
         {
             Assert.Inconclusive();
         }

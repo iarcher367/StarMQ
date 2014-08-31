@@ -44,6 +44,7 @@ namespace StarMQ
     {
         private const string KeyFormat = "{0}:{1}:{2}";
 
+        private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
@@ -57,10 +58,11 @@ namespace StarMQ
 
         public event Action BasicReturnEvent;       // TODO: event to be fired by publisher and re-fired here
 
-        public AdvancedBus(IConnection connection, ILog log, INamingStrategy namingStrategy,
-            IOutboundDispatcher outboundDispatcher, IPipeline pipeline, IPublisher publisher,
-            ISerializationStrategy serializationStrategy)   // TODO: support confirms & basic publishers
-        {
+        public AdvancedBus(IConnectionConfiguration configuration, IConnection connection, ILog log, 
+            INamingStrategy namingStrategy, IOutboundDispatcher outboundDispatcher, IPipeline pipeline,
+            IPublisher publisher, ISerializationStrategy serializationStrategy)
+        {                                           // TODO: support confirms & basic publishers
+            _configuration = configuration;
             _connection = connection;
             _log = log;
             _namingStrategy = namingStrategy;
@@ -79,7 +81,8 @@ namespace StarMQ
 
             // TODO: support derived types on same subscription and multiple handlers
 
-            var consumer = ConsumerFactory.CreateConsumer(queue, _connection, _log, _namingStrategy);
+            var consumer = ConsumerFactory.CreateConsumer(queue, _configuration, _connection, _log,
+                _namingStrategy);
 
             await consumer.Consume(queue, message =>
                 {

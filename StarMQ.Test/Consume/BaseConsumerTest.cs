@@ -15,6 +15,7 @@
     {
         private const string ConsumerTag = "a3467096-7250-47b8-b5d7-08472505fc2d";
 
+        private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<IInboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
@@ -25,6 +26,7 @@
         [SetUp]
         public void Setup()
         {
+            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _dispatcher = new Mock<IInboundDispatcher>(MockBehavior.Strict);
             _log = new Mock<ILog>();
@@ -34,8 +36,8 @@
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
 
-            _sut = new TransientConsumer(_connection.Object, _dispatcher.Object, _log.Object,
-                _namingStrategy.Object);
+            _sut = new TransientConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                _log.Object, _namingStrategy.Object);
         }
 
         [TearDown]

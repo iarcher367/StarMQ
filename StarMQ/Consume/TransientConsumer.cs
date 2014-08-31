@@ -10,8 +10,9 @@ namespace StarMQ.Consume
 
     public class TransientConsumer : BaseConsumer
     {
-        public TransientConsumer(IConnection connection, IInboundDispatcher dispatcher, ILog log,
-            INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
+        public TransientConsumer(IConnectionConfiguration configuration, IConnection connection,
+            IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
+            : base(configuration, connection, dispatcher, log, namingStrategy)
         {
         }
 
@@ -42,7 +43,7 @@ namespace StarMQ.Consume
                 {
                     var args = new Dictionary<string, object>();
 
-                    Model.BasicQos(0, 50, false); // TODO: refactor hardcode
+                    Model.BasicQos(0, Configuration.PrefetchCount, false);
 
                     // TODO: add args - priority, cancel
 

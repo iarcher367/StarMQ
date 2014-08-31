@@ -10,8 +10,9 @@
     {
         private Queue _queue;
 
-        public PersistentConsumer(IConnection connection, IInboundDispatcher dispatcher, ILog log,
-            INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
+        public PersistentConsumer(IConnectionConfiguration configuration, IConnection connection,
+            IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
+            : base(configuration, connection, dispatcher, log, namingStrategy)
         {
             connection.OnConnected += OnConnected;
         }

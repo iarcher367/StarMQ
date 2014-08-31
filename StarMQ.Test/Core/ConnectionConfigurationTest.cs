@@ -26,12 +26,6 @@
         }
 
         [Test]
-        public void ShouldSetDefaultPersistMessages()
-        {
-            Assert.That(_sut.PersistMessages, Is.True);
-        }
-
-        [Test]
         public void ShouldSetDefaultPort()
         {
             Assert.That(_sut.Port, Is.EqualTo(5672));

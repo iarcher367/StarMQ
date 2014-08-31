@@ -70,19 +70,6 @@ namespace StarMQ.Test
         }
 
         [Test]
-        public void ParseConfigurationShouldSetPersistMessages()
-        {
-            const string format = "persistMessages={0}";
-            const bool persistMessages = true;
-
-            var connectionString = String.Format(format, persistMessages);
-
-            Global.ParseConfiguration(_configuration, connectionString);
-
-            Assert.That(_configuration.PersistMessages, Is.EqualTo(persistMessages));
-        }
-
-        [Test]
         public void ParseConfigurationShouldSetPort()
         {
             const string format = "port={0}";

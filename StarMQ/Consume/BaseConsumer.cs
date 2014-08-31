@@ -22,6 +22,7 @@ namespace StarMQ.Consume
 
     public abstract class BaseConsumer : IConsumer
     {
+        protected readonly IConnectionConfiguration Configuration;
         protected readonly IInboundDispatcher Dispatcher;
         protected readonly ILog Log;
 
@@ -33,9 +34,10 @@ namespace StarMQ.Consume
         public string ConsumerTag { get; private set; }
         public IModel Model { get; private set; }
 
-        protected BaseConsumer(IConnection connection, IInboundDispatcher dispatcher, ILog log,
-            INamingStrategy namingStrategy)
+        protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
+            IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
         {
+            Configuration = configuration;
             ConsumerTag = namingStrategy.GetConsumerTag();
             Dispatcher = dispatcher;
             Log = log;

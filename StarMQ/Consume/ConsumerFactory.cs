@@ -6,14 +6,14 @@
 
     public class ConsumerFactory
     {
-        public static IConsumer CreateConsumer(Queue queue, IConnection connection,
-            ILog log, INamingStrategy namingStrategy)
+        public static IConsumer CreateConsumer(Queue queue, IConnectionConfiguration configuration,
+            IConnection connection, ILog log, INamingStrategy namingStrategy)
         {
             var dispatcher = new InboundDispatcher(connection, log);   // TODO: refactor into DI container
 
             return queue.Exclusive
-                ? new TransientConsumer(connection, dispatcher, log, namingStrategy)
-                : new PersistentConsumer(connection, dispatcher, log, namingStrategy);
+                ? new TransientConsumer(configuration, connection, dispatcher, log, namingStrategy)
+                : new PersistentConsumer(configuration, connection, dispatcher, log, namingStrategy);
         }
     }
 }

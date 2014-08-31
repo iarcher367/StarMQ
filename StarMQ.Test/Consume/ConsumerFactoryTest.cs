@@ -12,6 +12,7 @@
 
     public class ConsumerFactoryTest
     {
+        private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private Mock<INamingStrategy> _namingStrategy;
@@ -20,6 +21,7 @@
         [SetUp]
         public void Setup()
         {
+            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
@@ -41,8 +43,8 @@
         [Test]
         public void ShouldCreatePersistentConsumer()
         {
-            var actual = ConsumerFactory.CreateConsumer(_queue, _connection.Object, _log.Object,
-                _namingStrategy.Object);
+            var actual = ConsumerFactory.CreateConsumer(_queue, _configuration.Object,
+                _connection.Object, _log.Object, _namingStrategy.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(PersistentConsumer)));
         }
@@ -52,8 +54,8 @@
         {
             _queue.Exclusive = true;
 
-            var actual = ConsumerFactory.CreateConsumer(_queue, _connection.Object, _log.Object,
-                _namingStrategy.Object);
+            var actual = ConsumerFactory.CreateConsumer(_queue, _configuration.Object,
+                _connection.Object, _log.Object, _namingStrategy.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(TransientConsumer)));
         }

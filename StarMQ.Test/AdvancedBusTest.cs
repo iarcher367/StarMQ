@@ -16,6 +16,7 @@
     {
         private const string RoutingKey = "x.y";
 
+        private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private Mock<INamingStrategy> _namingStrategy;
@@ -32,6 +33,7 @@
         [SetUp]
         public void Setup()
         {
+            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
@@ -40,9 +42,9 @@
             _publisher = new Mock<IPublisher>(MockBehavior.Strict);
             _serializationStrategy = new Mock<ISerializationStrategy>(MockBehavior.Strict);
 
-            _sut = new AdvancedBus(_connection.Object, _log.Object, _namingStrategy.Object,
-                _outboundDispatcher.Object, _pipeline.Object, _publisher.Object,
-                _serializationStrategy.Object);
+            _sut = new AdvancedBus(_configuration.Object, _connection.Object, _log.Object,
+                _namingStrategy.Object, _outboundDispatcher.Object, _pipeline.Object,
+                _publisher.Object, _serializationStrategy.Object);
 
             _exchange = new Exchange("StarMQ.Master");
             _message = new Message<string>("Hello World!");

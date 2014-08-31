@@ -9,7 +9,6 @@ namespace StarMQ.Core
 
         string Host { get; }
         string Password { get; }
-        bool PersistMessages { get; set; }
         ushort Port { get; }
         ushort PrefetchCount { get; }
         bool PublisherConfirms { get; }
@@ -30,9 +29,8 @@ namespace StarMQ.Core
         public ushort Heartbeat { get; set; }
         public string Host { get; set; }
         public string Password { get; set; }
-        public bool PersistMessages { get; set; }       // TODO: implement
         public ushort Port { get; set; }
-        public ushort PrefetchCount { get; set; }       // TODO: reference
+        public ushort PrefetchCount { get; set; }
         public bool PublisherConfirms { get; set; }
         public int Timeout { get; set; }
         public string Username { get; set; }
@@ -43,7 +41,6 @@ namespace StarMQ.Core
             Heartbeat = 10;
             Host = "localhost";
             Password = "guest";
-            PersistMessages = true;
             Port = 5672;
             PrefetchCount = 50;                 // TODO: tweak to optimize subscriber performance
             PublisherConfirms = false;
