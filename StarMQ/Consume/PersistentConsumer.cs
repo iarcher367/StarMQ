@@ -14,7 +14,6 @@
             INamingStrategy namingStrategy) : base(connection, dispatcher, log, namingStrategy)
         {
             connection.OnConnected += OnConnected;
-            connection.OnDisconnected += OnDisconnected;
         }
 
         public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
@@ -30,11 +29,6 @@
         private void OnConnected()
         {
             Consume(_queue);
-        }
-
-        private void OnDisconnected()
-        {
-            Dispatcher.Dispose();
         }
     }
 }

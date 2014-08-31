@@ -11,7 +11,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - StarMQ uses SimpleInjector for **dependency injection** and is configured for overriding registrations. This allows easy replacement of any component by registering a custom implementation after calling Registration.RegisterServices(). For example, log4net could be replaced with another logger that implements the generic ILog interface found in log4net.
 
 ## Performance
-- StarMQ averages just over 22,000 messages per second when publishing at load.
+- StarMQ can publish an average of just over 20,000 messages per second with no pre-processing steps.
 - StarMQ automatically attempts to recover lost connections to the broker.
 - Publishes during a connection failure are non-blocking and buffered in memory until the connection is restored. _Warning_: high-throughput scenarios may cause memory issues during extended outages.
 

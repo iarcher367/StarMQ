@@ -1,5 +1,6 @@
 namespace StarMQ.Consume
 {
+    using Core;
     using log4net;
     using System;
     using System.Collections.Concurrent;
@@ -15,15 +16,19 @@ namespace StarMQ.Consume
     {
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
+        private readonly ManualResetEvent _signal = new ManualResetEvent(true);
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
         private bool _disposed;
 
-        public ConsumerDispatcher(ILog log)
+        public ConsumerDispatcher(IConnection connection, ILog log)
         {
             _log = log;
 
             Dispatch();
+
+            connection.OnDisconnected += OnDisconnected;
+            connection.OnConnected += OnConnected;
         }
 
         private void Dispatch()
@@ -34,7 +39,7 @@ namespace StarMQ.Consume
                     {
                         foreach (var action in _queue.GetConsumingEnumerable(_tokenSource.Token))
                         {
-                            _tokenSource.Token.ThrowIfCancellationRequested();
+                            _signal.WaitOne(-1);
 
                             action();
 
@@ -43,9 +48,30 @@ namespace StarMQ.Consume
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatching terminated.");
+                        _log.Info("Dispatching cancelled.");
                     }
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        private void OnConnected()
+        {
+            _signal.Set();
+
+            _log.Warn("Dispatch unblocked.");
+        }
+
+        private void OnDisconnected()
+        {
+            Action action;
+
+            while (_queue.TryTake(out action))
+            {
+                _log.Info("Message discarded.");
+            }
+
+            _signal.Reset();
+
+            _log.Warn("Dispatch blocked.");
         }
 
         public Task Invoke(Action action)
@@ -59,15 +85,9 @@ namespace StarMQ.Consume
             {
                 try
                 {
-                    _tokenSource.Token.ThrowIfCancellationRequested();
-
                     action();
 
                     tcs.SetResult(null);
-                }
-                catch (OperationCanceledException)
-                {
-                    _log.Info("Action cancelled.");
                 }
                 catch (Exception ex)
                 {

@@ -6,7 +6,7 @@ namespace StarMQ.Publish
     using System.Threading.Tasks;
 
     /// <summary>
-    /// Offers no advanced functionality.
+    /// Offers no advanced functionality or messaging guarantees.
     /// </summary>
     public class BasicPublisher : BasePublisher
     {

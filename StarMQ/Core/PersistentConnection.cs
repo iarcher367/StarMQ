@@ -6,7 +6,7 @@ namespace StarMQ.Core
     using RabbitMQ.Client.Exceptions;
     using System;
     using System.Net.Sockets;
-    using System.Threading.Tasks;
+    using System.Threading;
 
     public interface IConnection : IDisposable
     {
@@ -26,7 +26,6 @@ namespace StarMQ.Core
         /// in milliseconds
         /// </summary>
         private const int RetryInterval = 5000;
-        private const string RetryMsg = "Failed to connect to broker. Retrying in {0} ms.";
 
         private readonly ConnectionFactory _factory;
         private readonly ILog _log;
@@ -55,7 +54,7 @@ namespace StarMQ.Core
                 RequestedConnectionTimeout = configuration.Timeout * 1000
             };
 
-            _log = log;   // TODO: consider EventBus
+            _log = log;
 
             Connect();
         }
@@ -65,7 +64,8 @@ namespace StarMQ.Core
         {
             if (_disposed) return;
 
-            _log.Info("Attempting to connect to broker.");
+            _log.Info(String.Format("Attempting to connect to broker at {0}:{1}:{2}", _factory.HostName,
+                Convert.ToString(_factory.Port), Convert.ToString(_factory.VirtualHost)));
 
             try
             {
@@ -73,13 +73,14 @@ namespace StarMQ.Core
             }
             catch (BrokerUnreachableException ex)
             {
-                _log.Error(String.Format(RetryMsg, RetryInterval), ex);
+                _log.Error(String.Format("Unable to reach broker. Retrying in {0} ms.", RetryInterval),
+                    ex);
 
                 Retry();
             }
             catch (SocketException ex)
             {
-                _log.Error(String.Format(RetryMsg, RetryInterval), ex);
+                _log.Error(String.Format("Network error. Retrying in {0} ms.", RetryInterval), ex);
 
                 Retry();
             }
@@ -87,9 +88,6 @@ namespace StarMQ.Core
 
         private void CreateConnection()
         {
-            _log.Info(String.Format("Broker connection created to {0}:{1}:{2}", _factory.HostName,
-                Convert.ToString(_factory.Port), Convert.ToString(_factory.VirtualHost)));
-
             _connection = _factory.CreateConnection();
             _connection.ConnectionShutdown += OnConnectionShutdown;
 
@@ -111,9 +109,9 @@ namespace StarMQ.Core
             Connect();
         }
 
-        private async void Retry()
+        private void Retry()
         {
-            await Task.Delay(RetryInterval);
+            Thread.Sleep(RetryInterval);
 
             Connect();
         }

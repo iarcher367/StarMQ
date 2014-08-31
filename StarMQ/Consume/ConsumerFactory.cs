@@ -9,7 +9,7 @@
         public static IConsumer CreateConsumer(Queue queue, IConnection connection,
             ILog log, INamingStrategy namingStrategy)
         {
-            var dispatcher = new ConsumerDispatcher(log);   // TODO: refactor into DI container
+            var dispatcher = new ConsumerDispatcher(connection, log);   // TODO: refactor into DI container
 
             return queue.Exclusive
                 ? new TransientConsumer(connection, dispatcher, log, namingStrategy)

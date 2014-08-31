@@ -18,13 +18,14 @@
         Task Invoke(Action<IModel> action);
     }
 
-    public class CommandDispatcher : ICommandDispatcher
+    public class CommandDispatcher : ICommandDispatcher     // TODO: rename to PublisherDispatcher?
     {
         private readonly IChannel _channel;
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
+        private readonly ManualResetEvent _signal = new ManualResetEvent(true);
+        private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
-        private CancellationTokenSource _tokenSource = new CancellationTokenSource();
         private bool _disposed;
 
         public CommandDispatcher(IChannel channel, IConnection connection, ILog log)
@@ -33,12 +34,9 @@
             _log = log;
 
             Dispatch();
-            connection.OnDisconnected += _tokenSource.Cancel;
-            connection.OnConnected += () =>
-                {
-                    _tokenSource = new CancellationTokenSource();
-                    Dispatch();
-                };
+
+            connection.OnDisconnected += OnDisconnected;
+            connection.OnConnected += OnConnected;
         }
 
         private void Dispatch()
@@ -49,7 +47,7 @@
                     {
                         foreach (var action in _queue.GetConsumingEnumerable(_tokenSource.Token))
                         {
-                            _tokenSource.Token.ThrowIfCancellationRequested();
+                            _signal.WaitOne(-1);
 
                             action();
 
@@ -58,9 +56,23 @@
                     }
                     catch (OperationCanceledException)
                     {
-                        _log.Info("Dispatching terminated.");
+                        _log.Info("Dispatching cancelled.");
                     }
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+        }
+
+        private void OnConnected()
+        {
+            _signal.Set();
+
+            _log.Warn("Dispatch unblocked.");
+        }
+
+        private void OnDisconnected()
+        {
+            _signal.Reset();
+
+            _log.Warn("Dispatch blocked.");
         }
 
         public Task Invoke(Action<IModel> action)
@@ -74,21 +86,15 @@
             {
                 try
                 {
-                    _tokenSource.Token.ThrowIfCancellationRequested();
-
                     _channel.InvokeChannelAction(action);
 
                     tcs.SetResult(null);
-                }
-                catch (OperationCanceledException)
-                {
-                    _log.Info("Action cancelled.");
                 }
                 catch (Exception ex)
                 {
                     tcs.SetException(ex);
                 }
-            }, _tokenSource.Token);
+            });
 
             _log.Debug("Action added to queue.");
 
