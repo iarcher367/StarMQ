@@ -6,6 +6,7 @@
     using RabbitMQ.Client;
     using StarMQ.Core;
     using System;
+    using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class OutboundDispatcherTest
@@ -33,12 +34,6 @@
         }
 
         [Test]
-        public void Should()
-        {
-            Assert.Fail();
-        }
-
-        [Test]
         public void ShouldBlockWhenOnConnectEventFires()
         {
             Assert.Fail();
@@ -51,11 +46,11 @@
         }
 
         [Test]
-        public void ShouldQueueAction()
+        public async Task ShouldDispatchAction()
         {
             _channel.Setup(x => x.InvokeChannelAction(It.IsAny<Action<IModel>>()));
 
-            _sut.Invoke(x => { });
+            await _sut.Invoke(x => { });
 
             Assert.Inconclusive();
         }

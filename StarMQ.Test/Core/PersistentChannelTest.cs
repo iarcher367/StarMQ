@@ -13,6 +13,7 @@
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
+        private Mock<IModel> _model;
         private IChannel _sut;
 
         [SetUp]
@@ -21,6 +22,7 @@
             _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _connection = new Mock<IConnection>(MockBehavior.Strict);
             _log = new Mock<ILog>();
+            _model = new Mock<IModel>(MockBehavior.Strict);
             _sut = new PersistentChannel(_configuration.Object, _connection.Object, _log.Object);
         }
 
@@ -56,9 +58,16 @@
         [Test]
         public void ShouldDispose()
         {
+            _configuration.Setup(x => x.Timeout).Returns(1);
+            _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
+            _model.Setup(x => x.Dispose());
+
+            _sut.InvokeChannelAction(x => { });
             _sut.Dispose();
 
-            Assert.Inconclusive();
+            _configuration.Verify(x => x.Timeout, Times.Once);
+            _connection.Verify(x => x.CreateModel(), Times.Once());
+            _model.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

@@ -34,9 +34,13 @@
 
             await _sut.Invoke(() => { flag = true; });
 
-            await Task.Delay(10);
-
             Assert.That(flag, Is.True);
+        }
+
+        [Test]
+        public void ShouldClearQueueOnDisconnectedEvent()
+        {
+            Assert.Inconclusive();
         }
 
         [Test]

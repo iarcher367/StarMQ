@@ -8,7 +8,6 @@ namespace StarMQ.Consume
     using RabbitMQ.Client.Events;
     using RabbitMQ.Client.Exceptions;
     using System;
-    using System.IO;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
@@ -58,7 +57,7 @@ namespace StarMQ.Consume
             if (consumerCancelled != null)
                 consumerCancelled(this, new ConsumerEventArgs(consumerTag));
 
-            Log.Info(String.Format("Cancel requested by broker for consumer '{0}'.", consumerTag));
+            Log.Info(String.Format("Broker requested cancellation for consumer '{0}'.", consumerTag));
         }
 
         public void HandleBasicCancelOk(string consumerTag)
@@ -93,31 +92,34 @@ namespace StarMQ.Consume
             // TODO: check _disposed?
 
             if (MessageHandler == null)
-                Log.Warn(String.Format("Message handler has not been set for consumer '{0}'", consumerTag));
-            else
             {
-                var message = new Message<byte[]>(body);
-                message.Properties.CopyFrom(properties);
-
-                _dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
-                    {
-                        var response = MessageHandler(message);
-                        response.DeliveryTag = deliveryTag;
-
-                        try
-                        {
-                            await SendResponse(response);
-                        }
-                        catch (AlreadyClosedException ex)
-                        {
-                            Log.Info(String.Format("Lost connection to broker - {0}.", ex.GetType().Name));
-                        }
-                        catch (NotSupportedException ex)
-                        {
-                            Log.Info(String.Format("Lost connection to broker - {0}.", ex.GetType().Name));
-                        }
-                    });
+                Log.Error("MessageHandler has not been set - cannot process received message.");
+                return;
             }
+
+            var message = new Message<byte[]>(body);
+            message.Properties.CopyFrom(properties);
+
+            _dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
+                {
+                    var response = MessageHandler(message);
+                    response.DeliveryTag = deliveryTag;
+
+                    try
+                    {
+                        await SendResponse(response);
+                    }
+                    catch (AlreadyClosedException ex)
+                    {
+                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                            ex.GetType().Name));
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                            ex.GetType().Name));
+                    }
+                });
         }
 
         private Task SendResponse(BaseResponse response)

@@ -8,15 +8,6 @@
     using System;
     using System.Threading.Tasks;
 
-    public class BasePublisherTest
-    {
-        [Test]
-        public void Should()
-        {
-            Assert.Fail();
-        }
-    }
-
     public class BasicPublisherTest
     {
         private Mock<ILog> _log;

@@ -32,13 +32,6 @@
             _queue = new Queue(String.Empty);
         }
 
-        [TearDown]
-        public void Teardown()
-        {
-            _connection.Verify(x => x.CreateModel(), Times.Once);
-            _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
-        }
-
         [Test]
         public void ShouldCreatePersistentConsumer()
         {
@@ -46,6 +39,9 @@
                 _connection.Object, _dispatcher.Object, _namingStrategy.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(PersistentConsumer)));
+
+            _connection.Verify(x => x.CreateModel(), Times.Once);
+            _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
         }
 
         [Test]
@@ -57,6 +53,17 @@
                 _connection.Object, _dispatcher.Object, _namingStrategy.Object);
 
             Assert.That(actual, Is.TypeOf(typeof(BasicConsumer)));
+
+            _connection.Verify(x => x.CreateModel(), Times.Once);
+            _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof (ArgumentNullException))]
+        public void ShouldThrowExceptionIfQueueIsNull()
+        {
+            ConsumerFactory.CreateConsumer(null, _configuration.Object, _connection.Object,
+                _dispatcher.Object, _namingStrategy.Object);
         }
     }
 }

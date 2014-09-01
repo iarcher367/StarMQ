@@ -1,14 +1,17 @@
 ﻿namespace StarMQ.Test.Consume
 {
+    using Exception;
     using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
+    using RabbitMQ.Client.Events;
     using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Model;
     using System;
     using System.Collections.Generic;
+    using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BasicConsumerTest
@@ -49,7 +52,7 @@
         }
 
         [Test]
-        public void ShouldSetQosAndConsume()
+        public async Task ShouldSetQosAndConsumeIfModelIsOpen()
         {
             const int prefetchCount = 10;
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
@@ -57,7 +60,7 @@
             _model.Setup(x => x.BasicQos(0, prefetchCount, It.IsAny<bool>()));
             _model.Setup(x => x.BasicConsume(QueueName, false, _sut));
 
-            _sut.Consume(new Queue(QueueName), message => new AckResponse());
+            await _sut.Consume(new Queue(QueueName), message => new AckResponse());
 
             _model.Verify(x => x.IsOpen, Times.Once);
             _model.Verify(x => x.BasicQos(0, prefetchCount, It.IsAny<bool>()), Times.Once);
@@ -66,17 +69,38 @@
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfMessageHandlerIsNull()
+        [ExpectedException(typeof(ChannelClosedException))]
+        public async Task ShouldThrowExceptionIfModelIsClosed()
         {
-            _sut.Consume(new Queue(String.Empty), null);
+            _model.Setup(x => x.IsOpen).Returns(false);
+
+            await _sut.Consume(new Queue(QueueName), message => new AckResponse());
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfQueueIsNull()
+        public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            _sut.Consume(null, message => new AckResponse());
+            await _sut.Consume(new Queue(String.Empty), null);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task ShouldThrowExceptionIfQueueIsNull()
+        {
+            await _sut.Consume(null, message => new AckResponse());
+        }
+
+        [Test]
+        public void ShouldDisposeOnConsumerCancelledEvent()
+        {
+            var sut = new Mock<IConsumer>();
+
+            sut.Setup(x => x.Dispose());
+
+            sut.Raise(x => x.ConsumerCancelled += null, new ConsumerEventArgs(String.Empty));
+
+            sut.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

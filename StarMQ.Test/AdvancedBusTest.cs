@@ -59,7 +59,13 @@
         {
             _sut.ConsumeAsync<string>(_queue, x => new AckResponse());
 
-            Assert.Inconclusive();  // TODO: implement once Consumer can be mocked
+            Assert.Fail();  // TODO: implement once Consumer can be mocked
+        }
+
+        [Test]
+        public void ConsumeShouldSendNackResponseIfHandlerThrowsException()
+        {
+            Assert.Fail();
         }
 
         #region ExchangeDeclareAsync

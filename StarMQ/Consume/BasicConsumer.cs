@@ -1,6 +1,7 @@
 namespace StarMQ.Consume
 {
     using Core;
+    using Exception;
     using log4net;
     using Model;
     using System;
@@ -20,24 +21,20 @@ namespace StarMQ.Consume
         {
         }
 
-        public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
+        public override async Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
         {
-            if (queue == null)
-                throw new ArgumentNullException("queue");
             if (messageHandler == null)
                 throw new ArgumentNullException("messageHandler");
 
             MessageHandler = messageHandler;
 
-            return Consume(queue);
+            await Consume(queue);   // TODO: catch exceptions
         }
 
         protected Task Consume(Queue queue)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
-
-            ConsumerCancelled += (o, args) => Dispose();
 
             var tcs = new TaskCompletionSource<object>();
 
@@ -54,11 +51,21 @@ namespace StarMQ.Consume
                     Model.BasicConsume(queue.Name, false, ConsumerTag, args, this);
 
                     Log.Info(String.Format("Consumer '{0}' declared on queue '{1}'.", ConsumerTag, queue.Name));
+
+                    tcs.SetResult(null);
+                }
+                else
+                {
+                    Log.Warn(String.Format("Consumer '{0}' cannot consume queue '{1}' - channel closed.", ConsumerTag, queue.Name));
+
+                    tcs.SetException(new ChannelClosedException("consume"));    // TODO: verify
                 }
             }
-            catch (Exception ex)    // TODO: research what kind of exceptions can be thrown
+            catch (Exception ex)
             {
                 Log.Error(String.Format("Consumer '{0}' failed to consume queue '{1}'.", ConsumerTag, queue.Name), ex);
+
+                tcs.SetException(ex);
             }
 
             return tcs.Task;

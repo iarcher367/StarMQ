@@ -27,15 +27,26 @@ namespace StarMQ.Test.Model
         }
 
         [Test]
-        public void ShouldSendAnAck()
+        public void ShouldSendAnAckIfChannelIsOpen()
         {
             _channel.Setup(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple));
-            _channel.Setup(x => x.IsClosed).Returns(false);
+            _channel.Setup(x => x.IsOpen).Returns(true);
 
             _sut.Send(_channel.Object, _log.Object);
 
             _channel.Verify(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple), Times.Once);
-            _channel.Verify(x => x.IsClosed, Times.Once);
+            _channel.Verify(x => x.IsOpen, Times.Once);
+        }
+
+        [Test]
+        public void ShouldNotSendAnAckIfChannelIsClosed()
+        {
+            _channel.Setup(x => x.IsOpen).Returns(false);
+
+            _sut.Send(_channel.Object, _log.Object);
+
+            _channel.Verify(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple), Times.Never);
+            _channel.Verify(x => x.IsOpen, Times.Once);
         }
 
         [Test]

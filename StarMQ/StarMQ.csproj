@@ -58,6 +58,7 @@
     <Compile Include="Consume\BasicConsumer.cs" />
     <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
+    <Compile Include="Exception\ChannelClosedException.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
     <Compile Include="Message\CompressionInterceptor.cs" />
     <Compile Include="Message\IMessagingInterceptor.cs" />

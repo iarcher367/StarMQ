@@ -45,15 +45,15 @@
 
         protected virtual void OnChannelClosed(IModel model)
         {
-            model.BasicReturn -= ModelOnBasicReturn;
+            model.BasicReturn -= HandleBasicReturn;
         }
 
         protected virtual void OnChannelOpened(IModel model)
         {
-            model.BasicReturn += ModelOnBasicReturn;
+            model.BasicReturn += HandleBasicReturn;
         }
 
-        protected void ModelOnBasicReturn(IModel model, BasicReturnEventArgs args)
+        private void HandleBasicReturn(IModel model, BasicReturnEventArgs args)
         {
             const string format = "Basic.Return received for message with correlationId '{0}' " +
                                   "from exchange '{1}' with code '{2}:{3}'";
