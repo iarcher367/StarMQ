@@ -1,11 +1,11 @@
 ﻿namespace StarMQ.Test.Core
 {
-    using System;
     using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
     using StarMQ.Core;
+    using System;
     using IConnection = StarMQ.Core.IConnection;
 
     public class PersistentChannelTest
@@ -19,10 +19,11 @@
         [SetUp]
         public void Setup()
         {
-            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
-            _connection = new Mock<IConnection>(MockBehavior.Strict);
+            _configuration = new Mock<IConnectionConfiguration>();
+            _connection = new Mock<IConnection>();
             _log = new Mock<ILog>();
-            _model = new Mock<IModel>(MockBehavior.Strict);
+            _model = new Mock<IModel>();
+
             _sut = new PersistentChannel(_configuration.Object, _connection.Object, _log.Object);
         }
 
@@ -30,7 +31,6 @@
         public void ShouldInvokeAction()
         {
             _configuration.Setup(x => x.Timeout).Returns(1);
-            _connection.Setup(x => x.CreateModel()).Returns(It.IsAny<IModel>());
 
             var flag = false;
 
@@ -43,9 +43,9 @@
         }
 
         [Test]
-        public void Should()
+        public void ShouldRetryAfterReconnect()
         {
-            Assert.Fail();  // TODO: test retries on channel-only exceptions
+            Assert.Fail();
         }
 
         [Test]

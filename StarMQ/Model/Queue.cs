@@ -45,7 +45,7 @@
         ///
         /// Cannot be zero.
         /// </summary>
-        public uint Expiry { get; set; }
+        public uint Expires { get; set; }
 
         /// <summary>
         /// Set to specify time to live for messages in milliseconds.

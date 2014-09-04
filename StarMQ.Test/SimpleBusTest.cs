@@ -131,6 +131,49 @@
         }
 
         [Test]
+        public async Task SubscribeAsyncActionShouldReturnAckResponseIfNoException()
+        {
+            Func<string, BaseResponse> func = x => null;
+
+            RunSubscribeSetup();
+
+            _advancedBus.Setup(x =>
+                x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Queue, Func<string, BaseResponse>>((_, x) => func = x);
+
+            await _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => { });
+
+            var actual = func("StarMQ");
+
+            Assert.That(actual, Is.TypeOf(typeof(AckResponse)));
+
+            RunSubscribeVerify();
+        }
+
+        [Test]
+        public async Task SubscribeAsyncActionShouldReturnNackResponseIfHandlerThrowsException()
+        {
+            Func<string, BaseResponse> func = x => null;
+
+            RunSubscribeSetup();
+
+            _advancedBus.Setup(x =>
+                x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Queue, Func<string, BaseResponse>>((_, x) => func = x);
+
+            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Action<string>)
+                (x => { throw new NotImplementedException(); }));
+
+            var actual = func("StarMQ");
+
+            Assert.That(actual, Is.TypeOf(typeof(NackResponse)));
+
+            RunSubscribeVerify();
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncActionShouldThrowExceptionIfMessageHandlerIsNull()
         {

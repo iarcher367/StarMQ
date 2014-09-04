@@ -16,16 +16,17 @@
         [SetUp]
         public void Setup()
         {
-            _typeNameSerializer = new Mock<ITypeNameSerializer>(MockBehavior.Strict);
+            _typeNameSerializer = new Mock<ITypeNameSerializer>();
+
             _sut = new NamingStrategy(_typeNameSerializer.Object);
+
+            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
+                .Returns(SerializedName);
         }
 
         [Test]
         public void ShouldGenerateAlternateExchangeName()
         {
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
-
             var actual = _sut.GetAlternateExchangeName(typeof(string));
 
             Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
@@ -44,9 +45,6 @@
         [Test]
         public void ShouldGenerateAlternateQueueName()
         {
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
-
             var actual = _sut.GetAlternateQueueName(typeof(string));
 
             Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
@@ -74,9 +72,6 @@
         [Test]
         public void ShouldGenerateDeadLetterExchangeName()
         {
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
-
             var actual = _sut.GetDeadLetterExchangeName(typeof(string));
 
             Assert.That(actual, Is.EqualTo(String.Format("DLX:{0}", SerializedName)));
@@ -96,9 +91,6 @@
         public void ShouldGenerateDeadLetterQueueName()
         {
             const string id = "InstanceA";
-
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
 
             var actual = _sut.GetDeadLetterQueueName(typeof(string), id);
 
@@ -125,9 +117,6 @@
         [Test]
         public void ShouldGenerateExchangeName()
         {
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
-
             var actual = _sut.GetExchangeName(typeof(string));
 
             Assert.That(actual, Is.EqualTo(SerializedName));
@@ -147,9 +136,6 @@
         public void ShouldGenerateQueueName()
         {
             const string id = "InstanceA";
-
-            _typeNameSerializer.Setup(x => x.Serialize(It.Is<Type>(y => y == typeof(string))))
-                .Returns(SerializedName);
 
             var actual = _sut.GetQueueName(typeof(string), id);
 

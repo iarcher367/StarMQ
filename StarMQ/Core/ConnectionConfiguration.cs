@@ -38,7 +38,7 @@ namespace StarMQ.Core
 
         public ConnectionConfiguration()
         {
-            Heartbeat = 1;
+            Heartbeat = 10;
             Host = "localhost";
             Password = "guest";
             Port = 5672;

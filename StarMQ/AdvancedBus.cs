@@ -230,10 +230,10 @@ namespace StarMQ
                 }
                 if (!String.IsNullOrEmpty(queue.DeadLetterExchangeRoutingKey))
                     args.Add("x-dead-letter-routing-key", queue.DeadLetterExchangeRoutingKey);
-                if (queue.Expiry > 0)
+                if (queue.Expires > 0)
                 {
-                    args.Add("x-expires", queue.Expiry);
-                    config.Append(" [Expiry]=").Append(queue.Expiry);
+                    args.Add("x-expires", queue.Expires);
+                    config.Append(" [Expires]=").Append(queue.Expires);
                 }
                 if (queue.MessageTimeToLive != uint.MaxValue)
                 {

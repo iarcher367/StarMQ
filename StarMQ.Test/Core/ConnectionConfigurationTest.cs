@@ -16,7 +16,7 @@
         [Test]
         public void ShouldSetDefaultHeartbeat()
         {
-            Assert.That(_sut.Heartbeat, Is.EqualTo(1));
+            Assert.That(_sut.Heartbeat, Is.EqualTo(10));
         }
 
         [Test]

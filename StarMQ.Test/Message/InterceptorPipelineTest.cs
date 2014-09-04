@@ -24,8 +24,6 @@ namespace StarMQ.Test.Message
         [Test]
         public void AddShouldAddInterceptor()
         {
-            _interceptorA.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()));
-
             _sut.Add(_interceptorA.Object);
 
             _sut.OnSend(new Message<byte[]>(new byte[0]));
