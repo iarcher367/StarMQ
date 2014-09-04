@@ -16,7 +16,7 @@ namespace StarMQ.Test.Model
         [SetUp]
         public void Setup()
         {
-            _channel = new Mock<IModel>(MockBehavior.Strict);
+            _channel = new Mock<IModel>();
             _log = new Mock<ILog>();
 
             _sut = new AckResponse
@@ -27,26 +27,11 @@ namespace StarMQ.Test.Model
         }
 
         [Test]
-        public void ShouldSendAnAckIfChannelIsOpen()
+        public void ShouldSendAnAck()
         {
-            _channel.Setup(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple));
-            _channel.Setup(x => x.IsOpen).Returns(true);
-
             _sut.Send(_channel.Object, _log.Object);
 
             _channel.Verify(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple), Times.Once);
-            _channel.Verify(x => x.IsOpen, Times.Once);
-        }
-
-        [Test]
-        public void ShouldNotSendAnAckIfChannelIsClosed()
-        {
-            _channel.Setup(x => x.IsOpen).Returns(false);
-
-            _sut.Send(_channel.Object, _log.Object);
-
-            _channel.Verify(x => x.BasicAck(_sut.DeliveryTag, _sut.Multiple), Times.Never);
-            _channel.Verify(x => x.IsOpen, Times.Once);
         }
 
         [Test]

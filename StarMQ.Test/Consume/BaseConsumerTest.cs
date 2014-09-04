@@ -152,7 +152,7 @@
             _model.Verify(x => x.BasicConsume(_queue.Name, false, ConsumerTag,
                 It.IsAny<Dictionary<string, object>>(), _sut), Times.Once);
             _model.Verify(x => x.BasicQos(0, PrefetchCount, false), Times.Once);
-            _model.Verify(x => x.IsOpen, Times.Exactly(2));
+            _model.Verify(x => x.IsOpen, Times.Once);
         }
 
         [Test]

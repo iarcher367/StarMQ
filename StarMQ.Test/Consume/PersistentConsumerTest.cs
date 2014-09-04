@@ -68,7 +68,7 @@
 
             _configuration.Verify(x => x.PrefetchCount, Times.Once);
             _connection.Verify(x => x.CreateModel(), Times.Exactly(2));
-            _model.Verify(x => x.IsOpen, Times.Exactly(2));
+            _model.Verify(x => x.IsOpen, Times.Once);
             _model.Verify(x => x.BasicQos(0, prefetchCount, false), Times.Exactly(2));
             _model.Verify(x => x.BasicConsume(queue.Name, false, ConsumerTag,
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()), Times.Exactly(2));

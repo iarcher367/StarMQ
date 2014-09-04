@@ -92,15 +92,13 @@
         }
 
         [Test]
-        public void ShouldDisposeOnConsumerCancelledEvent()
+        public void ShouldDoNothingOnConsumerCancelledEvent()
         {
             var sut = new Mock<IConsumer>();
 
-            sut.Setup(x => x.Dispose());
-
             sut.Raise(x => x.ConsumerCancelled += null, new ConsumerEventArgs(String.Empty));
 
-            sut.Verify(x => x.Dispose(), Times.Once);
+            Assert.Inconclusive();
         }
     }
 }

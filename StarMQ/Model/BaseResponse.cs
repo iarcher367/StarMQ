@@ -35,16 +35,9 @@
         {
             base.Send(model, log);
 
-            if (model.IsOpen)
-            {
-                model.BasicAck(DeliveryTag, Multiple);
+            model.BasicAck(DeliveryTag, Multiple);
 
-                log.Info(String.Format("Message #{0} processing succeeded - basic.ack sent.", DeliveryTag));
-            }
-            else
-            {
-                log.Info("Cannot send basic.ack - channel closed.");
-            }
+            log.Info(String.Format("Message #{0} processing succeeded - basic.ack sent.", DeliveryTag));
         }
     }
 
@@ -60,16 +53,9 @@
         {
             base.Send(model, log);
 
-            if (model.IsOpen)
-            {
-                model.BasicNack(DeliveryTag, Multiple, Requeue);
+            model.BasicNack(DeliveryTag, Multiple, Requeue);
 
-                log.Info(String.Format("Message #{0} processing failed - basic.nack sent.", DeliveryTag));
-            }
-            else
-            {
-                log.Info("Cannot send basic.nack - channel closed.");
-            }
+            log.Info(String.Format("Message #{0} processing failed - basic.nack sent.", DeliveryTag));
         }
     }
 }

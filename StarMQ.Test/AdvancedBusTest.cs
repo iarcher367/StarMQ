@@ -66,6 +66,12 @@
         }
 
         [Test]
+        public void ShouldFireBasicReturnEvent()
+        {
+            Assert.Fail();
+        }
+
+        [Test]
         public void ConsumeShouldConsume()
         {
             _sut.ConsumeAsync<string>(_queue, x => new AckResponse());
