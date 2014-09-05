@@ -4,6 +4,7 @@
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
+    using RabbitMQ.Client.Events;
     using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
@@ -66,9 +67,19 @@
         }
 
         [Test]
-        public void ShouldFireBasicReturnEvent()
+        public void ShouldFireBasicReturnEventIfPublisherFiresBasicReturn()
         {
-            Assert.Fail();
+            var flag = false;
+            var properties = new Mock<IBasicProperties>();
+
+            _sut.BasicReturn += (o, e) => { flag = true; };
+
+            _publisher.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs
+            {
+                BasicProperties = properties.Object
+            });
+
+            Assert.That(flag, Is.True);
         }
 
         [Test]

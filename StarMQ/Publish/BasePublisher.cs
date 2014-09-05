@@ -6,9 +6,13 @@
     using System;
     using System.Threading.Tasks;
 
+    public delegate void BasicReturnHandler(object sender, EventArgs args);
+
     public interface IPublisher
     {
         Task Publish(IModel model, Action<IModel> action);
+
+        event BasicReturnHandler BasicReturn;
     }
 
     /// <summary>
@@ -20,6 +24,8 @@
         protected readonly ILog Log;
 
         private IModel _cachedModel;
+
+        public event BasicReturnHandler BasicReturn;
 
         protected BasePublisher(ILog log)
         {
@@ -61,7 +67,9 @@
             Log.Warn(String.Format(format, args.BasicProperties.CorrelationId, args.Exchange,
                 args.ReplyCode, args.ReplyText));
 
-            throw new NotImplementedException();    // TODO: basic.return should fire an event to calling code
+            var basicReturn = BasicReturn;
+            if (basicReturn != null)
+                basicReturn(model, args);
         }
 
         public abstract Task Publish(IModel model, Action<IModel> action);

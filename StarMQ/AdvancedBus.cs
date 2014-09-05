@@ -6,6 +6,7 @@ namespace StarMQ
     using Message;
     using Model;
     using Publish;
+    using RabbitMQ.Client.Events;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -37,7 +38,7 @@ namespace StarMQ
         /// <summary>
         /// Fired upon receiving a basic.return for a published message.
         /// </summary>
-        event Action BasicReturnEvent;
+        event BasicReturnHandler BasicReturn;
     }
 
     public class AdvancedBus : IAdvancedBus
@@ -57,7 +58,7 @@ namespace StarMQ
 
         private bool _disposed;
 
-        public event Action BasicReturnEvent;       // TODO: event to be fired by publisher and re-fired here
+        public event BasicReturnHandler BasicReturn;
 
         public AdvancedBus(IConnectionConfiguration configuration, IConnection connection,
             IInboundDispatcher inboundDispatcher, ILog log, INamingStrategy namingStrategy, 
@@ -73,6 +74,13 @@ namespace StarMQ
             _pipeline = pipeline;
             _publisher = publisher;
             _serializationStrategy = serializationStrategy;
+
+            _publisher.BasicReturn += (o, args) =>
+            {
+                var basicReturn = BasicReturn;
+                if (basicReturn != null)
+                    BasicReturn(o, args);
+            };
         }
 
         public async Task ConsumeAsync<T>(Queue queue, Func<T, BaseResponse> messageHandler) where T : class
