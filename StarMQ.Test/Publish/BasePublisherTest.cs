@@ -51,7 +51,7 @@
         }
 
         [Test]
-        public void ShouldFireBasicReturnEventIfModelFiresBasicReturn()
+        public void ShouldFireBasicReturnEventIfModelBasicReturnFires()
         {
             var flag = false;
 

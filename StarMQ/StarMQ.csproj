@@ -67,7 +67,6 @@
     <Compile Include="Model\ExchangeType.cs" />
     <Compile Include="Core\NamingStrategy.cs" />
     <Compile Include="Model\Exchange.cs" />
-    <Compile Include="Core\PersistentChannel.cs" />
     <Compile Include="Core\PersistentConnection.cs" />
     <Compile Include="Exception\MaxLengthException.cs" />
     <Compile Include="Exception\StarMqException.cs" />

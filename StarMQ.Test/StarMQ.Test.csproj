@@ -70,7 +70,6 @@
     <Compile Include="SimpleBusTest.cs" />
     <Compile Include="Core\ConnectionConfigurationTest.cs" />
     <Compile Include="Core\OutboundDispatcherTest.cs" />
-    <Compile Include="Core\PersistentChannelTest.cs" />
     <Compile Include="Core\PersistentConnectionTest.cs" />
     <Compile Include="Model\QueueTest.cs" />
     <Compile Include="Model\ExchangeTest.cs" />

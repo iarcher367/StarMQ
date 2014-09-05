@@ -1,7 +1,6 @@
 namespace StarMQ.Test
 {
     using NUnit.Framework;
-    using RabbitMQ.Client;
     using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
@@ -16,10 +15,9 @@ namespace StarMQ.Test
             "constituto. Liber prompta reprehendunt ea sea, no case fierent qui, elit viderer an " +
             "vix. Eum ea harum veritus. Dicunt labitur quaestio eu nam. Vide graece democritum.";
 
-        internal class PrivateChannel : IChannel
+        internal class EmptyStrategy : ICorrelationStrategy
         {
-            public void InvokeChannelAction(Action<IModel> action) { }
-            public void Dispose() { }
+            public string GenerateCorrelationId() { return String.Empty; }
         }
 
         [Test]
@@ -49,11 +47,11 @@ namespace StarMQ.Test
         public void ShouldAllowOverridingRegistrations()
         {
             var container = Registration.RegisterServices();
-            container.RegisterSingle<IChannel, PrivateChannel>();
+            container.RegisterSingle<ICorrelationStrategy, EmptyStrategy>();
 
-            var actual = container.GetInstance<IChannel>();
+            var actual = container.GetInstance<ICorrelationStrategy>();
 
-            Assert.That(actual, Is.TypeOf<PrivateChannel>());
+            Assert.That(actual, Is.TypeOf<EmptyStrategy>());
         }
 
         [Test]

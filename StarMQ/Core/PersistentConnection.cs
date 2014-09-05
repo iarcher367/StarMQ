@@ -64,7 +64,7 @@ namespace StarMQ.Core
         {
             if (_disposed) return;
 
-            _log.Info(String.Format("Attempting to connect to broker at {0}:{1}:{2}", _factory.HostName,
+            _log.Info(String.Format("Attempting connection to {0}:{1}:{2}", _factory.HostName,
                 Convert.ToString(_factory.Port), Convert.ToString(_factory.VirtualHost)));
 
             try

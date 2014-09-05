@@ -11,65 +11,94 @@
 
     public class OutboundDispatcherTest
     {
-        private Mock<IChannel> _channel;
+        private const int Delay = 10;
+
+        private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
+        private Mock<IModel> _model;
         private IOutboundDispatcher _sut;
 
         [SetUp]
         public void Setup()
         {
-            _channel = new Mock<IChannel>(MockBehavior.Strict);
-            _connection = new Mock<IConnection>(MockBehavior.Strict);
+            _configuration = new Mock<IConnectionConfiguration>();
+            _connection = new Mock<IConnection>();
             _log = new Mock<ILog>();
-            _sut = new OutboundDispatcher(_channel.Object, _connection.Object, _log.Object);
+            _model = new Mock<IModel>();
 
-            _channel.Setup(x => x.Dispose());
-        }
+            _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
 
-        [TearDown]
-        public void TearDown()
-        {
-            _sut.Dispose();
+            _sut = new OutboundDispatcher(_configuration.Object, _connection.Object, _log.Object);
         }
 
         [Test]
-        public void ShouldBlockWhenOnConnectEventFires()
+        public async Task ShouldUnblockWhenOnConnectFires()
         {
-            Assert.Fail();
+            var count = 0;
+
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            await _sut.Invoke(x => { count += 5; });
+
+            await Task.Delay(Delay);
+
+            Assert.That(count, Is.EqualTo(0));
+
+            _connection.Raise(x => x.OnConnected += null);
+
+            await Task.Delay(Delay);
+
+            Assert.That(count, Is.EqualTo(5));
         }
 
         [Test]
-        public void ShouldUnblockWhenOnDisconnectEventFires()
+        public async Task ShouldBlockWhenOnDisconnectFires()
         {
-            Assert.Fail();
+            var count = 0;
+
+            await _sut.Invoke(x => { count += 3; });
+
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            await _sut.Invoke(x => { count += 5; });
+
+            await Task.Delay(Delay);
+
+            Assert.That(count, Is.EqualTo(3));
         }
 
         [Test]
         public async Task ShouldDispatchAction()
         {
-            _channel.Setup(x => x.InvokeChannelAction(It.IsAny<Action<IModel>>()));
+            var flag = false;
 
-            await _sut.Invoke(x => { });
+            await _sut.Invoke(x => { flag = true; });
 
-            Assert.Inconclusive();
+            await Task.Delay(Delay);
+
+            Assert.That(flag, Is.True);
+        }
+
+        [Test]
+        public void ShouldRetryAfterReconnect()
+        {
+            Assert.Fail();
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfActionIsNull()
         {
-            _sut.Invoke(null);
+            _sut.Invoke((Action<IModel>)null);
         }
 
         [Test]
         public void ShouldDispose()
         {
-            _channel.Setup(x => x.Dispose());
-
             _sut.Dispose();
 
-            _channel.Verify(x => x.Dispose(), Times.Once);
+            Assert.Inconclusive();
         }
     }
 }

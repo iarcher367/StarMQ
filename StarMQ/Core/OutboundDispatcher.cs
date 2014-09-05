@@ -8,59 +8,68 @@
     using System.Threading.Tasks;
 
     /// <summary>
-    /// A long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the main
-    /// application when it exerts TCP back-pressure.
+    /// A long-running thread is used to dispatch commands, preventing RabbitMQ from blocking the
+    /// main application when it exerts TCP back-pressure. This implementation allows commands to
+    /// be buffered during connection failures.
     /// </summary>
     public interface IOutboundDispatcher : IDisposable
     {
+        Task Invoke(Action action);
         Task Invoke(Action<IModel> action);
     }
 
     public class OutboundDispatcher : IOutboundDispatcher
     {
-        private readonly IChannel _channel;
+        private readonly IConnectionConfiguration _configuration;
+        private readonly IConnection _connection;
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
         private readonly ManualResetEvent _signal = new ManualResetEvent(true);
         private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
 
         private bool _disposed;
+        private IModel _model;
 
-        public OutboundDispatcher(IChannel channel, IConnection connection, ILog log)
+        public OutboundDispatcher(IConnectionConfiguration configuration, IConnection connection,
+            ILog log)
         {
-            _channel = channel;
+            _configuration = configuration;
+            _connection = connection;
             _log = log;
 
+            OpenChannel();
             Dispatch();
 
-            connection.OnDisconnected += OnDisconnected;
             connection.OnConnected += OnConnected;
+            connection.OnDisconnected += OnDisconnected;
+        }
+
+        private void OpenChannel()
+        {
+            _model = _connection.CreateModel();
+
+            _log.Info("Channel opened.");
         }
 
         private void Dispatch()
         {
             Task.Factory.StartNew(() =>
                 {
-                    try
+                    foreach (var action in _queue.GetConsumingEnumerable())
                     {
-                        foreach (var action in _queue.GetConsumingEnumerable(_tokenSource.Token))
-                        {
-                            _signal.WaitOne(-1);
+                        _signal.WaitOne(-1);
 
-                            action();
+                        action();
 
-                            _log.Debug("Action processed.");
-                        }
-                    }
-                    catch (OperationCanceledException)
-                    {
-                        _log.Info("Dispatch cancelled.");
+                        _log.Debug("Action processed.");
                     }
                 }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         private void OnConnected()
         {
+            OpenChannel();
+
             _signal.Set();
 
             _log.Info("Dispatch unblocked.");
@@ -73,30 +82,58 @@
             _log.Info("Dispatch blocked.");
         }
 
+        public Task Invoke(Action action)
+        {
+            if (action == null)
+                throw new ArgumentNullException("action");
+
+            _queue.Add(() => InvokeAction(action, DateTime.Now));
+
+            _log.Debug("Action added to queue.");
+
+            return Task.FromResult<object>(null);
+        }
+
         public Task Invoke(Action<IModel> action)
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            var tcs = new TaskCompletionSource<object>();
-
-            _queue.Add(() =>
-            {
-                try
-                {
-                    _channel.InvokeChannelAction(action);
-
-                    tcs.SetResult(null);
-                }
-                catch (Exception ex)
-                {
-                    tcs.SetException(ex);
-                }
-            });
+            _queue.Add(() => InvokeAction(() => action(_model), DateTime.Now));
 
             _log.Debug("Action added to queue.");
 
-            return tcs.Task;
+            return Task.FromResult<object>(null);
+        }
+
+        private void InvokeAction(Action action, DateTime startTime)
+        {
+            var retryInterval = 100;
+
+            do
+            {
+                try
+                {
+                    action();
+                    return;
+                }
+//                catch (OperationInterruptedException ex)    // TODO: parse AMQP exception text, possible retry
+                catch (Exception ex) // TODO: limit scope to only channel exceptions
+                {
+                    _log.Warn(String.Format("Channel failed. Waiting {0} ms to retry.", retryInterval)
+                        , ex);
+
+                    Thread.Sleep(retryInterval);
+                    retryInterval = Math.Min(retryInterval*2, 5000);
+                }
+            } while (!IsTimedOut(startTime));
+
+            _log.Error("Channel action has timed out.");
+        }
+
+        private bool IsTimedOut(DateTime startTime)
+        {
+            return DateTime.Now > startTime.AddSeconds(_configuration.Timeout);
         }
 
         public void Dispose()
@@ -107,7 +144,7 @@
 
             _queue.CompleteAdding();
             _tokenSource.Cancel();
-            _channel.Dispose();
+            _model.Dispose();
 
             _log.Info("Dispose completed.");
         }

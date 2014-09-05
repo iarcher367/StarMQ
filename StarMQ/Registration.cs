@@ -21,7 +21,6 @@
             container.RegisterSingle<IPipeline, InterceptorPipeline>();
             container.RegisterSingle<ISimpleBus, SimpleBus>();
 
-            container.Register<IChannel, PersistentChannel>();
             container.Register(() =>
             {
                 var config = container.GetInstance<IConnectionConfiguration>();
