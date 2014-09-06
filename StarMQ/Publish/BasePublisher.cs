@@ -5,12 +5,13 @@
     using RabbitMQ.Client.Events;
     using System;
     using System.Threading.Tasks;
+    using IConnection = Core.IConnection;
 
     public delegate void BasicReturnHandler(object sender, EventArgs args);
 
     public interface IPublisher
     {
-        Task Publish(IModel model, Action<IModel> action);
+        Task Publish(Action<IModel> action);
 
         event BasicReturnHandler BasicReturn;
     }
@@ -21,42 +22,33 @@
     /// </summary>
     public abstract class BasePublisher : IPublisher
     {
-        protected readonly ILog Log;
+        private readonly IConnection _connection;
 
-        private IModel _cachedModel;
+        protected readonly ILog Log;
+        protected IModel Model;
 
         public event BasicReturnHandler BasicReturn;
 
-        protected BasePublisher(ILog log)
+        protected BasePublisher(IConnection connection, ILog log)
         {
+            _connection = connection;
             Log = log;
+
+            _connection.OnConnected += OnConnected;
+            _connection.OnDisconnected += OnDisconnected;
         }
 
-        /// <summary>
-        /// Synchronizes cached model to capture changes from persistent channel
-        /// </summary>
-        protected void SynchronizeModel(IModel model)
+        protected virtual void OnConnected()
         {
-            if (_cachedModel == model) return;
+            Model = _connection.CreateModel();
+            Model.BasicReturn += HandleBasicReturn;
 
-            if (_cachedModel != null)
-                OnChannelClosed(_cachedModel);
-
-            _cachedModel = model;
-
-            OnChannelOpened(model);
-
-            Log.Info("Synchronized model.");
+            Log.Info("Channel opened.");
         }
 
-        protected virtual void OnChannelClosed(IModel model)
+        protected virtual void OnDisconnected()
         {
-            model.BasicReturn -= HandleBasicReturn;
-        }
-
-        protected virtual void OnChannelOpened(IModel model)
-        {
-            model.BasicReturn += HandleBasicReturn;
+            Model.BasicReturn -= HandleBasicReturn;
         }
 
         private void HandleBasicReturn(IModel model, BasicReturnEventArgs args)
@@ -72,6 +64,6 @@
                 basicReturn(model, args);
         }
 
-        public abstract Task Publish(IModel model, Action<IModel> action);
+        public abstract Task Publish(Action<IModel> action);
     }
 }

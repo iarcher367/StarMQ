@@ -69,15 +69,6 @@
         }
 
         [Test]
-        [ExpectedException(typeof(ChannelClosedException))]
-        public async Task ShouldThrowExceptionIfModelIsClosed()
-        {
-            _model.Setup(x => x.IsOpen).Returns(false);
-
-            await _sut.Consume(new Queue(QueueName), message => new AckResponse());
-        }
-
-        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
         {

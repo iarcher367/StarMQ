@@ -24,10 +24,11 @@
             container.Register(() =>
             {
                 var config = container.GetInstance<IConnectionConfiguration>();
+                var connection = container.GetInstance<IConnection>();
 
                 return config.PublisherConfirms
-                    ? new ConfirmPublisher(config, LogManager.GetLogger(typeof(ConfirmPublisher)))
-                    : (IPublisher)new BasicPublisher(LogManager.GetLogger(typeof(BasicPublisher)));
+                    ? new ConfirmPublisher(config, connection, LogManager.GetLogger(typeof(ConfirmPublisher)))
+                    : (IPublisher)new BasicPublisher(connection, LogManager.GetLogger(typeof(BasicPublisher)));
             });
 
             container.Register<ICorrelationStrategy, CorrelationStrategy>();

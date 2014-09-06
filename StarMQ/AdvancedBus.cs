@@ -6,7 +6,6 @@ namespace StarMQ
     using Message;
     using Model;
     using Publish;
-    using RabbitMQ.Client.Events;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -170,8 +169,8 @@ namespace StarMQ
                 var properties = x.CreateBasicProperties();
                 message.Properties.CopyTo(properties);
 
-                _publisher.Publish(x, a => a.BasicPublish(exchange.Name, routingKey,
-                        mandatory, immediate, properties, data.Body));
+                _publisher.Publish(a => a.BasicPublish(exchange.Name, routingKey,
+                    mandatory, immediate, properties, data.Body));
             });
 
             _log.Info(String.Format("Message published to '{0}' with routing key '{1}'",

@@ -4,18 +4,20 @@ namespace StarMQ.Publish
     using RabbitMQ.Client;
     using System;
     using System.Threading.Tasks;
+    using IConnection = Core.IConnection;
 
     /// <summary>
     /// Offers no advanced functionality or messaging guarantees.
     /// </summary>
-    public class BasicPublisher : BasePublisher
+    public sealed class BasicPublisher : BasePublisher
     {
-        public BasicPublisher(ILog log) : base(log) { }
-
-        public override Task Publish(IModel model, Action<IModel> action)
+        public BasicPublisher(IConnection connection, ILog log) : base(connection, log)
         {
-            if (model == null)
-                throw new ArgumentNullException("model");
+            OnConnected();
+        }
+
+        public override Task Publish(Action<IModel> action)
+        {
             if (action == null)
                 throw new ArgumentNullException("action");
 
@@ -23,8 +25,7 @@ namespace StarMQ.Publish
 
             try
             {
-                SynchronizeModel(model);
-                action(model);
+                action(Model);
 
                 tcs.SetResult(null);
             }

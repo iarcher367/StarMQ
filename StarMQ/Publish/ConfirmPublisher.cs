@@ -1,71 +1,111 @@
 namespace StarMQ.Publish
 {
     using Core;
+    using Exception;
     using log4net;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using System;
-    using System.Collections.Generic;
+    using System.Collections.Concurrent;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
+    using IConnection = Core.IConnection;
 
     /// <summary>
     /// Guarantees messaging via publisher confirms.
     /// </summary>
-    public class ConfirmPublisher : BasePublisher
+    public sealed class ConfirmPublisher : BasePublisher
     {
         private readonly IConnectionConfiguration _configuration;
-        private readonly IDictionary<ulong, object> _pendingMessages = new Dictionary<ulong, object>();
+        private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();
 
-        public ConfirmPublisher(IConnectionConfiguration configuration, ILog log) : base(log)
+        public ConfirmPublisher(IConnectionConfiguration configuration, IConnection connection,
+            ILog log) : base(connection, log)
         {
             _configuration = configuration;
+
+            OnConnected();
         }
 
-        protected override void OnChannelClosed(IModel model)
+        protected override void OnDisconnected()
         {
-            model.BasicAcks -= ModelOnBasicAcks;
-            model.BasicNacks -= ModelOnBasicNacks;
+            base.OnDisconnected();
 
+            Model.BasicAcks -= ModelOnBasicAcks;
+            Model.BasicNacks -= ModelOnBasicNacks;
+        }
+
+        protected override void OnConnected()
+        {
+            base.OnConnected();
+
+            Model.BasicAcks += ModelOnBasicAcks;
+            Model.BasicNacks += ModelOnBasicNacks;
+            Model.ConfirmSelect();
+
+            RequeuePendingMessages();
+        }
+
+        private void RequeuePendingMessages()
+        {
+            var requeued = new ConcurrentDictionary<ulong, PublishState>(_pendingMessages);
             _pendingMessages.Clear();
 
-            base.OnChannelClosed(model);
-        }
+            requeued.Values.ToList().ForEach(x => x.Timer.Dispose());
 
-        protected override void OnChannelOpened(IModel model)
-        {
-            model.BasicAcks += ModelOnBasicAcks;
-            model.BasicNacks += ModelOnBasicNacks;
+            foreach (var state in requeued.Values)
+            {
+                var sequenceId = Model.NextPublishSeqNo;
 
-            model.ConfirmSelect();
+                state.Action(Model);
 
-            base.OnChannelOpened(model);
-        }
-
-        private void ModelOnBasicNacks(IModel model, BasicNackEventArgs args)
-        {
-            Log.Debug("Basic.Nack received.");
-
-            ProcessResponse(args.DeliveryTag, args.Multiple, null);
+                _pendingMessages.TryAdd(sequenceId, new PublishState
+                    {
+                        Action = state.Action,
+                        Source = state.Source,
+                        Timer = CreateTimer(sequenceId, state.Source)
+                    });
+            }
         }
 
         private void ModelOnBasicAcks(IModel model, BasicAckEventArgs args)
         {
-            Log.Debug("Basic.Ack received.");
+            ProcessResponse(args.DeliveryTag, args.Multiple, x =>
+            {
+                Log.Info(String.Format("Message #{0} confirmed. Multiple: {1}",
+                    args.DeliveryTag, args.Multiple));
 
-            ProcessResponse(args.DeliveryTag, args.Multiple, null);
+                x.Timer.Dispose();
+                x.Source.TrySetResult(null);
+            });
         }
 
-        // TODO: test this extensively
-        private void ProcessResponse(ulong sequenceId, bool multiple, Action<object> action)
+        /// <summary>
+        /// Received upon internal broker error; unable to queue message.
+        /// </summary>
+        private void ModelOnBasicNacks(IModel model, BasicNackEventArgs args)
         {
+            ProcessResponse(args.DeliveryTag, args.Multiple, x =>
+            {
+                Log.Error(String.Format("Internal broker error for message #{0}. Multiple: {1}",
+                    args.DeliveryTag, args.Multiple));
+
+                x.Timer.Dispose();
+                x.Source.TrySetException(new PublishException());
+            });
+        }
+
+        private void ProcessResponse(ulong sequenceId, bool multiple, Action<PublishState> action)
+        {
+            PublishState tmp;
+
             if (multiple)
             {
                 foreach (var id in _pendingMessages.Keys.Where(key => key <= sequenceId))
                 {
                     action(_pendingMessages[id]);
-                    _pendingMessages.Remove(id);
+                    _pendingMessages.TryRemove(id, out tmp);
                 }
             }
             else
@@ -73,42 +113,56 @@ namespace StarMQ.Publish
                 if (_pendingMessages.ContainsKey(sequenceId))
                 {
                     action(_pendingMessages[sequenceId]);
-                    _pendingMessages.Remove(sequenceId);
+                    _pendingMessages.TryRemove(sequenceId, out tmp);
                 }
             }
         }
 
-        public override Task Publish(IModel model, Action<IModel> action)
+        public override Task Publish(Action<IModel> action)
         {
-//            throw new NotImplementedException();
+            if (action == null)
+                throw new ArgumentNullException("action");
 
-            var tcs = new TaskCompletionSource<object>();   // TODO: wip
+            var tcs = new TaskCompletionSource<object>();
 
-            try
+            var sequenceId = Model.NextPublishSeqNo;
+
+            _pendingMessages.TryAdd(sequenceId, new PublishState
             {
-                var sequenceId = model.NextPublishSeqNo;
+                Action = action,
+                Source = tcs,
+                Timer = CreateTimer(sequenceId, tcs)
+            });
 
-                Timer timer = null;
-                timer = new Timer(state =>
-                                  {
-                                      Log.Warn(String.Format("Publish sequence #{0} timed out.", sequenceId));
-
-                                      _pendingMessages.Remove(sequenceId);
-                                      timer.Dispose();
-                                  }, null, _configuration.Timeout * 1000, Timeout.Infinite);
-
-                action(model);
-
-                Log.Info("Published message.");
-
-                tcs.SetResult(null);
-            }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
+            action(Model);
 
             return tcs.Task;
+        }
+
+        private Timer CreateTimer(ulong sequenceId, TaskCompletionSource<object> tcs)
+        {
+            return new Timer(x =>
+            {
+                var text = String.Format("Publish sequence #{0} timed out waiting for broker response.", sequenceId);
+
+                Log.Warn(text);
+
+                if (tcs.TrySetException(new TimeoutException(text)))
+                {
+                    PublishState tmp;
+                    var message = _pendingMessages[sequenceId];
+
+                    message.Timer.Dispose();
+                    _pendingMessages.TryRemove(sequenceId, out tmp);
+                }
+            }, null, _configuration.Timeout * 1000, Timeout.Infinite);
+        }
+
+        private class PublishState
+        {
+            public Action<IModel> Action { get; set; }
+            public TaskCompletionSource<object> Source { get; set; }
+            public Timer Timer { get; set; }
         }
     }
 }

@@ -7,19 +7,23 @@
     using StarMQ.Publish;
     using System;
     using System.Threading.Tasks;
+    using IConnection = StarMQ.Core.IConnection;
 
     public class BasicPublisherTest
     {
+        private Mock<IConnection> _connection;
         private Mock<ILog> _log;
-        private Mock<IModel> _model;
         private BasePublisher _sut;
 
         [SetUp]
         public void Setup()
         {
+            _connection = new Mock<IConnection>();
             _log = new Mock<ILog>();
-            _model = new Mock<IModel>();
-            _sut = new BasicPublisher(_log.Object);
+
+            _connection.Setup(x => x.CreateModel()).Returns(new Mock<IModel>().Object);
+
+            _sut = new BasicPublisher(_connection.Object, _log.Object);
         }
 
         [Test]
@@ -27,23 +31,16 @@
         {
             var flag = false;
 
-            await _sut.Publish(_model.Object, x => flag = true);
+            await _sut.Publish(x => flag = true);
 
             Assert.That(flag, Is.True);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfModelIsNull()
-        {
-            _sut.Publish(null, x => { });
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfActionIsNull()
         {
-            _sut.Publish(_model.Object, null);
+            _sut.Publish(null);
         }
     }
 }

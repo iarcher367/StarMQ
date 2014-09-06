@@ -194,7 +194,7 @@
             _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
             _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0]));
-            _publisher.Setup(x => x.Publish(_model.Object, It.IsAny<Action<IModel>>()))
+            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
                 .Callback<IModel, Action<IModel>>((_, x) => publishAction = x);
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
@@ -206,7 +206,7 @@
                 It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
             _outboundDispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
             _pipeline.Verify(x => x.OnSend(It.IsAny<IMessage<byte[]>>()), Times.Once);
-            _publisher.Verify(x => x.Publish(_model.Object, It.IsAny<Action<IModel>>()), Times.Once);
+            _publisher.Verify(x => x.Publish(It.IsAny<Action<IModel>>()), Times.Once);
             _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
         }
 

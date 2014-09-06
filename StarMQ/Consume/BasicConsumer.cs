@@ -58,7 +58,7 @@ namespace StarMQ.Consume
                 {
                     Log.Warn(String.Format("Consumer '{0}' cannot consume queue '{1}' - channel closed.", ConsumerTag, queue.Name));
 
-                    tcs.SetException(new ChannelClosedException("consume"));    // TODO: verify
+//                    tcs.SetException(new NackedPublishException("consume"));    // TODO: verify
                 }
             }
             catch (Exception ex)
