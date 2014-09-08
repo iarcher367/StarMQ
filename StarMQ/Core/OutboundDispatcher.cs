@@ -133,7 +133,7 @@
 
         private bool IsTimedOut(DateTime startTime)
         {
-            return DateTime.Now > startTime.AddSeconds(_configuration.Timeout);
+            return DateTime.Now > startTime.AddMilliseconds(_configuration.Timeout);
         }
 
         public void Dispose()

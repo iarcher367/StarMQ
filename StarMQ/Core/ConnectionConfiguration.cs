@@ -14,7 +14,7 @@ namespace StarMQ.Core
         bool PublisherConfirms { get; }
 
         /// <summary>
-        /// in seconds
+        /// in milliseconds
         /// </summary>
         int Timeout { get; }
 
@@ -44,7 +44,7 @@ namespace StarMQ.Core
             Port = 5672;
             PrefetchCount = 50;                 // TODO: tweak to optimize subscriber performance
             PublisherConfirms = false;
-            Timeout = 10;
+            Timeout = 10000;
             Username = "guest";
             VirtualHost = "/";
         }

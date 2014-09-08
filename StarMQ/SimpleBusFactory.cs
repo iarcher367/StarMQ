@@ -9,7 +9,7 @@
         /// Creates a SimpleBus instance with the default configuration.
         ///
         /// heartbeat=10;host=localhost;password=guest;port=5672;publisherconfirms=false;
-        /// timeout=10;username=guest;virtualhost=/
+        /// timeout=10000;username=guest;virtualhost=/
         /// </summary>
         public static ISimpleBus GetBus()
         {

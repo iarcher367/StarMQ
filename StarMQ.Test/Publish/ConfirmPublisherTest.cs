@@ -32,7 +32,7 @@ namespace StarMQ.Test.Publish
             _modelOne = new Mock<IModel>();
             _modelTwo = new Mock<IModel>();
 
-            _configuration.Setup(x => x.Timeout).Returns(1);    // TODO: set to 0.05 seconds
+            _configuration.Setup(x => x.Timeout).Returns(50);
             _connection.SetupSequence(x => x.CreateModel())
                 .Returns(_modelOne.Object)
                 .Returns(_modelTwo.Object);
@@ -245,8 +245,6 @@ namespace StarMQ.Test.Publish
         [ExpectedException(typeof(TimeoutException))]
         public async Task ShouldInvokeAndThrowExceptionOnTimeout()
         {
-            _configuration.Setup(x => x.Timeout).Returns(0);    // TODO: delete once is 0.05s
-
             var flag = false;
 
             await _sut.Publish(x => flag = true);

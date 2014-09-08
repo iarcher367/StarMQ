@@ -155,7 +155,7 @@ namespace StarMQ.Publish
                     message.Timer.Dispose();
                     _pendingMessages.TryRemove(sequenceId, out tmp);
                 }
-            }, null, _configuration.Timeout * 1000, Timeout.Infinite);
+            }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
 
         private class PublishState

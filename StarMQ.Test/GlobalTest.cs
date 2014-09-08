@@ -140,7 +140,7 @@ namespace StarMQ.Test
         public void ParseConfigurationShouldSetTimeout()
         {
             const string format = "timeout={0}";
-            const int timeout = 100000;
+            const int timeout = 10000;
 
             var connectionString = String.Format(format, timeout);
 

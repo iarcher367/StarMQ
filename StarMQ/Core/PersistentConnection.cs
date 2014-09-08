@@ -51,7 +51,7 @@ namespace StarMQ.Core
                 UserName = configuration.Username,
                 VirtualHost = configuration.VirtualHost,
                 RequestedHeartbeat = configuration.Heartbeat,
-                RequestedConnectionTimeout = configuration.Timeout * 1000
+                RequestedConnectionTimeout = configuration.Timeout
             };
 
             _log = log;
