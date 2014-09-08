@@ -1,11 +1,13 @@
 namespace StarMQ.Test
 {
     using NUnit.Framework;
+    using SimpleInjector;
     using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
     using StarMQ.Publish;
     using System;
+    using Registration = Registration;
 
     public class RegistrationTest
     {
@@ -15,17 +17,29 @@ namespace StarMQ.Test
             "constituto. Liber prompta reprehendunt ea sea, no case fierent qui, elit viderer an " +
             "vix. Eum ea harum veritus. Dicunt labitur quaestio eu nam. Vide graece democritum.";
 
+        private Container _container;
+
         internal class EmptyStrategy : ICorrelationStrategy
         {
             public string GenerateCorrelationId() { return String.Empty; }
         }
 
+        [SetUp]
+        public void Setup()
+        {
+            _container = Registration.RegisterServices();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            _container.GetInstance<IConnection>().Dispose();
+        }
+
         [Test]
         public void ShouldReturnBasicPublisherIfConfirmsDisabled()
         {
-            var container = Registration.RegisterServices();
-
-            var actual = container.GetInstance<IPublisher>();
+            var actual = _container.GetInstance<IPublisher>();
 
             Assert.That(actual, Is.TypeOf<BasicPublisher>());
         }
@@ -33,12 +47,11 @@ namespace StarMQ.Test
         [Test]
         public void ShouldReturnConfirmsPublisherIfConfirmsEnabled()
         {
-            var container = Registration.RegisterServices();
-            var configuration = container.GetInstance<IConnectionConfiguration>();
+            var configuration = _container.GetInstance<IConnectionConfiguration>();
 
             Global.ParseConfiguration(configuration, "publisherconfirms=true");
 
-            var actual = container.GetInstance<IPublisher>();
+            var actual = _container.GetInstance<IPublisher>();
 
             Assert.That(actual, Is.TypeOf<ConfirmPublisher>());
         }

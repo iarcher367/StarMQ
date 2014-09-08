@@ -195,7 +195,7 @@
             _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0]));
             _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
-                .Callback<IModel, Action<IModel>>((_, x) => publishAction = x);
+                .Callback<Action<IModel>>(x => publishAction = x);
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 

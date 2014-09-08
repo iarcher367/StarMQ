@@ -45,7 +45,7 @@
         }
 
         [Test]
-        public void ShouldCreateTransientConsumer()
+        public void ShouldCreateBasicConsumer()
         {
             _queue.Exclusive = true;
 
