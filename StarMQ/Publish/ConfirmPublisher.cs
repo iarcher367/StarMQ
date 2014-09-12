@@ -7,18 +7,31 @@ namespace StarMQ.Publish
     using RabbitMQ.Client.Events;
     using System;
     using System.Collections.Concurrent;
+    using System.Collections.Generic;
     using System.Linq;
     using System.Threading;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
     /// <summary>
-    /// Guarantees messaging via publisher confirms.
+    /// Guarantees messaging via publisher confirms and ensures order of unconfirmed messages.
     /// </summary>
     public sealed class ConfirmPublisher : BasePublisher
     {
+        private readonly static Object LockObj = new Object();
+
         private readonly IConnectionConfiguration _configuration;
         private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();
+
+        private class PublishState
+        {
+            private readonly List<ulong> _sequenceIds = new List<ulong>();
+
+            public List<ulong> SequenceIds { get { return _sequenceIds; } }
+            public Action<IModel> Action { get; set; }
+            public TaskCompletionSource<object> Source { get; set; }
+            public Timer Timer { get; set; }
+        }
 
         public ConfirmPublisher(IConnectionConfiguration configuration, IConnection connection,
             ILog log) : base(connection, log)
@@ -26,14 +39,6 @@ namespace StarMQ.Publish
             _configuration = configuration;
 
             OnConnected();
-        }
-
-        protected override void OnDisconnected()
-        {
-            base.OnDisconnected();
-
-            Model.BasicAcks -= ModelOnBasicAcks;
-            Model.BasicNacks -= ModelOnBasicNacks;
         }
 
         protected override void OnConnected()
@@ -47,26 +52,71 @@ namespace StarMQ.Publish
             RequeuePendingMessages();
         }
 
+        protected override void OnDisconnected()
+        {
+            base.OnDisconnected();
+
+            Model.BasicAcks -= ModelOnBasicAcks;
+            Model.BasicNacks -= ModelOnBasicNacks;
+
+            _pendingMessages.Values.ToList().ForEach(x =>
+                {
+                    if (x.Timer != null)
+                        x.Timer.Dispose();
+                });
+        }
+
         private void RequeuePendingMessages()
         {
             var requeued = new ConcurrentDictionary<ulong, PublishState>(_pendingMessages);
             _pendingMessages.Clear();
 
-            requeued.Values.ToList().ForEach(x => x.Timer.Dispose());
-
-            foreach (var state in requeued.Values)
+            foreach (var key in requeued.Keys.OrderBy(x => x)
+                                .Where(x => x == requeued[x].SequenceIds.OrderBy(y => y).First()))
             {
-                var sequenceId = Model.NextPublishSeqNo;
-
-                state.Action(Model);
-
-                _pendingMessages.TryAdd(sequenceId, new PublishState
+                Publish(new PublishState
                     {
-                        Action = state.Action,
-                        Source = state.Source,
-                        Timer = CreateTimer(sequenceId, state.Source)
+                        Action = requeued[key].Action,
+                        Source = requeued[key].Source
                     });
             }
+        }
+
+        private void Publish(PublishState state)
+        {
+            if (state.Timer != null)
+                state.Timer.Dispose();
+
+            ulong sequenceId;
+
+            lock (LockObj)
+            {
+                sequenceId = Model.NextPublishSeqNo;
+                state.Action(Model);
+            }
+
+            _pendingMessages.TryAdd(sequenceId, state);
+
+            state.SequenceIds.Add(sequenceId);
+            state.Timer = CreateTimer(sequenceId);
+
+            if (state.SequenceIds.Count == 1)
+                Log.Info(String.Format("Message #{0} published.", sequenceId));
+            else
+                Log.Info(String.Format("Message #{0} republished as #{1}.",
+                    state.SequenceIds.OrderBy(x => x).First(), sequenceId));
+        }
+
+        private Timer CreateTimer(ulong sequenceId)
+        {
+            return new Timer(x =>
+            {
+                Log.Warn(String.Format("Message #{0} timed out waiting for broker response.",
+                    sequenceId));
+
+                if (Connection.IsConnected)
+                    Publish(_pendingMessages[sequenceId]);
+            }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
 
         private void ModelOnBasicAcks(IModel model, BasicAckEventArgs args)
@@ -98,14 +148,12 @@ namespace StarMQ.Publish
 
         private void ProcessResponse(ulong sequenceId, bool multiple, Action<PublishState> action)
         {
-            PublishState tmp;
-
             if (multiple)
             {
                 foreach (var id in _pendingMessages.Keys.Where(key => key <= sequenceId))
                 {
                     action(_pendingMessages[id]);
-                    _pendingMessages.TryRemove(id, out tmp);
+                    RemoveAllRelatedKeys(id);
                 }
             }
             else
@@ -113,9 +161,17 @@ namespace StarMQ.Publish
                 if (_pendingMessages.ContainsKey(sequenceId))
                 {
                     action(_pendingMessages[sequenceId]);
-                    _pendingMessages.TryRemove(sequenceId, out tmp);
+                    RemoveAllRelatedKeys(sequenceId);
                 }
             }
+        }
+
+        private void RemoveAllRelatedKeys(ulong sequenceId)
+        {
+            PublishState tmp;
+
+            foreach (var key in _pendingMessages[sequenceId].SequenceIds)
+                _pendingMessages.TryRemove(key, out tmp);
         }
 
         public override Task Publish(Action<IModel> action)
@@ -125,44 +181,9 @@ namespace StarMQ.Publish
 
             var tcs = new TaskCompletionSource<object>();
 
-            var sequenceId = Model.NextPublishSeqNo;
-
-            _pendingMessages.TryAdd(sequenceId, new PublishState
-            {
-                Action = action,
-                Source = tcs,
-                Timer = CreateTimer(sequenceId, tcs)
-            });
-
-            action(Model);
+            Publish(new PublishState { Action = action, Source = tcs });
 
             return tcs.Task;
-        }
-
-        private Timer CreateTimer(ulong sequenceId, TaskCompletionSource<object> tcs)
-        {
-            return new Timer(x =>
-            {
-                var text = String.Format("Publish sequence #{0} timed out waiting for broker response.", sequenceId);
-
-                Log.Warn(text);
-
-                if (tcs.TrySetException(new TimeoutException(text)))
-                {
-                    PublishState tmp;
-                    var message = _pendingMessages[sequenceId];
-
-                    message.Timer.Dispose();
-                    _pendingMessages.TryRemove(sequenceId, out tmp);
-                }
-            }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
-        }
-
-        private class PublishState
-        {
-            public Action<IModel> Action { get; set; }
-            public TaskCompletionSource<object> Source { get; set; }
-            public Timer Timer { get; set; }
         }
     }
 }

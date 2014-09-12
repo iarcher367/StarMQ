@@ -117,7 +117,8 @@
                     action();
                     return;
                 }
-//                catch (OperationInterruptedException ex)    // TODO: parse AMQP exception text, possible retry
+                //catch (NotSupportedException ex)
+                //catch (OperationInterruptedException ex)    // TODO: parse AMQP exception text, possible retry
                 catch (Exception ex) // TODO: limit scope to only channel exceptions
                 {
                     _log.Warn(String.Format("Channel failed. Waiting {0} ms to retry.", retryInterval)

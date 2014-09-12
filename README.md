@@ -1,7 +1,7 @@
 StarMQ
 ======
 
-StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBus**. The Simple API provides few configuration options as it assumes default behavior for common use-cases. For fine-grained control, the Advanced API offers methods that correlate to RabbitMQ’s 0-9-1 implementation.
+StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBus**. The Simple API provides few configuration options as it assumes default behaviour for common use-cases. For fine-grained control, the Advanced API offers methods that correlate to RabbitMQ’s 0-9-1 implementation.
 
 ## Highlights
 - The internal messaging architecture supports the addition of pre- and post-processing steps. Example pre-processing steps include message encryption, compression, and authentication. These may be toggled via configuration and registered at startup. At present, the only supported post-processing action is unsubscribing the current consumer.
@@ -15,10 +15,12 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - StarMQ automatically attempts to recover lost connections to the broker.
 - Publishes during a connection failure are non-blocking and buffered in memory until the connection is restored. _Warning_: high-throughput scenarios may cause memory issues during extended outages.
 
-<<<< will dispatcher attempt to execute commands while disconnected?
+## Publisher Confirms
+- StarMQ offers guaranteed publishing via RabbitMQ’s publisher confirms.
+- RabbitMQ declines a message by sending a basic.nack, which StarMQ passes along by throwing a PublishException. Declines are typically due to internal broker errors.
+- StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
 
 Todo:
-- supports Publisher Confirms
 - able to trigger unsubscribe from queue
 - pipeline design for consumers; insertion points to register strategy for cross-cutting concerns: de-dup, auth
 - supports HA, clusters

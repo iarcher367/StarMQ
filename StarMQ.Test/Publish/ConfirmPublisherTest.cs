@@ -14,6 +14,8 @@ namespace StarMQ.Test.Publish
 
     public class ConfirmPublisherTest
     {
+        private const int Timeout = 40;
+        private const int Offset = 10;
         private readonly ulong[] _seqNos = { 13, 14, 15, 16, 42, 43, 44 };
 
         private Mock<IConnectionConfiguration> _configuration;
@@ -32,7 +34,7 @@ namespace StarMQ.Test.Publish
             _modelOne = new Mock<IModel>();
             _modelTwo = new Mock<IModel>();
 
-            _configuration.Setup(x => x.Timeout).Returns(50);
+            _configuration.Setup(x => x.Timeout).Returns(Timeout);
             _connection.SetupSequence(x => x.CreateModel())
                 .Returns(_modelOne.Object)
                 .Returns(_modelTwo.Object);
@@ -79,14 +81,86 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        public void ShouldSetConfirmSelectIfOnConnectedFires()
+        public void ShouldSetConfirmSelect()
         {
             _modelOne.Verify(x => x.ConfirmSelect(), Times.Once);
         }
 
         [Test]
+        public async Task ShouldUnbindBasicAcksIfOnDisconnectedFires()
+        {
+            _connection.SetupSequence(x => x.IsConnected)
+                .Returns(false)
+                .Returns(true);
+
+            var count = 0;
+
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            var task = _sut.Publish(x => count += 2);
+
+            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
+
+            if (await Task.WhenAny(task, Task.Delay(Timeout)) == task)
+                Assert.Fail("Publish should not have completed.");
+
+            _connection.Raise(x => x.OnConnected += null);
+
+            _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
+
+            await task;
+
+            Assert.That(count, Is.EqualTo(4));
+        }
+
+        [Test]
+        [ExpectedException(typeof(PublishException))]
+        public async Task ShouldUnbindBasicNacksIfOnDisconnectedFires()
+        {
+            _connection.Setup(x => x.IsConnected).Returns(true);
+
+            var count = 0;
+
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            var task = _sut.Publish(x => count += 2);
+
+            _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[0] });
+
+            if (await Task.WhenAny(task, Task.Delay(Timeout)) == task)
+                Assert.Fail("Publish should not have completed.");
+
+            _connection.Raise(x => x.OnConnected += null);
+            _modelTwo.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[4] });
+
+            await task;
+        }
+
+        [Test]
+        public async Task ShouldDisposeTimersIfOnDisconnectedFires()
+        {
+            _connection.Setup(x => x.IsConnected).Returns(true);
+
+            var task = _sut.Publish(x => { });
+
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            await Task.Delay(Timeout * 3);
+
+            _connection.Raise(x => x.OnConnected += null);
+
+            _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
+
+            await task;
+
+            _connection.Verify(x => x.IsConnected, Times.Never);
+        }
+
+        [Test]
         public void ShouldRequeuePendingMessagesIfOnConnectedFires()
         {
+            _connection.Setup(x => x.IsConnected).Returns(true);
+
             const int a = 3, b = 5, c = 7;
             var count = 0;
 
@@ -116,37 +190,53 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        [ExpectedException(typeof(TimeoutException))]
-        public async Task ShouldUnbindBasicAcksIfOnDisconnectedFires()
+        public async Task ShouldRequeuePendingMessagesInSequenceOrderWithoutDuplicates()
         {
-            var flag = false;
+            _connection.SetupSequence(x => x.IsConnected)
+                .Returns(true)
+                .Returns(false);
+
+            const int a = 3, b = 5;
+            int order = 0, count = 0;
+            var tasks = new Task[2];
+
+            tasks[0] = _sut.Publish(x =>
+            {
+                x.BasicCancel("1");
+                count += a;
+            });
+
+            await Task.Delay(Offset);
+
+            tasks[1] = _sut.Publish(x =>
+            {
+                x.BasicCancel("2");
+                count += b;
+            });
+
+            await Task.Delay(Timeout);
 
             _connection.Raise(x => x.OnDisconnected += null);
 
-            var task = _sut.Publish(x => flag = true);
+            _modelTwo.Setup(x => x.BasicCancel("1"))
+                .Callback(() => Assert.That(order++, Is.EqualTo(0)));
+            _modelTwo.Setup(x => x.BasicCancel("2"))
+                .Callback(() => Assert.That(order++, Is.EqualTo(1)));
 
-            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
+            _connection.Raise(x => x.OnConnected += null);
 
-            await task;
+            _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
+            _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[5] });
 
-            Assert.That(flag, Is.True);
+            Task.WaitAll(tasks);
+
+            Assert.That(count, Is.EqualTo(3 * a + 2 * b));
         }
 
         [Test]
-        [ExpectedException(typeof(TimeoutException))]
-        public async Task ShouldUnbindBasicNacksIfOnDisconnectedFires()
+        public void ShouldAvoidReentrancyIssuesOnMappingStateToSequenceId()
         {
-            var flag = false;
-
-            _connection.Raise(x => x.OnDisconnected += null);
-
-            var task = _sut.Publish(x => flag = true);
-
-            _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[0] });
-
-            await task;
-
-            Assert.That(flag, Is.True);
+            Assert.Inconclusive();
         }
 
         [Test]
@@ -166,6 +256,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public void ShouldInvokeAndConfirmMultipleOnBasicAckWithMultipleSet()
         {
+            _connection.Setup(x => x.IsConnected).Returns(true);
+
             var count = 0;
             var tasks = new[]
                 {
@@ -211,6 +303,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public void ShouldInvokeAndThrowMultipleExceptionsOnBasicNackWithMultipleSet()
         {
+            _connection.Setup(x => x.IsConnected).Returns(true);
+
             var count = 0;
             var tasks = new[]
                 {
@@ -242,14 +336,39 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        [ExpectedException(typeof(TimeoutException))]
-        public async Task ShouldInvokeAndThrowExceptionOnTimeout()
+        public async Task ShouldInvokeAndRepublishOnTimeout()
         {
-            var flag = false;
+            _connection.Setup(x => x.IsConnected).Returns(true);
 
-            await _sut.Publish(x => flag = true);
+            var count = 0;
 
-            Assert.That(flag, Is.True);
+            var task = _sut.Publish(x => count += 2);
+
+            await Task.Delay(Timeout + Offset);
+
+            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[1] });
+
+            await task;
+
+            Assert.That(count, Is.EqualTo(4));
+        }
+
+        [Test]
+        public async Task ShouldNotRepublishOnTimeoutIfDisconnected()
+        {
+            _connection.Setup(x => x.IsConnected).Returns(false);
+
+            var count = 0;
+
+            var task = _sut.Publish(x => count += 2);
+
+            await Task.Delay(Timeout + Offset);
+
+            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
+
+            await task;
+
+            Assert.That(count, Is.EqualTo(2));
         }
 
         [Test]

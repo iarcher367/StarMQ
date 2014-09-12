@@ -22,8 +22,7 @@
     /// </summary>
     public abstract class BasePublisher : IPublisher
     {
-        private readonly IConnection _connection;
-
+        protected readonly IConnection Connection;
         protected readonly ILog Log;
         protected IModel Model;
 
@@ -31,16 +30,16 @@
 
         protected BasePublisher(IConnection connection, ILog log)
         {
-            _connection = connection;
+            Connection = connection;
             Log = log;
 
-            _connection.OnConnected += OnConnected;
-            _connection.OnDisconnected += OnDisconnected;
+            Connection.OnConnected += OnConnected;
+            Connection.OnDisconnected += OnDisconnected;
         }
 
         protected virtual void OnConnected()
         {
-            Model = _connection.CreateModel();
+            Model = Connection.CreateModel();
             Model.BasicReturn += HandleBasicReturn;
 
             Log.Info("Channel opened.");
