@@ -21,20 +21,9 @@ namespace StarMQ.Publish
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            var tcs = new TaskCompletionSource<object>();
+            action(Model);
 
-            try
-            {
-                action(Model);
-
-                tcs.SetResult(null);
-            }
-            catch (Exception ex)    // TODO: limit scope to only channel exceptions
-            {
-                tcs.SetException(ex);
-            }
-
-            return tcs.Task;
+            return Task.FromResult<object>(null);
         }
     }
 }

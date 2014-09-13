@@ -81,9 +81,21 @@
         }
 
         [Test]
-        public void ShouldRetryAfterReconnect()
+        public async Task ShouldRetryUntilTimeoutIfChannelFails()
         {
-            Assert.Fail();
+            _configuration.Setup(x => x.Timeout).Returns(150);
+
+            var count = 0;
+
+            await _sut.Invoke(x =>
+                {
+                    count += 2;
+                    throw new NotSupportedException();
+                });
+
+            await Task.Delay(250);
+
+            Assert.That(count, Is.EqualTo(4));
         }
 
         [Test]
@@ -98,7 +110,17 @@
         {
             _sut.Dispose();
 
-            Assert.Inconclusive();
+            _model.Verify(x => x.Dispose(), Times.Once);
+        }
+
+        [Test]
+        public void ShouldNotDisposeMultipleTimes()
+        {
+            _sut.Dispose();
+            _sut.Dispose();
+            _sut.Dispose();
+
+            _model.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

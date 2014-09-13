@@ -442,5 +442,17 @@
             _inboundDispatcher.Verify(x => x.Dispose(), Times.Once);
             _outboundDispatcher.Verify(x => x.Dispose(), Times.Once);
         }
+
+        [Test]
+        public void ShouldNotDisposeMultipleTimes()
+        {
+            _sut.Dispose();
+            _sut.Dispose();
+            _sut.Dispose();
+
+            _connection.Verify(x => x.Dispose(), Times.Once);
+            _inboundDispatcher.Verify(x => x.Dispose(), Times.Once);
+            _outboundDispatcher.Verify(x => x.Dispose(), Times.Once);
+        }
     }
 }

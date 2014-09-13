@@ -77,5 +77,13 @@
 
             Assert.That(flag, Is.True);
         }
+
+        [Test]
+        public void ShouldDispose()
+        {
+            _sut.Dispose();
+
+            _model.Verify(x => x.Dispose(), Times.Once);
+        }
     }
 }

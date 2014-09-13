@@ -9,7 +9,7 @@
 
     public delegate void BasicReturnHandler(object sender, EventArgs args);
 
-    public interface IPublisher
+    public interface IPublisher : IDisposable
     {
         Task Publish(Action<IModel> action);
 
@@ -64,5 +64,10 @@
         }
 
         public abstract Task Publish(Action<IModel> action);
+
+        public void Dispose()
+        {
+            Model.Dispose();
+        }
     }
 }

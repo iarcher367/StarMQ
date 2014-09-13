@@ -28,7 +28,6 @@ namespace StarMQ.Consume
         protected Func<IMessage<byte[]>, BaseResponse> MessageHandler;
 
         private readonly IInboundDispatcher _dispatcher;
-        private bool _disposed;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
 
@@ -151,10 +150,6 @@ namespace StarMQ.Consume
 
         public void Dispose()
         {
-            if (_disposed) return;
-
-            _disposed = true;
-
             Model.Dispose();
 
             Log.Info("Dispose completed.");

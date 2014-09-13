@@ -243,7 +243,7 @@ namespace StarMQ.Test
         [ExpectedException(typeof(ArgumentNullException))]
         public void ValidateShouldThrowExceptionIfFieldIsNull()
         {
-            Global.Validate(String.Empty, null);
+            Global.Validate(null, String.Empty);
         }
 
         [Test]
