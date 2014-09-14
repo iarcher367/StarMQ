@@ -8,7 +8,7 @@
     public class ConsumerFactory
     {
         public static IConsumer CreateConsumer(Queue queue, IConnectionConfiguration configuration,
-            IConnection connection, IInboundDispatcher dispatcher, INamingStrategy namingStrategy)
+            IConnection connection, IOutboundDispatcher dispatcher, INamingStrategy namingStrategy)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");

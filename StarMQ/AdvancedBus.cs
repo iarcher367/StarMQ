@@ -46,10 +46,9 @@ namespace StarMQ
 
         private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;
-        private readonly IInboundDispatcher _inboundDispatcher;
+        private readonly IOutboundDispatcher _dispatcher;
         private readonly ILog _log;
         private readonly INamingStrategy _namingStrategy;
-        private readonly IOutboundDispatcher _outboundDispatcher;
         private readonly IPipeline _pipeline;
         private readonly IPublisher _publisher;
         private readonly ISerializationStrategy _serializationStrategy;
@@ -57,19 +56,17 @@ namespace StarMQ
 
         private bool _disposed;
 
-        public event BasicReturnHandler BasicReturn;
+        public event BasicReturnHandler BasicReturn;    // TODO: support confirms & basic publishers
 
         public AdvancedBus(IConnectionConfiguration configuration, IConnection connection,
-            IInboundDispatcher inboundDispatcher, ILog log, INamingStrategy namingStrategy, 
-            IOutboundDispatcher outboundDispatcher, IPipeline pipeline, IPublisher publisher,
-            ISerializationStrategy serializationStrategy)   // TODO: support confirms & basic publishers
+            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy,
+            IPipeline pipeline, IPublisher publisher, ISerializationStrategy serializationStrategy)
         {
             _configuration = configuration;
             _connection = connection;
-            _inboundDispatcher = inboundDispatcher;
+            _dispatcher = dispatcher;
             _log = log;
             _namingStrategy = namingStrategy;
-            _outboundDispatcher = outboundDispatcher;
             _pipeline = pipeline;
             _publisher = publisher;
             _serializationStrategy = serializationStrategy;
@@ -92,7 +89,7 @@ namespace StarMQ
             // TODO: support derived types on same subscription and multiple handlers
 
             var consumer = ConsumerFactory.CreateConsumer(queue, _configuration, _connection,
-                _inboundDispatcher, _namingStrategy);
+                _dispatcher, _namingStrategy);
 
             await consumer.Consume(queue, message =>
                 {
@@ -131,7 +128,7 @@ namespace StarMQ
 
             if (exchange.Passive)
             {
-                await _outboundDispatcher.Invoke(x => x.ExchangeDeclarePassive(exchange.Name));
+                await _dispatcher.Invoke(x => x.ExchangeDeclarePassive(exchange.Name));
             }
             else
             {
@@ -144,7 +141,7 @@ namespace StarMQ
                     config.Append(" [AE]=").Append(exchange.AlternateExchangeName);
                 }
 
-                await _outboundDispatcher.Invoke(x =>
+                await _dispatcher.Invoke(x =>
                     x.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
                         exchange.Durable, exchange.AutoDelete, args));
 
@@ -164,7 +161,7 @@ namespace StarMQ
             var serialized = _serializationStrategy.Serialize(message);
             var data = _pipeline.OnSend(serialized);
 
-            await _outboundDispatcher.Invoke(x =>
+            await _dispatcher.Invoke(x =>
             {
                 var properties = x.CreateBasicProperties();
                 message.Properties.CopyTo(properties);
@@ -200,7 +197,7 @@ namespace StarMQ
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
-            await _outboundDispatcher.Invoke(x => x.QueueBind(queue.Name, exchange.Name, routingKey));
+            await _dispatcher.Invoke(x => x.QueueBind(queue.Name, exchange.Name, routingKey));
 
             _log.Info(String.Format("Queue '{0}' bound to exchange '{1}' with routing key '{2}'.",
                 queue.Name, exchange.Name, routingKey));
@@ -223,7 +220,7 @@ namespace StarMQ
 
             if (queue.Passive)
             {
-                await _outboundDispatcher.Invoke(x => x.QueueDeclarePassive(queue.Name));
+                await _dispatcher.Invoke(x => x.QueueDeclarePassive(queue.Name));
             }
             else
             {
@@ -248,7 +245,7 @@ namespace StarMQ
                     config.Append(" [TTL]=").Append(queue.MessageTimeToLive);
                 }
 
-                await _outboundDispatcher.Invoke(x =>
+                await _dispatcher.Invoke(x =>
                     x.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete,
                         args));
 
@@ -262,8 +259,7 @@ namespace StarMQ
 
             _disposed = true;
 
-            _inboundDispatcher.Dispose();
-            _outboundDispatcher.Dispose();
+            _dispatcher.Dispose();
             _connection.Dispose();
 
             _log.Info("Dispose completed.");

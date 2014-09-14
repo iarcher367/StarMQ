@@ -8,13 +8,10 @@ namespace StarMQ.Consume
     using RabbitMQ.Client.Events;
     using RabbitMQ.Client.Exceptions;
     using System;
+    using System.Collections.Concurrent;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
-    /// <summary>
-    /// To ensure sequential message processing, all consumers created by the same bus share a single
-    /// dispatcher thread. Avoid using long-running message handlers for high throughput scenarios.
-    /// </summary>
     public interface IConsumer : IBasicConsumer, IDisposable
     {
         Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler);
@@ -24,10 +21,12 @@ namespace StarMQ.Consume
     {
         protected readonly IConnectionConfiguration Configuration;
         protected readonly IConnection Connection;
+        protected readonly IOutboundDispatcher Dispatcher;
         protected readonly ILog Log;
         protected Func<IMessage<byte[]>, BaseResponse> MessageHandler;
 
-        private readonly IInboundDispatcher _dispatcher;
+        private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
+        private bool _disposed;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
 
@@ -35,14 +34,36 @@ namespace StarMQ.Consume
         public IModel Model { get; protected set; }
 
         protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
-            IInboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
+            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
         {
             Configuration = configuration;
             Connection = connection;
             ConsumerTag = namingStrategy.GetConsumerTag();
-            _dispatcher = dispatcher;
+            Dispatcher = dispatcher;
             Log = log;
-            Model = connection.CreateModel();
+            Model = Connection.CreateModel();
+
+            Connection.OnDisconnected += OnDisconnected;
+            Dispatch();
+        }
+
+        private void Dispatch()
+        {
+            Task.Run(() =>
+                {
+                    foreach (var action in _queue.GetConsumingEnumerable())
+                        Task.Run(action).Wait();
+                });
+        }
+
+        private void OnDisconnected()
+        {
+            Action action;
+
+            while (_queue.TryTake(out action))
+                Log.Info("Message discarded.");
+
+            Model.Dispose();
         }
 
         public abstract Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler);
@@ -56,7 +77,7 @@ namespace StarMQ.Consume
             if (consumerCancelled != null)
                 consumerCancelled(this, new ConsumerEventArgs(consumerTag));
 
-            Log.Info(String.Format("Broker requested cancellation for consumer '{0}'.", consumerTag));
+            Log.Info(String.Format("Broker cancelled consumer '{0}'.", consumerTag));
         }
 
         public void HandleBasicCancelOk(string consumerTag)
@@ -64,9 +85,7 @@ namespace StarMQ.Consume
             if (ConsumerTag != consumerTag)
                 throw new StarMqException("Consumer tag mismatch.");    // TODO: remove if impossible
 
-            Log.Warn(String.Format("Cancel confirmed for consumer '{0}' - research required!", consumerTag));
-
-            Dispose();
+            Log.Info(String.Format("Cancel confirmed for consumer '{0}'.", consumerTag));
         }
 
         public void HandleBasicConsumeOk(string consumerTag)
@@ -85,72 +104,60 @@ namespace StarMQ.Consume
             if (ConsumerTag != consumerTag)
                 throw new StarMqException("Consumer tag mismatch.");    // TODO: remove if impossible
 
-            Log.Debug(String.Format("Consumer '{0}' received message with deliveryTag '{1}'.",
-                consumerTag, deliveryTag));
-
-            // TODO: check _disposed?
-
-            if (MessageHandler == null)
-            {
-                Log.Error("MessageHandler has not been set - cannot process received message.");
-                return;
-            }
-
-            var message = new Message<byte[]>(body);
-            message.Properties.CopyFrom(properties);
-
-            _dispatcher.Invoke(async () =>       // TODO: may need to pass in redelivered
-                {
-                    var response = MessageHandler(message);
-                    response.DeliveryTag = deliveryTag;
-
-                    try
-                    {
-                        await SendResponse(response);
-                    }
-                    catch (AlreadyClosedException ex)
-                    {
-                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
-                            ex.GetType().Name));
-                    }
-                    catch (NotSupportedException ex)
-                    {
-                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
-                            ex.GetType().Name));
-                    }
-                });
-        }
-
-        private Task SendResponse(BaseResponse response)
-        {
-            var tcs = new TaskCompletionSource<object>();
+            Log.Debug(String.Format("Consumer '{0}' received message #{1}.", consumerTag, deliveryTag));
 
             try
             {
-                response.Send(Model, Log);
+                _queue.Add(() => // TODO: process redelivered?
+                    {
+                        var message = new Message<byte[]>(body);
+                        message.Properties.CopyFrom(properties);
 
-                if (response.Action == ResponseAction.Unsubscribe)
-                    Model.BasicCancel(ConsumerTag);
+                        if (_disposed) return;
 
-                tcs.SetResult(null);
+                        var response = MessageHandler(message);
+                        response.DeliveryTag = deliveryTag;
+
+                        try
+                        {
+                            response.Send(Model, Log);
+
+                            if (response.Action == ResponseAction.Unsubscribe)
+                            {
+                                Model.BasicCancel(ConsumerTag);
+                                Dispose();
+                            }
+                        }
+                        catch (AlreadyClosedException ex)
+                        {
+                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                                ex.GetType().Name));
+                        }
+                        catch (NotSupportedException ex)
+                        {
+                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                                ex.GetType().Name));
+                        }
+                    });
             }
-            catch (Exception ex)
-            {
-                tcs.SetException(ex);
-            }
-
-            return tcs.Task;
+            catch (InvalidOperationException) { /* thrown if fired after dispose */}
         }
 
         public void HandleModelShutdown(IModel model, ShutdownEventArgs args)
         {
-            Log.Info(String.Format("Consumer '{0}' was shutdown by '{1}' due to '{2}'",
+            Log.Info(String.Format("Consumer '{0}' shutdown by {1}. Reason: '{2}'",
                 ConsumerTag, args.Initiator, args.Cause));
         }
 
         public void Dispose()
         {
-            Model.Dispose();
+            if (_disposed) return;
+
+            _disposed = true;
+
+            _queue.CompleteAdding();
+
+            OnDisconnected();
 
             Log.Info("Dispose completed.");
         }

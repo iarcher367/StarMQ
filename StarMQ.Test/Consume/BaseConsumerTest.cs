@@ -4,23 +4,24 @@
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
+    using RabbitMQ.Client.Exceptions;
     using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Model;
     using System;
-    using System.Collections.Generic;
+    using System.Threading;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BaseConsumerTest
     {
         private const string ConsumerTag = "a3467096-7250-47b8-b5d7-08472505fc2d";
+        private const int Delay = 10;
         private const ulong DeliveryTag = 42;
-        private const ushort PrefetchCount = 10;
 
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
-        private Mock<IInboundDispatcher> _dispatcher;
+        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<INamingStrategy> _namingStrategy;
@@ -32,12 +33,12 @@
         [SetUp]
         public void Setup()
         {
-            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
-            _connection = new Mock<IConnection>(MockBehavior.Strict);
-            _dispatcher = new Mock<IInboundDispatcher>(MockBehavior.Strict);
+            _configuration = new Mock<IConnectionConfiguration>();
+            _connection = new Mock<IConnection>();
+            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
-            _model = new Mock<IModel>(MockBehavior.Strict);
-            _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
+            _model = new Mock<IModel>();
+            _namingStrategy = new Mock<INamingStrategy>();
             _properties = new Mock<IBasicProperties>();
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
@@ -50,10 +51,19 @@
         }
 
         [TearDown]
-        public void Teardown()
+        public void TearDown()
         {
-            _connection.Verify(x => x.CreateModel(), Times.Once);
-            _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
+            _sut.Dispose();
+        }
+
+        [Test]
+        public void ShouldDisposeModelAndDiscardMessagesIfOnDisconnectedFires()
+        {
+            _connection.Raise(x => x.OnDisconnected += null);
+
+            _model.Verify(x => x.Dispose(), Times.Once);
+
+            Assert.Inconclusive();
         }
 
         [Test]
@@ -69,21 +79,19 @@
         }
 
         [Test]
-        public void CancelOkShouldDispose()
+        public void CancelOkShouldDoNothing()
         {
-            _model.Setup(x => x.Dispose());
-
             _sut.HandleBasicCancelOk(ConsumerTag);
-
-            _model.Verify(x => x.Dispose(), Times.Once);
         }
 
         [Test]
         public void ConsumeOkShouldSetConsumerTag()
         {
-            _sut.HandleBasicConsumeOk(ConsumerTag);
+            var tag = Guid.NewGuid().ToString();
 
-            Assert.That(_sut.ConsumerTag, Is.EqualTo(ConsumerTag));
+            _sut.HandleBasicConsumeOk(tag);
+
+            Assert.That(_sut.ConsumerTag, Is.EqualTo(tag));
         }
 
         [Test]
@@ -94,115 +102,104 @@
         }
 
         [Test]
-        public void DeliverShouldQueueMessageToDispatcher()
+        public async Task DeliverShouldExecuteMessageHandler()
         {
-            var properties = new Mock<IBasicProperties>();
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Returns(Task.FromResult(0));
+            var signal = new ManualResetEventSlim(false);
 
-            _sut.Consume(new Queue(String.Empty), x => new AckResponse());
-            _sut.HandleBasicDeliver(ConsumerTag, 0, false, String.Empty, String.Empty,
-                properties.Object, new byte[0]);
-
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
-        }
-
-        [Test]
-        public async Task DeliverShouldBasicCancelOnUnsubscribeAction()
-        {
-            Action action = () => { };
-
-            DeliverConsumeSetup();
-
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
-                .Returns(Task.FromResult(0))
-                .Callback<Action>(x => action = x);
-            _model.Setup(x => x.BasicAck(DeliveryTag, false));
-            _model.Setup(x => x.BasicCancel(ConsumerTag));
-
-            await _sut.Consume(_queue, x => new AckResponse
+            await _sut.Consume(_queue, x =>
             {
-                Action = ResponseAction.Unsubscribe
+                signal.Set();
+                return new AckResponse();
             });
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            action();
-
-            DeliverConsumeVerify();
-
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
-            _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
-            _model.Verify(x => x.BasicCancel(ConsumerTag), Times.Once);
+            signal.Wait();
         }
 
-        private void DeliverConsumeSetup()
+        [Test]
+        public async Task DeliverShouldNotBeginProcessingIfCancelled()
         {
-            _configuration.Setup(x => x.PrefetchCount).Returns(PrefetchCount);
-            _model.Setup(x => x.BasicConsume(_queue.Name, false, ConsumerTag,
-                It.IsAny<Dictionary<string, object>>(), _sut))
-                .Returns(String.Empty);
-            _model.Setup(x => x.BasicQos(0, PrefetchCount, false));
-            _model.Setup(x => x.IsOpen).Returns(true);
-        }
+            var count = 0;
 
-        private void DeliverConsumeVerify()
-        {
-            _configuration.Verify(x => x.PrefetchCount, Times.Once);
-            _model.Verify(x => x.BasicConsume(_queue.Name, false, ConsumerTag,
-                It.IsAny<Dictionary<string, object>>(), _sut), Times.Once);
-            _model.Verify(x => x.BasicQos(0, PrefetchCount, false), Times.Once);
-            _model.Verify(x => x.IsOpen, Times.Once);
+            await _sut.Consume(_queue, x =>
+                {
+                    count += 2;
+                    return new AckResponse();
+                });
+
+            _sut.Dispose();
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+
+            await Task.Delay(Delay);
+
+            Assert.That(count, Is.EqualTo(0));
         }
 
         [Test]
         public async Task DeliverShouldBasicAckWithDeliveryTag()
         {
-            Action action = () => { };
-
-            DeliverConsumeSetup();
-
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
-                .Returns(Task.FromResult(0))
-                .Callback<Action>(x => action = x);
-            _model.Setup(x => x.BasicAck(DeliveryTag, false));
-
             await _sut.Consume(_queue, x => new AckResponse());
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            action();
+            await Task.Delay(Delay);
 
-            DeliverConsumeVerify();
-
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
             _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
         }
 
         [Test]
         public async Task DeliverShouldBasicNackWithDeliveryTag()
         {
-            Action action = () => { };
-
-            DeliverConsumeSetup();
-
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
-                .Returns(Task.FromResult(0))
-                .Callback<Action>(x => action = x);
-            _model.Setup(x => x.BasicNack(DeliveryTag, false, false));
-
             await _sut.Consume(_queue, x => new NackResponse());
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            action();
+            await Task.Delay(Delay);
 
-            DeliverConsumeVerify();
-
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
             _model.Verify(x => x.BasicNack(DeliveryTag, false, false), Times.Once);
+        }
+
+        [Test]
+        public async Task DeliverShouldBasicCancelOnUnsubscribeAction()
+        {
+            await _sut.Consume(_queue, x => new AckResponse { Action = ResponseAction.Unsubscribe });
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+
+            await Task.Delay(Delay);
+
+            _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
+            _model.Verify(x => x.BasicCancel(ConsumerTag), Times.Once);
+            _model.Verify(x => x.Dispose(), Times.Once);
+        }
+
+        [Test]
+        public async Task DeliverShouldDoNothingOnModelAlreadyClosedException()
+        {
+            _model.Setup(x => x.BasicAck(DeliveryTag, false)).Throws(new AlreadyClosedException(null));
+
+            await _sut.Consume(_queue, x => new AckResponse());
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+        }
+
+        [Test]
+        public async Task DeliverShouldDoNothingOnModelNotSupportedException()
+        {
+            _model.Setup(x => x.BasicAck(DeliveryTag, false)).Throws(new NotSupportedException(null));
+
+            await _sut.Consume(_queue, x => new AckResponse());
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
         }
 
         [Test]
@@ -215,8 +212,6 @@
         [Test]
         public void ShouldDispose()
         {
-            _model.Setup(x => x.Dispose());
-
             _sut.Dispose();
 
             _model.Verify(x => x.Dispose(), Times.Once);

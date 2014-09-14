@@ -100,7 +100,7 @@ namespace StarMQ.Core
 
         private void OnConnectionShutdown(RabbitMQ.Client.IConnection _, ShutdownEventArgs args)
         {
-            _log.Info("Lost connection to broker.\n" + _connection.CloseReason);
+            _log.Info("Lost connection to broker.\n " + _connection.CloseReason);
 
             var onDisconnected = OnDisconnected;
             if (onDisconnected != null)

@@ -59,6 +59,8 @@
 
             await _sut.Invoke(x => { count += 3; });
 
+            await Task.Delay(Delay);
+
             _connection.Raise(x => x.OnDisconnected += null);
 
             await _sut.Invoke(x => { count += 5; });

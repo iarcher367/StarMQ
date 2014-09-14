@@ -1,11 +1,9 @@
 ﻿namespace StarMQ.Test.Consume
 {
-    using Exception;
     using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
-    using RabbitMQ.Client.Events;
     using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Model;
@@ -16,63 +14,110 @@
 
     public class BasicConsumerTest
     {
-        private const string ConsumerTag = "a3467096-7250-47b8-b5d7-08472505fc2d";
-        private const string QueueName = "StarMQ.Master";
+        private const string ConsumerTagOne = "a3467096-7250-47b8-b5d7-08472505fc2d";
+        private const string ConsumerTagTwo = "cb5239f7-80c6-48ec-a5ed-aa1a6b73e4f2";
 
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
-        private Mock<IInboundDispatcher> _dispatcher;
+        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
-        private Mock<IModel> _model;
+        private Mock<IModel> _modelOne;
+        private Mock<IModel> _modelTwo;
         private Mock<INamingStrategy> _namingStrategy;
         private IConsumer _sut;
 
         [SetUp]
         public void Setup()
         {
-            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
-            _connection = new Mock<IConnection>(MockBehavior.Strict);
-            _dispatcher = new Mock<IInboundDispatcher>(MockBehavior.Strict);
+            _configuration = new Mock<IConnectionConfiguration>();
+            _connection = new Mock<IConnection>();
+            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
-            _model = new Mock<IModel>();
-            _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
+            _modelOne = new Mock<IModel>();
+            _modelTwo = new Mock<IModel>();
+            _namingStrategy = new Mock<INamingStrategy>();
 
-            _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
-            _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
+            _connection.SetupSequence(x => x.CreateModel())
+                .Returns(_modelOne.Object)
+                .Returns(_modelTwo.Object);
+            _namingStrategy.SetupSequence(x => x.GetConsumerTag())
+                .Returns(ConsumerTagOne)
+                .Returns(ConsumerTagTwo);
 
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 _log.Object, _namingStrategy.Object);
         }
 
         [TearDown]
-        public void Teardown()
+        public void TearDown()
         {
-            _connection.Verify(x => x.CreateModel(), Times.Once);
-            _namingStrategy.Verify(x => x.GetConsumerTag(), Times.Once);
+            _sut.Dispose();
         }
 
         [Test]
-        public async Task ShouldSetQosAndConsumeIfModelIsOpen()
+        public void ShouldSetQosAndConsume()
         {
-            const int prefetchCount = 10;
+            const ushort prefetchCount = 10;
+            Action action = () => { };
+            var queue = new Queue(String.Empty);
+
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
-            _model.Setup(x => x.IsOpen).Returns(true);
-            _model.Setup(x => x.BasicQos(0, prefetchCount, It.IsAny<bool>()));
-            _model.Setup(x => x.BasicConsume(QueueName, false, _sut));
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            await _sut.Consume(new Queue(QueueName), message => new AckResponse());
+            _sut.Consume(queue, x => new AckResponse());
 
-            _model.Verify(x => x.IsOpen, Times.Once);
-            _model.Verify(x => x.BasicQos(0, prefetchCount, It.IsAny<bool>()), Times.Once);
-            _model.Verify(x => x.BasicConsume(QueueName, false, ConsumerTag,
-                It.IsAny<Dictionary<string, object>>(), It.IsAny<BasicConsumer>()), Times.Once);
+            action();
+
+            _configuration.Verify(x => x.PrefetchCount, Times.Once);
+            _connection.Verify(x => x.CreateModel(), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
+            _modelOne.Verify(x => x.BasicQos(0, prefetchCount, false), Times.Once);
+            _modelOne.Verify(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()), Times.Once);
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
+        public async Task ShouldProcessQueuesIndependently()
         {
-            await _sut.Consume(new Queue(String.Empty), null);
+            const int delay = 10;
+            var fastQueue = new Queue("fast");
+            var order = 0;
+            var slowQueue = new Queue("slow");
+            var sutTwo = new BasicConsumer(_configuration.Object, _connection.Object,
+                _dispatcher.Object, _log.Object, _namingStrategy.Object);
+
+            _modelOne.Setup(x => x.BasicAck(1, false))
+                .Callback(() => Assert.That(order++, Is.EqualTo(0)));
+            _modelTwo.Setup(x => x.BasicAck(2, false))
+                .Callback(() => Assert.That(order++, Is.EqualTo(1)));
+            _modelTwo.Setup(x => x.BasicAck(4, false))
+                .Callback(() => Assert.That(order++, Is.EqualTo(2)));
+            _modelOne.Setup(x => x.BasicAck(3, false))
+                .Callback(() => Assert.That(order++, Is.EqualTo(3)));
+
+            await _sut.Consume(slowQueue, x =>
+                {
+                    Task.Delay(delay * 2).Wait();
+                    return new AckResponse();
+                });
+            await sutTwo.Consume(fastQueue, x =>
+                {
+                    Task.Delay(delay).Wait();
+                    return new AckResponse();
+                });
+
+            _sut.HandleBasicDeliver(ConsumerTagOne, 1, false, String.Empty, String.Empty,
+                It.IsAny<IBasicProperties>(), new byte[1]);
+            sutTwo.HandleBasicDeliver(ConsumerTagTwo, 2, false, String.Empty, String.Empty,
+                It.IsAny<IBasicProperties>(), new byte[1]);
+            _sut.HandleBasicDeliver(ConsumerTagOne, 3, false, String.Empty, String.Empty,
+                It.IsAny<IBasicProperties>(), new byte[1]);
+            sutTwo.HandleBasicDeliver(ConsumerTagTwo, 4, false, String.Empty, String.Empty,
+                It.IsAny<IBasicProperties>(), new byte[1]);
+
+            await Task.Delay(delay * 4);
+
+            sutTwo.Dispose();
         }
 
         [Test]
@@ -83,13 +128,10 @@
         }
 
         [Test]
-        public void ShouldDoNothingOnConsumerCancelledEvent()
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            var sut = new Mock<IConsumer>();
-
-            sut.Raise(x => x.ConsumerCancelled += null, new ConsumerEventArgs(String.Empty));
-
-            Assert.Inconclusive();
+            await _sut.Consume(new Queue(String.Empty), null);
         }
     }
 }
