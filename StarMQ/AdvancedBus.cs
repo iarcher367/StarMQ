@@ -20,8 +20,8 @@ namespace StarMQ
         Task ExchangeDeclareAsync(Exchange exchange);
 
         /// <summary>
-        /// With publisher confirms enabled, task completes upon receiving Ack.
-        /// Otherwise, it throws an exception on NAck or timeout.           // TODO: verify
+        /// With publisher confirms enabled, dispatcher completes task upon receiving Ack or Nack.
+        /// If timeout elapses, message is published again.
         /// </summary>
         /// <param name="mandatory">If true, published messages must be routed at least one queue. Otherwise, returned via basic.return.</param>
         /// <param name="immediate">If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>

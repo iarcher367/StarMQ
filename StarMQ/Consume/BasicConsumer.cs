@@ -41,7 +41,10 @@ namespace StarMQ.Consume
 
                 Model.BasicQos(0, Configuration.PrefetchCount, false);
 
-                // TODO: add args - priority, cancel
+                if (Configuration.CancelOnHaFailover || queue.CancelOnHaFailover)
+                    args.Add("x-cancel-on-ha-failover", queue.CancelOnHaFailover);
+                if (queue.Priority != 0)
+                    args.Add("x-priority", queue.Priority);
 
                 Model.BasicConsume(queue.Name, false, ConsumerTag, args, this);
 

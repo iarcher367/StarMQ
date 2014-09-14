@@ -17,6 +17,15 @@
             Connection.OnConnected += OnConnected;
         }
 
+        private void OnConnected()
+        {
+            Model = Connection.CreateModel();
+
+            Log.Info("Synchronized model.");
+
+            Consume(_queue);
+        }
+
         public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
         {
             if (queue == null)
@@ -27,13 +36,11 @@
             return base.Consume(queue, messageHandler);
         }
 
-        private void OnConnected()
+        public override void HandleBasicCancel(string consumerTag)
         {
-            Model = Connection.CreateModel();
+            base.HandleBasicCancel(consumerTag);
 
-            Log.Info("Synchronized model.");
-
-            Consume(_queue);
+            Consume(_queue);    // TODO: verify not using OnConnected
         }
     }
 }

@@ -17,6 +17,19 @@ namespace StarMQ.Test
 
         #region ParseConfiguration
         [Test]
+        public void ParseConfigurationShouldSetSetCancelOnHaFailover()
+        {
+            const string format = "cancelonhafailover={0}";
+            const bool cancelOnHaFailover = true;
+
+            var connectionString = String.Format(format, cancelOnHaFailover);
+
+            Global.ParseConfiguration(_configuration, connectionString);
+
+            Assert.That(_configuration.CancelOnHaFailover, Is.EqualTo(cancelOnHaFailover));
+        }
+
+        [Test]
         public void ParseConfigurationShouldSetHeartbeat()
         {
             const string format = "heartbeat={0}";
@@ -126,7 +139,7 @@ namespace StarMQ.Test
         [Test]
         public void ParseConfigurationShouldSetSetPublisherConfirms()
         {
-            const string format = "PublisherConfirms={0}";
+            const string format = "publisherconfirms={0}";
             const bool publisherConfirms = true;
 
             var connectionString = String.Format(format, publisherConfirms);

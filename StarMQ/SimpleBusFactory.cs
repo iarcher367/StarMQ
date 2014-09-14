@@ -8,8 +8,8 @@
         /// <summary>
         /// Creates a SimpleBus instance with the default configuration.
         ///
-        /// heartbeat=10;host=localhost;password=guest;port=5672;publisherconfirms=false;
-        /// timeout=10000;username=guest;virtualhost=/
+        /// cancelonhafailover=false;heartbeat=10;host=localhost;password=guest;port=5672;
+        /// publisherconfirms=false;timeout=10000;username=guest;virtualhost=/
         /// </summary>
         public static ISimpleBus GetBus()
         {

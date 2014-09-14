@@ -119,9 +119,6 @@ namespace StarMQ.Core
 
         public IModel CreateModel()
         {
-            if (!IsConnected)
-                throw new StarMqException("Not connected.");    // TODO: research and deprecate
-
             return _connection.CreateModel();
         }
 

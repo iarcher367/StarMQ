@@ -68,7 +68,7 @@ namespace StarMQ.Consume
 
         public abstract Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler);
 
-        public void HandleBasicCancel(string consumerTag)
+        public virtual void HandleBasicCancel(string consumerTag)
         {
             if (ConsumerTag != consumerTag)
                 throw new StarMqException("Consumer tag mismatch.");    // TODO: remove if impossible

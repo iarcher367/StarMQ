@@ -120,8 +120,6 @@
 
             var exchange = await ConfigureExchange<T>();
 
-            // TODO: support prefetchcount, priority, cancelOnHaFailover?
-
             var queueName = _namingStrategy.GetQueueName(typeof(T), subscriptionId);
             var queue = new Queue(queueName)
             {

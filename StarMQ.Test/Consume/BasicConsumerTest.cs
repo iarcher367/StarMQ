@@ -77,6 +77,85 @@
         }
 
         [Test]
+        public void ShouldSetCancelOnHaFailoverIfSetInConfiguration()
+        {
+            const string key = "x-cancel-on-ha-failover";
+
+            Action action = () => { };
+            IDictionary<string, object> args = new Dictionary<string, object>();
+            var queue = new Queue(String.Empty);
+
+            _configuration.Setup(x => x.CancelOnHaFailover).Returns(true);
+            _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
+                .Callback<string, bool, string, IDictionary<String, object>, IBasicConsumer>(
+                    (a, b, c, x, d) => args = x);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+
+            _sut.Consume(queue, x => new AckResponse());
+
+            action();
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
+
+            Assert.That(args.ContainsKey(key), Is.True);
+            Assert.That(args[key], Is.EqualTo(queue.CancelOnHaFailover));
+        }
+
+        [Test]
+        public void ShouldSetCancelOnHaFailoverForQueue()
+        {
+            const string key = "x-cancel-on-ha-failover";
+
+            Action action = () => { };
+            IDictionary<string, object> args = new Dictionary<string, object>();
+            var queue = new Queue(String.Empty) { CancelOnHaFailover = true };
+
+            _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
+                .Callback<string, bool, string, IDictionary<String, object>, IBasicConsumer>(
+                    (a, b, c, x, d) => args = x);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+
+            _sut.Consume(queue, x => new AckResponse());
+
+            action();
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
+
+            Assert.That(args.ContainsKey(key), Is.True);
+            Assert.That(args[key], Is.EqualTo(queue.CancelOnHaFailover));
+        }
+
+        [Test]
+        public void ShouldSetPriority()
+        {
+            const string key = "x-priority";
+
+            Action action = () => { };
+            IDictionary<string, object> args = new Dictionary<string, object>();
+            var queue = new Queue(String.Empty) { Priority = 7 };
+
+            _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
+                .Callback<string, bool, string, IDictionary<String, object>, IBasicConsumer>(
+                    (a, b, c, x, d) => args = x);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+
+            _sut.Consume(queue, x => new AckResponse());
+
+            action();
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
+
+            Assert.That(args.ContainsKey(key), Is.True);
+            Assert.That(args[key], Is.EqualTo(queue.Priority));
+        }
+
+        [Test]
         public async Task ShouldProcessQueuesIndependently()
         {
             const int delay = 10;

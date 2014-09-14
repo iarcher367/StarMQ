@@ -30,6 +30,11 @@
 
         #region Args
         /// <summary>
+        /// Set to receive basic.cancel when a mirrored queue queue fails over.
+        /// </summary>
+        public bool CancelOnHaFailover { get; set; }
+
+        /// <summary>
         /// Set to enable dead-lettering.
         /// </summary>
         public string DeadLetterExchangeName { get; set; }
@@ -53,6 +58,12 @@
         /// If zero, message is expired if it cannot be immediately delivered.
         /// </summary>
         public uint MessageTimeToLive { get; set; }
+
+        /// <summary>
+        /// Set to direct messages to highest priority consumers as long as they can receive them.
+        /// Consumers with equivalent priority will round-robin.
+        /// </summary>
+        public int Priority { get; set; }
         #endregion
 
         public Queue(string name)

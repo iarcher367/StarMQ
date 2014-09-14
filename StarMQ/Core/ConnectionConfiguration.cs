@@ -1,7 +1,12 @@
 namespace StarMQ.Core
 {
+
     public interface IConnectionConfiguration
     {
+        bool CancelOnHaFailover { get; }
+
+        //IDictionary<string, object> Capabilities { get; } // enabled by default in RabbitMQ .NET client
+
         /// <summary>
         /// in seconds
         /// </summary>
@@ -21,11 +26,12 @@ namespace StarMQ.Core
         string Username { get; }
         string VirtualHost { get; }
 
-        // TODO: CancelOnHaFailover, SSL, AMQPConnectionString
+        // TODO: SSL, AMQPConnectionString
     }
 
     public class ConnectionConfiguration : IConnectionConfiguration
     {
+        public bool CancelOnHaFailover { get; set; }
         public ushort Heartbeat { get; set; }
         public string Host { get; set; }
         public string Password { get; set; }
@@ -38,6 +44,7 @@ namespace StarMQ.Core
 
         public ConnectionConfiguration()
         {
+            CancelOnHaFailover = false;
             Heartbeat = 10;
             Host = "localhost";
             Password = "guest";
