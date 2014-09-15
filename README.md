@@ -14,21 +14,9 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - StarMQ can sustain a publishing throughput of ~20,000 messages per second with no pre-processing steps.
 - StarMQ automatically attempts to recover lost connections to the broker.
 - Publishes during a connection failure are non-blocking and buffered in memory until the connection is restored. _Warning_: high-throughput scenarios may cause memory issues during extended outages.
+- Message processing is independent among queues; a fast handler will finish processing all messages even if its messages are interleaved with messages for a slow handler.
 
 ## Publisher Confirms
 - StarMQ offers guaranteed publishing via RabbitMQ’s publisher confirms.
-- RabbitMQ declines a message by sending a basic.nack, which StarMQ passes along by throwing a PublishException. Declines are typically due to internal broker errors.
+- RabbitMQ declines a message by sending a basic.nack, which StarMQ passes along by throwing a PublishException. Declines are typically caused by internal broker errors.
 - StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
-
-Todo:
-- able to trigger unsubscribe from queue
-- pipeline design for consumers; insertion points to register strategy for cross-cutting concerns: de-dup, auth
-- supports HA, clusters
-- ability to send derived types over base-type-bound queue
-- ability to set TTL or custom headers (e.g. auth) per message
-- implement pre-processing steps
-- support TPL inbound dispatcher strategy
-
-For HA clusters, set the connection string to connect to the load balancer. StarMQ will detect the connection loss on failover and automatically recover.
-
-- redelivered: failover?

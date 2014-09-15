@@ -39,14 +39,11 @@
     public class SimpleBus : ISimpleBus
     {
         private readonly IAdvancedBus _advancedBus;
-        private readonly IConnectionConfiguration _configuration;
         private readonly INamingStrategy _namingStrategy;
 
-        public SimpleBus(IAdvancedBus advancedBus, IConnectionConfiguration configuration,
-            INamingStrategy namingStrategy)
+        public SimpleBus(IAdvancedBus advancedBus, INamingStrategy namingStrategy)
         {
             _advancedBus = advancedBus;
-            _configuration = configuration;
             _namingStrategy = namingStrategy;
         }
 

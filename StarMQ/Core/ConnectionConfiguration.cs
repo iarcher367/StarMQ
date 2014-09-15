@@ -21,6 +21,11 @@ namespace StarMQ.Core
         /// <summary>
         /// in milliseconds
         /// </summary>
+        int Reconnect { get; }
+
+        /// <summary>
+        /// in milliseconds
+        /// </summary>
         int Timeout { get; }
 
         string Username { get; }
@@ -38,6 +43,7 @@ namespace StarMQ.Core
         public ushort Port { get; set; }
         public ushort PrefetchCount { get; set; }
         public bool PublisherConfirms { get; set; }
+        public int Reconnect { get; set; }
         public int Timeout { get; set; }
         public string Username { get; set; }
         public string VirtualHost { get; set; }
@@ -51,6 +57,7 @@ namespace StarMQ.Core
             Port = 5672;
             PrefetchCount = 50;                 // TODO: tweak to optimize subscriber performance
             PublisherConfirms = false;
+            Reconnect = 5000;
             Timeout = 10000;
             Username = "guest";
             VirtualHost = "/";

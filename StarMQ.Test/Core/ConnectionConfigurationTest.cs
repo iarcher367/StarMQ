@@ -38,6 +38,24 @@
         }
 
         [Test]
+        public void ShouldSetDefaultPrefetchCount()
+        {
+            Assert.That(_sut.PrefetchCount, Is.EqualTo(50));
+        }
+
+        [Test]
+        public void ShouldSetDefaultRetryInterval()
+        {
+            Assert.That(_sut.Reconnect, Is.EqualTo(5000));
+        }
+
+        [Test]
+        public void ShouldSetDefaultTimeout()
+        {
+            Assert.That(_sut.Timeout, Is.EqualTo(10000));
+        }
+
+        [Test]
         public void ShouldSetDefaultUsername()
         {
             Assert.That(_sut.Username, Is.EqualTo("guest"));

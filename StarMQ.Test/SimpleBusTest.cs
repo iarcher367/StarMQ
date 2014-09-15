@@ -14,7 +14,6 @@
         private const string RoutingKey = "x.y";
 
         private Mock<IAdvancedBus> _advancedBus;
-        private Mock<IConnectionConfiguration> _configuration;
         private Mock<INamingStrategy> _namingStrategy;
         private ISimpleBus _sut;
 
@@ -22,10 +21,9 @@
         public void Setup()
         {
             _advancedBus = new Mock<IAdvancedBus>(MockBehavior.Strict);
-            _configuration = new Mock<IConnectionConfiguration>(MockBehavior.Strict);
             _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
 
-            _sut = new SimpleBus(_advancedBus.Object, _configuration.Object, _namingStrategy.Object);
+            _sut = new SimpleBus(_advancedBus.Object, _namingStrategy.Object);
         }
 
         #region PublishAsync

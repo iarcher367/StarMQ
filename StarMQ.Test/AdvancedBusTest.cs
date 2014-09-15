@@ -79,6 +79,7 @@
             Assert.That(flag, Is.True);
         }
 
+        #region ConsumeAsync
         [Test]
         public void ConsumeShouldConsume()
         {
@@ -92,6 +93,21 @@
         {
             Assert.Fail();
         }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task ConsumeShouldThrowExceptionIfQueueIsNull()
+        {
+            await _sut.ConsumeAsync<string>(null, x => new AckResponse());
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task ConsumeShouldThrowExceptionIfHandlerIsNull()
+        {
+            await _sut.ConsumeAsync<string>(_queue, null);
+        }
+        #endregion
 
         #region ExchangeDeclareAsync
         [Test]

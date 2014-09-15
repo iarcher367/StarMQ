@@ -37,6 +37,12 @@ namespace StarMQ.Test
         }
 
         [Test]
+        public void ShouldConfigureFactoryFromConnectionConfiguration()
+        {
+            Assert.Inconclusive();
+        }
+
+        [Test]
         public void ShouldReturnBasicPublisherIfConfirmsDisabled()
         {
             var actual = _container.GetInstance<IPublisher>();

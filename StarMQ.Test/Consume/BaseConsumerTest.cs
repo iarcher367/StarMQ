@@ -189,6 +189,8 @@
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
+
+            await Task.Delay(Delay);
         }
 
         [Test]
@@ -200,6 +202,8 @@
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
+
+            await Task.Delay(Delay);
         }
 
         [Test]

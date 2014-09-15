@@ -1,6 +1,5 @@
 namespace StarMQ.Core
 {
-    using Exception;
     using log4net;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
@@ -22,11 +21,7 @@ namespace StarMQ.Core
     /// </summary>
     public class PersistentConnection : IConnection
     {
-        /// <summary>
-        /// in milliseconds
-        /// </summary>
-        private const int RetryInterval = 5000;
-
+        private readonly IConnectionConfiguration _configuration;
         private readonly ConnectionFactory _factory;
         private readonly ILog _log;
 
@@ -41,19 +36,11 @@ namespace StarMQ.Core
             get { return _connection.IsOpen && !_disposed; }
         }
 
-        public PersistentConnection(IConnectionConfiguration configuration, ILog log)
+        public PersistentConnection(IConnectionConfiguration configuration, ConnectionFactory factory,
+            ILog log)
         {
-            _factory = new ConnectionFactory
-            {
-                HostName = configuration.Host,
-                Password = configuration.Password,
-                Port = configuration.Port,
-                UserName = configuration.Username,
-                VirtualHost = configuration.VirtualHost,
-                RequestedHeartbeat = configuration.Heartbeat,
-                RequestedConnectionTimeout = configuration.Timeout
-            };
-
+            _configuration = configuration;
+            _factory = factory;
             _log = log;
 
             Connect();
@@ -73,14 +60,15 @@ namespace StarMQ.Core
             }
             catch (BrokerUnreachableException ex)
             {
-                _log.Error(String.Format("Unable to reach broker. Retrying in {0} ms.", RetryInterval),
-                    ex);
+                _log.Error(String.Format("Unable to reach broker. Reconnecting in {0} ms.",
+                    _configuration.Reconnect), ex);
 
                 Retry();
             }
             catch (SocketException ex)
             {
-                _log.Error(String.Format("Network error. Retrying in {0} ms.", RetryInterval), ex);
+                _log.Error(String.Format("Network error. Reconnecting in {0} ms.",
+                    _configuration.Reconnect), ex);
 
                 Retry();
             }
@@ -111,7 +99,7 @@ namespace StarMQ.Core
 
         private void Retry()
         {
-            Thread.Sleep(RetryInterval);
+            Thread.Sleep(_configuration.Reconnect);
 
             Connect();
         }
