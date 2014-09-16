@@ -59,6 +59,7 @@
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\PublishException.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
+    <Compile Include="Message\AesInterceptor.cs" />
     <Compile Include="Message\CompressionInterceptor.cs" />
     <Compile Include="Message\IMessagingInterceptor.cs" />
     <Compile Include="Message\InterceptorPipeline.cs" />

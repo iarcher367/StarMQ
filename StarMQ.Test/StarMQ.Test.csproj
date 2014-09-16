@@ -58,6 +58,7 @@
     <Compile Include="AdvancedBusTest.cs" />
     <Compile Include="Consume\BaseConsumerTest.cs" />
     <Compile Include="GlobalTest.cs" />
+    <Compile Include="Message\AesInterceptorTest.cs" />
     <Compile Include="Message\CompressionInterceptorTest.cs" />
     <Compile Include="Message\InterceptorPipelineTest.cs" />
     <Compile Include="Model\AckResponseTest.cs" />
