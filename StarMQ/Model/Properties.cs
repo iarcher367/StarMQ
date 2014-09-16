@@ -149,7 +149,7 @@ namespace StarMQ.Model
             if (_contentTypePresent) target.ContentType = ContentType;
             if (_correlationIdPresent) target.CorrelationId = CorrelationId;
             if (_deliveryModePresent) target.DeliveryMode = DeliveryMode;
-            if (_headersPresent) target.Headers = Headers;
+            if (_headersPresent || Headers.Count > 0) target.Headers = Headers;
             if (_messageIdPresent) target.MessageId = MessageId;
             if (_priorityPresent) target.Priority = Priority;
             if (_replyToPresent) target.ReplyTo = ReplyTo;

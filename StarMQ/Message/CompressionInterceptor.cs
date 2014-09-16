@@ -16,7 +16,7 @@
             {
                 using (var compress = new DeflateStream(output, CompressionMode.Compress))
                     compress.Write(seed.Body, 0, seed.Body.Length);
-                return new Message<byte[]>(output.ToArray());
+                return new Message<byte[]>(output.ToArray()) { Properties = seed.Properties };
             }
         }
 
@@ -31,7 +31,7 @@
                 {
                     using (var decompress = new DeflateStream(input, CompressionMode.Decompress))
                         decompress.CopyTo(output);
-                    return new Message<byte[]>(output.ToArray());
+                    return new Message<byte[]>(output.ToArray()) { Properties = seed.Properties };
                 }
             }
         }

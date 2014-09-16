@@ -164,7 +164,7 @@ namespace StarMQ
             await _dispatcher.Invoke(x =>
             {
                 var properties = x.CreateBasicProperties();
-                message.Properties.CopyTo(properties);
+                data.Properties.CopyTo(properties);
 
                 _publisher.Publish(a => a.BasicPublish(exchange.Name, routingKey,
                     mandatory, immediate, properties, data.Body));

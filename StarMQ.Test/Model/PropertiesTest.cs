@@ -523,9 +523,19 @@
         }
 
         [Test]
-        public void CopyToShouldSetHeaders()
+        public void CopyToShouldSetHeadersIfReplaced()
         {
             _sut.Headers = new Dictionary<string, object>();
+
+            _sut.CopyTo(_basicProperties.Object);
+
+            _basicProperties.VerifySet(x => x.Headers = It.IsAny<Dictionary<string, object>>(), Times.Once);
+        }
+
+        [Test]
+        public void CopyToShouldSetHeadersIfModified()
+        {
+            _sut.Headers.Add("StarMQ", 5);
 
             _sut.CopyTo(_basicProperties.Object);
 

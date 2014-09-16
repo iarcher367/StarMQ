@@ -46,7 +46,7 @@
             if (String.IsNullOrEmpty(properties.CorrelationId))
                 properties.CorrelationId = _correlationStrategy.GenerateCorrelationId();
 
-            return new Message<byte[]>(body) { Properties = message.Properties };
+            return new Message<byte[]>(body) { Properties = properties };
         }
     }
 }

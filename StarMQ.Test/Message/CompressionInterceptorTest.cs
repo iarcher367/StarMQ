@@ -43,6 +43,21 @@
         }
 
         [Test]
+        public void OnSendShouldPreserveProperties()
+        {
+            var correlationId = Guid.NewGuid().ToString();
+            var data = new JsonSerializer().ToBytes(Content);
+            var message = new Message<byte[]>(data)
+            {
+                Properties = { CorrelationId = correlationId }
+            };
+
+            var properties = _sut.OnSend(message).Properties;
+
+            Assert.That(properties.CorrelationId, Is.EqualTo(correlationId));
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void OnSendShouldThrowExceptionIfSeedIsNull()
         {
@@ -58,6 +73,20 @@
             var actual = new JsonSerializer().ToObject<string>(uncompressedData);
 
             Assert.That(actual, Is.EqualTo(Content));
+        }
+
+        [Test]
+        public void OnReceiveShouldPreserveProperties()
+        {
+            var correlationId = Guid.NewGuid().ToString();
+            var message = new Message<byte[]>(_compressedContent)
+            {
+                Properties = { CorrelationId = correlationId }
+            };
+
+            var properties = _sut.OnReceive(message).Properties;
+
+            Assert.That(properties.CorrelationId, Is.EqualTo(correlationId));
         }
 
         [Test]
