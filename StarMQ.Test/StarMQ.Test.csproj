@@ -66,8 +66,7 @@
     <Compile Include="Publish\BasePublisherTest.cs" />
     <Compile Include="Publish\BasicPublisherTest.cs" />
     <Compile Include="Publish\ConfirmPublisherTest.cs" />
-    <Compile Include="RegistrationTest.cs" />
-    <Compile Include="SimpleBusFactoryTest.cs" />
+    <Compile Include="FactoryTest.cs" />
     <Compile Include="SimpleBusTest.cs" />
     <Compile Include="Core\ConnectionConfigurationTest.cs" />
     <Compile Include="Core\OutboundDispatcherTest.cs" />

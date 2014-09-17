@@ -76,7 +76,7 @@
     <Compile Include="Publish\BasicPublisher.cs" />
     <Compile Include="Publish\ConfirmPublisher.cs" />
     <Compile Include="Publish\BasePublisher.cs" />
-    <Compile Include="Registration.cs" />
+    <Compile Include="Factory.cs" />
     <Compile Include="Message\JsonSerializer.cs" />
     <Compile Include="Model\Properties.cs" />
     <Compile Include="Message\TypeNameSerializer.cs" />
@@ -84,7 +84,6 @@
     <Compile Include="Model\Message.cs" />
     <Compile Include="Message\SerializationStrategy.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="SimpleBusFactory.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="packages.config" />
