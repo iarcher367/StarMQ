@@ -20,22 +20,23 @@
         [SetUp]
         public void Setup()
         {
-            _advancedBus = new Mock<IAdvancedBus>(MockBehavior.Strict);
-            _namingStrategy = new Mock<INamingStrategy>(MockBehavior.Strict);
+            _advancedBus = new Mock<IAdvancedBus>();
+            _namingStrategy = new Mock<INamingStrategy>();
 
             _sut = new SimpleBus(_advancedBus.Object, _namingStrategy.Object);
-        }
 
-        #region PublishAsync
-        [Test]
-        public async Task PublishAsyncShouldPublish()
-        {
             _namingStrategy.Setup(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))))
                 .Returns("StarMQ.Master");
             _namingStrategy.Setup(x => x.GetAlternateExchangeName(It.Is<Type>(y => y == typeof(string))))
                 .Returns("AE:StarMQ.Master");
             _namingStrategy.Setup(x => x.GetAlternateQueueName(It.Is<Type>(y => y == typeof(string))))
                 .Returns("AE:StarMQ.Master");
+        }
+
+        #region PublishAsync
+        [Test]
+        public async Task PublishAsyncShouldPublish()
+        {
             _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
                 .Returns(Task.FromResult(0));
             _advancedBus.Setup(x => x.QueueDeclareAsync(It.IsAny<Queue>()))
@@ -56,6 +57,42 @@
                 String.Empty), Times.Once);
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false,
                 It.IsAny<Message<string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldSetMandatory()
+        {
+            await _sut.PublishAsync(Content, RoutingKey, true);
+
+            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
+                true, It.IsAny<bool>(), It.IsAny<Message<string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldDefaultMandatoryToFalse()
+        {
+            await _sut.PublishAsync(Content, RoutingKey);
+
+            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
+                false, It.IsAny<bool>(), It.IsAny<Message<string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldSetImmediate()
+        {
+            await _sut.PublishAsync(Content, RoutingKey, immediate: true);
+
+            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
+                It.IsAny<bool>(), true, It.IsAny<Message<string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldDefaultImmediateToFalse()
+        {
+            await _sut.PublishAsync(Content, RoutingKey);
+
+            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
+                It.IsAny<bool>(), false, It.IsAny<Message<string>>()), Times.Once);
         }
 
         [Test]

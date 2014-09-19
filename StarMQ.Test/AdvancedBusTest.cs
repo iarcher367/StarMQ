@@ -95,6 +95,13 @@
         }
 
         [Test]
+        public void ConsumeShouldPassMessageThroughPipeline()
+        {
+            // check that return from pipeline is passed into deserialize()
+            Assert.Fail();
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ConsumeShouldThrowExceptionIfQueueIsNull()
         {

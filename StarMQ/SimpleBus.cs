@@ -15,7 +15,9 @@
         ///
         /// To call synchronously and ensure order, use Wait() to block before publishing again.
         /// </summary>
-        Task PublishAsync<T>(T content, string routingKey) where T : class;
+        /// <param name="mandatory">If true, published messages must be routed at least one queue. Otherwise, returned via basic.return.</param>
+        /// <param name="immediate">If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
+        Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false) where T : class;
 
         /// <summary>
         /// Subscribes to messages of type T matching any routing key.
@@ -47,7 +49,7 @@
             _namingStrategy = namingStrategy;
         }
 
-        public async Task PublishAsync<T>(T content, string routingKey) where T : class
+        public async Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false) where T : class
         {
             if (content == null)
                 throw new ArgumentNullException("content");
@@ -56,7 +58,7 @@
 
             var exchange = await ConfigureExchange<T>();
 
-            await _advancedBus.PublishAsync(exchange, routingKey, false, false, new Message<T>(content));
+            await _advancedBus.PublishAsync(exchange, routingKey, mandatory, immediate, new Message<T>(content));
         }
 
         private async Task<Exchange> ConfigureExchange<T>()
