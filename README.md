@@ -1,7 +1,7 @@
 StarMQ
 ======
 
-StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBus**. The Simple API provides few configuration options as it assumes default behaviour for common use-cases. For fine-grained control, the Advanced API offers methods that correlate to RabbitMQ’s 0-9-1 implementation.
+StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBus**. The Simple API makes assumptions about and exposes methods for common use cases. Despite these assumptions, it maintains a high level of flexibility by offering fluent configuration inputs. For fine-grained control, the Advanced API offers methods that correlate to RabbitMQ’s 0-9-1 implementation.
 
 ## Highlights
 - The internal messaging architecture supports the addition of pre- and post-processing steps. Example pre-processing steps include message encryption, compression, and authentication. These may be enabled via configuration at startup. At present, the only supported post-processing action is unsubscribing the current consumer.

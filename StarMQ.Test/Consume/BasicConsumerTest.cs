@@ -59,7 +59,7 @@
         {
             const ushort prefetchCount = 10;
             Action action = () => { };
-            var queue = new Queue(String.Empty);
+            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
@@ -83,7 +83,7 @@
 
             Action action = () => { };
             IDictionary<string, object> args = new Dictionary<string, object>();
-            var queue = new Queue(String.Empty);
+            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.CancelOnHaFailover).Returns(true);
             _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
@@ -110,7 +110,7 @@
 
             Action action = () => { };
             IDictionary<string, object> args = new Dictionary<string, object>();
-            var queue = new Queue(String.Empty) { CancelOnHaFailover = true };
+            var queue = new Queue().WithName(String.Empty).WithCancelOnHaFailover(true);
 
             _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
@@ -136,7 +136,7 @@
 
             Action action = () => { };
             IDictionary<string, object> args = new Dictionary<string, object>();
-            var queue = new Queue(String.Empty) { Priority = 7 };
+            var queue = new Queue().WithName(String.Empty).WithPriority(7);
 
             _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
@@ -159,9 +159,9 @@
         public async Task ShouldProcessQueuesIndependently()
         {
             const int delay = 10;
-            var fastQueue = new Queue("fast");
+            var fastQueue = new Queue();
             var order = 0;
-            var slowQueue = new Queue("slow");
+            var slowQueue = new Queue();
             var sutTwo = new BasicConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, _log.Object, _namingStrategy.Object);
 
@@ -210,7 +210,7 @@
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            await _sut.Consume(new Queue(String.Empty), null);
+            await _sut.Consume(new Queue(), null);
         }
     }
 }

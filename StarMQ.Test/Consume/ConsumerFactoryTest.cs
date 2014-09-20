@@ -24,7 +24,7 @@
             _dispatcher = new Mock<IOutboundDispatcher>();
             _namingStrategy = new Mock<INamingStrategy>();
 
-            _queue = new Queue(String.Empty);
+            _queue = new Queue();
         }
 
         [Test]

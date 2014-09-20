@@ -20,22 +20,22 @@
         Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false) where T : class;
 
         /// <summary>
-        /// Subscribes to messages of type T matching any routing key.
+        /// Subscribes to messages of type T matching at least one binding key.
         /// Sends a nack to the broker for unhandled exceptions and an ack otherwise.
         ///
-        /// Subscribers with different subscriptionIds receive copies of each message.
-        /// Subscribers with the same subscriptionIds compete for messages.
+        /// Subscribers to the same queue compete for messages.
+        /// Subscribers to different queues with same binding keys receive copies of each message.
         /// </summary>
-        Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Action<T> messageHandler) where T : class;
+        Task SubscribeAsync<T>(Action<T> messageHandler, Action<Queue> configure = null) where T : class;
 
         /// <summary>
-        /// Subscribes to messages of type T matching any routing key.
+        /// Subscribes to messages of type T matching at least one binding key.
         /// Allows custom responses to be sent to the broker.
         ///
-        /// Subscribers with different subscriptionIds receive copies of each message.
-        /// Subscribers with the same subscriptionIds compete for messages.
+        /// Subscribers to the same queue compete for messages.
+        /// Subscribers to different queues with same binding keys receive copies of each message.
         /// </summary>
-        Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, BaseResponse> messageHandler) where T : class;
+        Task SubscribeAsync<T>(Func<T, BaseResponse> messageHandler, Action<Queue> configure = null) where T : class;
     }
 
     public class SimpleBus : ISimpleBus
@@ -83,17 +83,17 @@
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
             var queueName = _namingStrategy.GetAlternateQueueName(typeof(T));
-            var queue = new Queue(queueName);
+            var queue = new Queue().WithName(queueName);
             await _advancedBus.QueueDeclareAsync(queue);
             await _advancedBus.QueueBindAsync(exchange, queue, String.Empty);
         }
 
-        public async Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Action<T> messageHandler) where T : class
+        public async Task SubscribeAsync<T>(Action<T> messageHandler, Action<Queue> configure = null) where T : class
         {
             if (messageHandler == null)
                 throw new ArgumentNullException("messageHandler");
 
-            await SubscribeAsync<T>(subscriptionId, routingKeys, x =>
+            await SubscribeAsync<T>(x =>
                 {
                     try
                     {
@@ -105,47 +105,45 @@
                     {
                         return new NackResponse();
                     }
-                });
+                }, configure);
         }
 
-        public async Task SubscribeAsync<T>(string subscriptionId, List<string> routingKeys, Func<T, BaseResponse> messageHandler) where T : class
+        public async Task SubscribeAsync<T>(Func<T, BaseResponse> messageHandler, Action<Queue> configure = null) where T : class
         {
-            if (subscriptionId == null)
-                throw new ArgumentNullException("subscriptionId");
-            if (routingKeys == null)
-                throw new ArgumentNullException("routingKeys");
             if (messageHandler == null)
                 throw new ArgumentNullException("messageHandler");
 
             var exchange = await ConfigureExchange<T>();
 
-            var queueName = _namingStrategy.GetQueueName(typeof(T), subscriptionId);
-            var queue = new Queue(queueName)
-            {
-                DeadLetterExchangeName = _namingStrategy.GetDeadLetterExchangeName(typeof(T))
-            };
+            var queue = new Queue();
+
+            if (configure != null)
+                configure(queue);
+
+            if (String.IsNullOrEmpty(queue.Name))
+                queue.WithName(_namingStrategy.GetQueueName(typeof(T)));
+            if (String.IsNullOrEmpty(queue.DeadLetterExchangeName))
+                queue.WithDeadLetterExchangeName(_namingStrategy.GetDeadLetterExchangeName(typeof(T)));
 
             await _advancedBus.QueueDeclareAsync(queue);
 
-            foreach (var key in routingKeys.DefaultIfEmpty("#"))
+            foreach (var key in queue.BindingKeys.DefaultIfEmpty("#"))
                 await _advancedBus.QueueBindAsync(exchange, queue, key);
 
-            await ConfigureDeadLettering<T>(subscriptionId, routingKeys);
+            await ConfigureDeadLettering<T>(queue.DeadLetterExchangeName, queue.BindingKeys);
 
             await _advancedBus.ConsumeAsync(queue, messageHandler);
         }
 
-        private async Task ConfigureDeadLettering<T>(string subscriptionId, IEnumerable<string> routingKeys)
+        private async Task ConfigureDeadLettering<T>(string exchangeName, IEnumerable<string> bindingKeys)
         {
-            var exchangeName = _namingStrategy.GetDeadLetterExchangeName(typeof(T));
             var exchange = new Exchange(exchangeName) { Type = ExchangeType.Topic };
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
-            var queueName = _namingStrategy.GetDeadLetterQueueName(typeof(T), subscriptionId);
-            var queue = new Queue(queueName);
+            var queue = new Queue().WithName(_namingStrategy.GetDeadLetterQueueName(typeof(T)));
             await _advancedBus.QueueDeclareAsync(queue);
 
-            foreach (var key in routingKeys.DefaultIfEmpty("#"))
+            foreach (var key in bindingKeys.DefaultIfEmpty("#"))
                 await _advancedBus.QueueBindAsync(exchange, queue, key);
         }
 

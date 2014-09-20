@@ -54,7 +54,7 @@ namespace StarMQ.Test.Consume
         {
             const ushort prefetchCount = 10;
             Action action = () => { };
-            var queue = new Queue(String.Empty);
+            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
@@ -87,7 +87,7 @@ namespace StarMQ.Test.Consume
         {
             const ushort prefetchCount = 10;
             Action action = () => { };
-            var queue = new Queue(String.Empty);
+            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);

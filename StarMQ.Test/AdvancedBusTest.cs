@@ -60,7 +60,7 @@
             _args = new Dictionary<string, object>();
             _exchange = new Exchange("StarMQ.Master");
             _message = new Message<string>("Hello World!");
-            _queue = new Queue("StarMQ.Slave");
+            _queue = new Queue().WithName("StarMQ.Slave");
         }
 
         [Test]
@@ -371,7 +371,7 @@
         public async Task QueueDeclareAsyncShouldSetDeadLetterRoutingKeyIfProvided()
         {
             const string key = "x-dead-letter-routing-key";
-            _queue.DeadLetterExchangeRoutingKey = "StarMQ";
+            _queue.DeadLetterRoutingKey = "StarMQ";
 
             _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
@@ -383,7 +383,7 @@
             _action(_model.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
-            Assert.That(_args[key], Is.EqualTo(_queue.DeadLetterExchangeRoutingKey));
+            Assert.That(_args[key], Is.EqualTo(_queue.DeadLetterRoutingKey));
 
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);

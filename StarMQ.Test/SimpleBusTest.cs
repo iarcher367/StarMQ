@@ -5,7 +5,6 @@
     using StarMQ.Core;
     using StarMQ.Model;
     using System;
-    using System.Collections.Generic;
     using System.Threading.Tasks;
 
     public class SimpleBusTest
@@ -14,6 +13,7 @@
         private const string RoutingKey = "x.y";
 
         private Mock<IAdvancedBus> _advancedBus;
+        private Mock<Action<Queue>> _configure;
         private Mock<INamingStrategy> _namingStrategy;
         private ISimpleBus _sut;
 
@@ -21,16 +21,23 @@
         public void Setup()
         {
             _advancedBus = new Mock<IAdvancedBus>();
+            _configure = new Mock<Action<Queue>>();
             _namingStrategy = new Mock<INamingStrategy>();
 
             _sut = new SimpleBus(_advancedBus.Object, _namingStrategy.Object);
 
-            _namingStrategy.Setup(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))))
+            _namingStrategy.Setup(x => x.GetExchangeName(typeof(string)))
                 .Returns("StarMQ.Master");
-            _namingStrategy.Setup(x => x.GetAlternateExchangeName(It.Is<Type>(y => y == typeof(string))))
+            _namingStrategy.Setup(x => x.GetQueueName(typeof(string)))
+                .Returns("StarMQ.Slave");
+            _namingStrategy.Setup(x => x.GetDeadLetterExchangeName(typeof(string)))
+                .Returns("DLX:StarMQ.Master");
+            _namingStrategy.Setup(x => x.GetDeadLetterQueueName(typeof(string)))
+                .Returns("DLX:StarMQ.Slave");
+            _namingStrategy.Setup(x => x.GetAlternateExchangeName(typeof(string)))
                 .Returns("AE:StarMQ.Master");
-            _namingStrategy.Setup(x => x.GetAlternateQueueName(It.Is<Type>(y => y == typeof(string))))
-                .Returns("AE:StarMQ.Master");
+            _namingStrategy.Setup(x => x.GetAlternateQueueName(typeof(string)))
+                .Returns("AE:StarMQ.Slave");
         }
 
         #region PublishAsync
@@ -116,35 +123,21 @@
         {
             RunSubscribeSetup();
 
-            await _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new AckResponse());
+            await _sut.SubscribeAsync<string>(x => new AckResponse());
 
             RunSubscribeVerify();
         }
 
         private void RunSubscribeSetup()
         {
-            _advancedBus.Setup(x =>
-                x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
+            _advancedBus.Setup(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
                 .Returns(Task.FromResult(0));
             _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
                 .Returns(Task.FromResult(0));
             _advancedBus.Setup(x => x.QueueDeclareAsync(It.IsAny<Queue>()))
                 .Returns(Task.FromResult(0));
-            _advancedBus.Setup(x =>
-                x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), It.IsAny<string>()))
+            _advancedBus.Setup(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), It.IsAny<string>()))
                 .Returns(Task.FromResult(0));
-            _namingStrategy.Setup(x => x.GetAlternateExchangeName(typeof(string)))
-                .Returns(String.Empty);
-            _namingStrategy.Setup(x => x.GetAlternateQueueName(typeof(string)))
-                .Returns(String.Empty);
-            _namingStrategy.Setup(x => x.GetDeadLetterExchangeName(typeof(string)))
-                .Returns(String.Empty);
-            _namingStrategy.Setup(x => x.GetDeadLetterQueueName(typeof(string), String.Empty))
-                .Returns(String.Empty);
-            _namingStrategy.Setup(x => x.GetExchangeName(typeof(string)))
-                .Returns(String.Empty);
-            _namingStrategy.Setup(x => x.GetQueueName(typeof(string), String.Empty))
-                .Returns(String.Empty);
         }
 
         private void RunSubscribeVerify()
@@ -156,13 +149,16 @@
             _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Exactly(3));
             _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
                 It.IsAny<string>()), Times.Exactly(3));
+
+            _configure.Verify(x => x(It.IsAny<Queue>()), Times.Never);
+
             _namingStrategy.Verify(x => x.GetAlternateExchangeName(typeof(string)), Times.Exactly(2));
             _namingStrategy.Verify(x => x.GetAlternateQueueName(typeof(string)), Times.Once);
-            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Exactly(2));
-            _namingStrategy.Verify(x => x.GetDeadLetterQueueName(typeof(string), String.Empty),
+            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Once);
+            _namingStrategy.Verify(x => x.GetDeadLetterQueueName(typeof(string)),
                 Times.Once);
             _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Once);
-            _namingStrategy.Verify(x => x.GetQueueName(typeof(string), String.Empty), Times.Once);
+            _namingStrategy.Verify(x => x.GetQueueName(typeof(string)), Times.Once);
         }
 
         [Test]
@@ -177,7 +173,7 @@
                 .Returns(Task.FromResult(0))
                 .Callback<Queue, Func<string, BaseResponse>>((_, x) => func = x);
 
-            await _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => { });
+            await _sut.SubscribeAsync<string>(x => { });
 
             var actual = func("StarMQ");
 
@@ -198,7 +194,7 @@
                 .Returns(Task.FromResult(0))
                 .Callback<Queue, Func<string, BaseResponse>>((_, x) => func = x);
 
-            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Action<string>)
+            await _sut.SubscribeAsync((Action<string>)
                 (x => { throw new NotImplementedException(); }));
 
             var actual = func("StarMQ");
@@ -212,38 +208,100 @@
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncActionShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Action<string>)null);
+            await _sut.SubscribeAsync((Action<string>)null);
         }
 
         [Test]
-        public void SubscribeAsyncFuncShouldSubscribe()
+        public async Task SubscribeAsyncFuncShouldSubscribe()
         {
             RunSubscribeSetup();
 
-            _sut.SubscribeAsync<string>(String.Empty, new List<string>(), x => new AckResponse());
+            await _sut.SubscribeAsync<string>(x => new AckResponse());
 
             RunSubscribeVerify();
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task SubscribeAsyncFuncShouldThrowExceptionIfSubscriptionIdIsNull()
+        public async Task SubscribeAsyncFuncShouldApplyConfigure()
         {
-            await _sut.SubscribeAsync<string>(null, new List<string>(), x => new AckResponse());
+            var configure = new Mock<Action<Queue>>();
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(), configure.Object);
+
+            configure.Verify(x => x(It.IsAny<Queue>()), Times.Once());
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task SubscribeAsyncFuncShouldThrowExceptionIfRoutingKeysAreNull()
+        public async Task SubscribeAsyncFuncShouldUseConfiguredQueueName()
         {
-            await _sut.SubscribeAsync<string>(String.Empty, null, x => new AckResponse());
+            const string expected = "StarMQ.Master";
+            var declareFlag = false;
+            var bindFlag = false;
+            var consumeFlag = false;
+
+            _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Queue, Func<string, BaseResponse>>((x, a) => consumeFlag = x.Name == expected);
+            _advancedBus.Setup(x => x.QueueDeclareAsync(It.IsAny<Queue>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Queue>(x =>
+                {
+                    if (x.Name == expected)
+                        declareFlag = true;
+                });
+            _advancedBus.Setup(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), It.IsAny<string>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Exchange, Queue, string>((a, x, b) =>
+                {
+                    if (x.Name == expected)
+                        bindFlag = true;
+                });
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(), x => x.WithName(expected)
+                .WithBindingKey("StarMQ.#"));
+
+            Assert.That(declareFlag, Is.True);
+            Assert.That(bindFlag, Is.True);
+            Assert.That(consumeFlag, Is.True);
+
+            _namingStrategy.Verify(x => x.GetQueueName(It.IsAny<Type>()), Times.Never);
+        }
+
+        [Test]
+        public async Task SubscribeAsyncFuncShouldUseConfiguredDeadLetterExchangeName()
+        {
+            const string expected = "StarMQ";
+            var flag = false;
+
+            _advancedBus.Setup(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Func<string, BaseResponse>>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.QueueDeclareAsync(It.IsAny<Queue>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(), It.IsAny<string>()))
+                .Returns(Task.FromResult(0));
+            _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Exchange>(x =>
+                {
+                    if (x.Name == expected)
+                        flag = true;
+                });
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(),
+                x => x.WithDeadLetterExchangeName(expected));
+
+            Assert.That(flag, Is.True);
+
+            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(It.IsAny<Type>()), Times.Never);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task SubscribeAsyncFuncShouldThrowExceptionIfMessageHandlerIsNull()
         {
-            await _sut.SubscribeAsync(String.Empty, new List<string>(), (Func<string, BaseResponse>)null);
+            await _sut.SubscribeAsync((Func<string, BaseResponse>)null);
         }
         #endregion
 

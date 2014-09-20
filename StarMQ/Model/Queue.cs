@@ -1,48 +1,104 @@
 ﻿namespace StarMQ.Model
 {
+    using System;
+    using System.Collections.Generic;
+
     public class Queue
     {
-        public string Name { get; private set; }
+        internal string Name { get; private set; }
+
+        internal bool AutoDelete { get; set; }
+        internal bool Durable { get; set; }
+        internal bool Exclusive { get; set; }
+
+        /// <summary>
+        /// Set true to check if a queue with the same name exists and throw an exception if not.
+        /// </summary>
+        internal bool Passive { get; set; }
+
+        #region Args
+        internal bool CancelOnHaFailover { get; set; }
+        internal string DeadLetterExchangeName { get; set; }
+        internal string DeadLetterRoutingKey { get; set; }
+        internal uint Expires { get; set; }
+        internal uint MessageTimeToLive { get; set; }
+        internal int Priority { get; set; }
+        #endregion
+
+        internal readonly List<string> BindingKeys = new List<string>();
+
+        public Queue()
+        {
+            Durable = true;
+            MessageTimeToLive = uint.MaxValue;
+        }
+
+        #region Fluent
+        public Queue WithName(string name)
+        {
+            Name = Global.Validate("name", name);
+            return this;
+        }
 
         /// <summary>
         /// Set true to have queue deleted when all consumers have disconnected or closed their channel.
         /// </summary>
-        public bool AutoDelete { get; set; }
+        public Queue WithAutoDelete(bool autodelete)
+        {
+            AutoDelete = autodelete;
+            return this;
+        }
 
         /// <summary>
         /// Set true to prevent broker restarts from purging the queue.
         ///
         /// Default true.
         /// </summary>
-        public bool Durable { get; set; }
+        public Queue WithDurable(bool durable)
+        {
+            Durable = durable;
+            return this;
+        }
 
         /// <summary>
         /// Set true to make this queue only accessible by this connection.
         ///
-        /// Note: when connection is lost, the queue is deleted!
+        /// Note: when connection is lost, this queue is deleted!
         /// </summary>
-        public bool Exclusive { get; set; }
+        public Queue WithExclusive(bool exclusive)
+        {
+            Exclusive = exclusive;
+            return this;
+        }
 
-        /// <summary>
-        /// Set true to check if a queue with the same name exists and throw an exception if not.
-        /// </summary>
-        public bool Passive { get; set; }
-
-        #region Args
         /// <summary>
         /// Set to receive basic.cancel when a mirrored queue queue fails over.
         /// </summary>
-        public bool CancelOnHaFailover { get; set; }
+        public Queue WithCancelOnHaFailover(bool notify)
+        {
+            CancelOnHaFailover = notify;
+            return this;
+        }
 
         /// <summary>
-        /// Set to enable dead-lettering.
+        /// Set to specify dead letter exchange name.
+        ///
+        /// Default is auto-generated.
         /// </summary>
-        public string DeadLetterExchangeName { get; set; }
+        public Queue WithDeadLetterExchangeName(string name)
+        {
+            DeadLetterExchangeName = Global.Validate("name", name);
+            return this;
+        }
 
         /// <summary>
         /// Set to overwrite dead-lettered message's routing key
         /// </summary>
-        public string DeadLetterExchangeRoutingKey { get; set; }
+        public Queue WithDeadLetterRoutingKey(string key)
+        {
+            DeadLetterRoutingKey = Global.Validate("key", key);
+            return this;
+        }
 
         /// <summary>
         /// Set to have queue deleted if it has no consumers, has not been re-declared, and has not
@@ -50,27 +106,47 @@
         ///
         /// Cannot be zero.
         /// </summary>
-        public uint Expires { get; set; }
+        public Queue WithExpires(uint interval)
+        {
+            Expires = interval;
+            return this;
+        }
 
         /// <summary>
         /// Set to specify time to live for messages in milliseconds.
         ///
         /// If zero, message is expired if it cannot be immediately delivered.
         /// </summary>
-        public uint MessageTimeToLive { get; set; }
+        public Queue WithMessageTimeToLive(uint interval)
+        {
+            MessageTimeToLive = interval;
+            return this;
+        }
 
         /// <summary>
         /// Set to direct messages to highest priority consumers as long as they can receive them.
         /// Consumers with equivalent priority will round-robin.
         /// </summary>
-        public int Priority { get; set; }
-        #endregion
-
-        public Queue(string name)
+        public Queue WithPriority(int priority)
         {
-            Name = Global.Validate("name", name);
-            Durable = true;
-            MessageTimeToLive = uint.MaxValue;
+            Priority = priority;
+            return this;
         }
+
+        /// <summary>
+        /// Messages with routing keys that do not match any binding key are filtered out.
+        ///
+        /// # (hash) substitutes for zero or more words; e.g. lazy.#
+        /// * (star) substitutes for exactly one word; e.g. *.fox
+        /// </summary>
+        public Queue WithBindingKey(string key)
+        {
+            if (String.IsNullOrEmpty(key))
+                throw new ArgumentException("key");
+
+            BindingKeys.Add(key);
+            return this;
+        }
+        #endregion
     }
 }

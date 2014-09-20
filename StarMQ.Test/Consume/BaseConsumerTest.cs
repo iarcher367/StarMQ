@@ -47,7 +47,7 @@
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 _log.Object, _namingStrategy.Object);
 
-            _queue = new Queue("StarMQ.Slave");
+            _queue = new Queue();
         }
 
         [TearDown]

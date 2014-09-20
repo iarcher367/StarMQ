@@ -232,8 +232,8 @@ namespace StarMQ
                     args.Add("x-dead-letter-exchange", queue.DeadLetterExchangeName);
                     config.Append(" [DLX]=").Append(queue.DeadLetterExchangeName);
                 }
-                if (!String.IsNullOrEmpty(queue.DeadLetterExchangeRoutingKey))
-                    args.Add("x-dead-letter-routing-key", queue.DeadLetterExchangeRoutingKey);
+                if (!String.IsNullOrEmpty(queue.DeadLetterRoutingKey))
+                    args.Add("x-dead-letter-routing-key", queue.DeadLetterRoutingKey);
                 if (queue.Expires > 0)
                 {
                     args.Add("x-expires", queue.Expires);

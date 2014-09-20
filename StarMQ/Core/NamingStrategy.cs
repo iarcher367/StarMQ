@@ -9,9 +9,9 @@
         string GetAlternateQueueName(Type messageType);
         string GetConsumerTag();
         string GetDeadLetterExchangeName(Type messageType);
-        string GetDeadLetterQueueName(Type messageType, string subscriberId);
+        string GetDeadLetterQueueName(Type messageType);
         string GetExchangeName(Type messageType);
-        string GetQueueName(Type messageType, string subscriberId);
+        string GetQueueName(Type messageType);
     }
 
     public class NamingStrategy : INamingStrategy
@@ -52,14 +52,12 @@
             return String.Format("DLX:{0}", _typeNameSerializer.Serialize(messageType));
         }
 
-        public string GetDeadLetterQueueName(Type messageType, string subscriberId)
+        public string GetDeadLetterQueueName(Type messageType)
         {
             if (messageType == null)
                 throw new ArgumentNullException("messageType");
-            if (subscriberId == null)
-                throw new ArgumentNullException("subscriberId");
 
-            return String.Format("DLX:{0}:{1}", _typeNameSerializer.Serialize(messageType), subscriberId);
+            return String.Format("DLX:{0}", _typeNameSerializer.Serialize(messageType));
         }
 
         public string GetExchangeName(Type messageType)
@@ -70,14 +68,12 @@
             return _typeNameSerializer.Serialize(messageType);
         }
 
-        public string GetQueueName(Type messageType, string subscriberId)
+        public string GetQueueName(Type messageType)
         {
             if (messageType == null)
                 throw new ArgumentNullException("messageType");
-            if (subscriberId == null)
-                throw new ArgumentNullException("subscriberId");
 
-            return String.Format("{0}:{1}", _typeNameSerializer.Serialize(messageType), subscriberId);
+            return _typeNameSerializer.Serialize(messageType);
         }
     }
 }
