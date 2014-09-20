@@ -1,15 +1,14 @@
 ﻿namespace StarMQ.Core
 {
     using Message;
+    using Model;
     using System;
 
     public interface INamingStrategy
     {
-        string GetAlternateExchangeName(Type messageType);
-        string GetAlternateQueueName(Type messageType);
+        string GetAlternateName(Exchange exchange);
         string GetConsumerTag();
-        string GetDeadLetterExchangeName(Type messageType);
-        string GetDeadLetterQueueName(Type messageType);
+        string GetDeadLetterName(string baseName);
         string GetExchangeName(Type messageType);
         string GetQueueName(Type messageType);
     }
@@ -23,20 +22,12 @@
             _typeNameSerializer = typeNameSerializer;
         }
 
-        public string GetAlternateExchangeName(Type messageType)
+        public string GetAlternateName(Exchange exchange)
         {
-            if (messageType == null)
-                throw new ArgumentNullException("messageType");
+            if (exchange == null)
+                throw new ArgumentNullException("exchange");
 
-            return String.Format("AE:{0}", _typeNameSerializer.Serialize(messageType));
-        }
-
-        public string GetAlternateQueueName(Type messageType)
-        {
-            if (messageType == null)
-                throw new ArgumentNullException("messageType");
-
-            return String.Format("AE:{0}", _typeNameSerializer.Serialize(messageType));
+            return String.Format("AE:{0}", exchange.Name ?? String.Empty);
         }
 
         public string GetConsumerTag()
@@ -44,20 +35,12 @@
             return Guid.NewGuid().ToString();
         }
 
-        public string GetDeadLetterExchangeName(Type messageType)
+        public string GetDeadLetterName(string baseName)
         {
-            if (messageType == null)
-                throw new ArgumentNullException("messageType");
+            if (baseName == null)
+                throw new ArgumentNullException("baseName");
 
-            return String.Format("DLX:{0}", _typeNameSerializer.Serialize(messageType));
-        }
-
-        public string GetDeadLetterQueueName(Type messageType)
-        {
-            if (messageType == null)
-                throw new ArgumentNullException("messageType");
-
-            return String.Format("DLX:{0}", _typeNameSerializer.Serialize(messageType));
+            return String.Format("DLX:{0}", baseName);
         }
 
         public string GetExchangeName(Type messageType)

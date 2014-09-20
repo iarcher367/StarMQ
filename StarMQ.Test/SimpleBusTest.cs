@@ -30,14 +30,10 @@
                 .Returns("StarMQ.Master");
             _namingStrategy.Setup(x => x.GetQueueName(typeof(string)))
                 .Returns("StarMQ.Slave");
-            _namingStrategy.Setup(x => x.GetDeadLetterExchangeName(typeof(string)))
+            _namingStrategy.Setup(x => x.GetDeadLetterName(It.IsAny<string>()))
                 .Returns("DLX:StarMQ.Master");
-            _namingStrategy.Setup(x => x.GetDeadLetterQueueName(typeof(string)))
-                .Returns("DLX:StarMQ.Slave");
-            _namingStrategy.Setup(x => x.GetAlternateExchangeName(typeof(string)))
+            _namingStrategy.Setup(x => x.GetAlternateName(It.IsAny<Exchange>()))
                 .Returns("AE:StarMQ.Master");
-            _namingStrategy.Setup(x => x.GetAlternateQueueName(typeof(string)))
-                .Returns("AE:StarMQ.Slave");
         }
 
         #region PublishAsync
@@ -55,8 +51,7 @@
 
             await _sut.PublishAsync(Content, RoutingKey);
 
-            _namingStrategy.Verify(x => x.GetAlternateExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Exactly(2));
-            _namingStrategy.Verify(x => x.GetAlternateQueueName(It.Is<Type>(y => y == typeof(string))), Times.Once);
+            _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Once);
             _namingStrategy.Verify(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Once);
             _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(2));
             _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Once);
@@ -152,11 +147,8 @@
 
             _configure.Verify(x => x(It.IsAny<Queue>()), Times.Never);
 
-            _namingStrategy.Verify(x => x.GetAlternateExchangeName(typeof(string)), Times.Exactly(2));
-            _namingStrategy.Verify(x => x.GetAlternateQueueName(typeof(string)), Times.Once);
-            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(typeof(string)), Times.Once);
-            _namingStrategy.Verify(x => x.GetDeadLetterQueueName(typeof(string)),
-                Times.Once);
+            _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Once);
+            _namingStrategy.Verify(x => x.GetDeadLetterName(It.IsAny<string>()), Times.Exactly(2));
             _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Once);
             _namingStrategy.Verify(x => x.GetQueueName(typeof(string)), Times.Once);
         }
@@ -294,7 +286,7 @@
 
             Assert.That(flag, Is.True);
 
-            _namingStrategy.Verify(x => x.GetDeadLetterExchangeName(It.IsAny<Type>()), Times.Never);
+            _namingStrategy.Verify(x => x.GetDeadLetterName(It.IsAny<string>()), Times.Once);
         }
 
         [Test]

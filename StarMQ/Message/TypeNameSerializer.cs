@@ -11,6 +11,7 @@
 
     public class TypeNameSerializer : ITypeNameSerializer
     {
+        [Obsolete]
         public Type Deserialize(string name)
         {
             if (name == null)

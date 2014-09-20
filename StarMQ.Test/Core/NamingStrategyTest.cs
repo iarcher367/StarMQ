@@ -4,6 +4,7 @@
     using NUnit.Framework;
     using StarMQ.Core;
     using StarMQ.Message;
+    using StarMQ.Model;
     using System;
 
     public class NamingStrategyTest
@@ -25,39 +26,20 @@
         }
 
         [Test]
-        public void ShouldGenerateAlternateExchangeName()
+        public void ShouldGetAlternateName()
         {
-            var actual = _sut.GetAlternateExchangeName(typeof(string));
+            var exchange = new Exchange(SerializedName);
+
+            var actual = _sut.GetAlternateName(exchange);
 
             Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
-
-            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
-                Times.Once);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void GetAlternateExchangeNameShouldThrowExceptionIfTypeIsNull()
+        public void GetAlternateNameShouldThrowExceptionIfExchangeIsNull()
         {
-            _sut.GetAlternateExchangeName(null);
-        }
-
-        [Test]
-        public void ShouldGenerateAlternateQueueName()
-        {
-            var actual = _sut.GetAlternateQueueName(typeof(string));
-
-            Assert.That(actual, Is.EqualTo(String.Format("AE:{0}", SerializedName)));
-
-            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
-                Times.Once);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void GetAlternateQueueNameShouldThrowExceptionIfTypeIsNull()
-        {
-            _sut.GetAlternateQueueName(null);
+            _sut.GetAlternateName(null);
         }
 
         [Test]
@@ -70,39 +52,18 @@
         }
 
         [Test]
-        public void ShouldGenerateDeadLetterExchangeName()
+        public void ShouldGetDeadLetterName()
         {
-            var actual = _sut.GetDeadLetterExchangeName(typeof(string));
+            var actual = _sut.GetDeadLetterName(SerializedName);
 
             Assert.That(actual, Is.EqualTo(String.Format("DLX:{0}", SerializedName)));
-
-            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
-                Times.Once);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public void GetDeadLetterExchangeNameShouldThrowExceptionIfTypeIsNull()
+        public void GetDeadLetterNameShouldThrowExceptionIfNameIsNull()
         {
-            _sut.GetDeadLetterExchangeName(null);
-        }
-
-        [Test]
-        public void ShouldGenerateDeadLetterQueueName()
-        {
-            var actual = _sut.GetDeadLetterQueueName(typeof(string));
-
-            Assert.That(actual, Is.EqualTo(String.Format("DLX:{0}", SerializedName)));
-
-            _typeNameSerializer.Verify(x => x.Serialize(It.Is<Type>(y => y == typeof(string))),
-                Times.Once);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void GetDeadLetterQueueNameShouldThrowExceptionIfTypeIsNull()
-        {
-            _sut.GetDeadLetterQueueName(null);
+            _sut.GetDeadLetterName(null);
         }
 
         [Test]

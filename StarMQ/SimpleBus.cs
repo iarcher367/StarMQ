@@ -64,26 +64,22 @@
         private async Task<Exchange> ConfigureExchange<T>()
         {
             var name = _namingStrategy.GetExchangeName(typeof(T));
-            var exchange = new Exchange(name)
-            {
-                AlternateExchangeName = _namingStrategy.GetAlternateExchangeName(typeof(T)),
-                Type = ExchangeType.Topic
-            };
+            var exchange = new Exchange(name) { Type = ExchangeType.Topic };
 
-            await ConfigureAlternateExchange<T>();
+            exchange.AlternateExchangeName = _namingStrategy.GetAlternateName(exchange);
+
+            await ConfigureAlternateExchange(exchange);
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
             return exchange;
         }
 
-        private async Task ConfigureAlternateExchange<T>()
+        private async Task ConfigureAlternateExchange(Exchange source)
         {
-            var exchangeName = _namingStrategy.GetAlternateExchangeName(typeof(T));
-            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Fanout };
+            var exchange = new Exchange(source.AlternateExchangeName) { Type = ExchangeType.Fanout };
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
-            var queueName = _namingStrategy.GetAlternateQueueName(typeof(T));
-            var queue = new Queue().WithName(queueName);
+            var queue = new Queue().WithName(source.AlternateExchangeName);
             await _advancedBus.QueueDeclareAsync(queue);
             await _advancedBus.QueueBindAsync(exchange, queue, String.Empty);
         }
@@ -123,24 +119,24 @@
             if (String.IsNullOrEmpty(queue.Name))
                 queue.WithName(_namingStrategy.GetQueueName(typeof(T)));
             if (String.IsNullOrEmpty(queue.DeadLetterExchangeName))
-                queue.WithDeadLetterExchangeName(_namingStrategy.GetDeadLetterExchangeName(typeof(T)));
+                queue.WithDeadLetterExchangeName(_namingStrategy.GetDeadLetterName(exchange.Name));
 
             await _advancedBus.QueueDeclareAsync(queue);
 
             foreach (var key in queue.BindingKeys.DefaultIfEmpty("#"))
                 await _advancedBus.QueueBindAsync(exchange, queue, key);
 
-            await ConfigureDeadLettering<T>(queue.DeadLetterExchangeName, queue.BindingKeys);
+            await ConfigureDeadLettering(queue, queue.BindingKeys);
 
             await _advancedBus.ConsumeAsync(queue, messageHandler);
         }
 
-        private async Task ConfigureDeadLettering<T>(string exchangeName, IEnumerable<string> bindingKeys)
+        private async Task ConfigureDeadLettering(Queue source, IEnumerable<string> bindingKeys)
         {
-            var exchange = new Exchange(exchangeName) { Type = ExchangeType.Topic };
+            var exchange = new Exchange(source.DeadLetterExchangeName) { Type = ExchangeType.Topic };
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
-            var queue = new Queue().WithName(_namingStrategy.GetDeadLetterQueueName(typeof(T)));
+            var queue = new Queue().WithName(_namingStrategy.GetDeadLetterName(source.Name));
             await _advancedBus.QueueDeclareAsync(queue);
 
             foreach (var key in bindingKeys.DefaultIfEmpty("#"))
