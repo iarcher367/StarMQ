@@ -58,7 +58,7 @@
 
             _action = x => { };
             _args = new Dictionary<string, object>();
-            _exchange = new Exchange("StarMQ.Master");
+            _exchange = new Exchange().WithName("StarMQ.Master");
             _message = new Message<string>("Hello World!");
             _queue = new Queue().WithName("StarMQ.Slave");
         }

@@ -28,7 +28,7 @@
         [Test]
         public void ShouldGetAlternateName()
         {
-            var exchange = new Exchange(SerializedName);
+            var exchange = new Exchange().WithName(SerializedName);
 
             var actual = _sut.GetAlternateName(exchange);
 

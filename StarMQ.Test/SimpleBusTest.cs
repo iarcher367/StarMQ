@@ -64,7 +64,7 @@
         [Test]
         public async Task PublishAsyncShouldSetMandatory()
         {
-            await _sut.PublishAsync(Content, RoutingKey, true);
+            await _sut.PublishAsync(Content, RoutingKey, mandatory: true);
 
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
                 true, It.IsAny<bool>(), It.IsAny<Message<string>>()), Times.Once);
@@ -214,7 +214,7 @@
         }
 
         [Test]
-        public async Task SubscribeAsyncFuncShouldApplyConfigure()
+        public async Task SubscribeAsyncFuncShouldApplyConfigureQueue()
         {
             var configure = new Mock<Action<Queue>>();
 
@@ -287,6 +287,61 @@
             Assert.That(flag, Is.True);
 
             _namingStrategy.Verify(x => x.GetDeadLetterName(It.IsAny<string>()), Times.Once);
+        }
+
+        [Test]
+        public async Task SubscribeAsyncFuncShouldApplyConfigureExchange()
+        {
+            var configure = new Mock<Action<Exchange>>();
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(), null, configure.Object);
+
+            configure.Verify(x => x(It.IsAny<Exchange>()), Times.Once());
+        }
+
+        [Test]
+        public async Task SubscribeAsyncFuncShouldUseConfiguredExchangeName()
+        {
+            const string expected = "StarMQ.Master";
+            var flag = false;
+
+            _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Exchange>(x =>
+                {
+                    if (x.Name == expected)
+                        flag = true;
+                });
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(), null, x => x.WithName(expected));
+
+            Assert.That(flag, Is.True);
+
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(3));
+            _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Never);
+        }
+
+        [Test]
+        public async Task SubscribeAsyncFuncShouldUseConfiguredAlternateExchangeName()
+        {
+            const string expected = "StarMQ.Master";
+            var flag = false;
+
+            _advancedBus.Setup(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()))
+                .Returns(Task.FromResult(0))
+                .Callback<Exchange>(x =>
+                {
+                    if (x.Name == expected)
+                        flag = true;
+                });
+
+            await _sut.SubscribeAsync<string>(x => new AckResponse(), null,
+                x => x.WithAlternateExchangeName(expected));
+
+            Assert.That(flag, Is.True);
+
+            _advancedBus.Verify(x => x.ExchangeDeclareAsync(It.IsAny<Exchange>()), Times.Exactly(3));
+            _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Never);
         }
 
         [Test]

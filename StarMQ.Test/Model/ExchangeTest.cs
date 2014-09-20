@@ -10,33 +10,72 @@
         private const string Expected = "StarMQ.Message:StarMQ";
 
         [Test]
+        public void ShouldDefaultDurableToTrue()
+        {
+            var exchange = new Exchange();
+
+            Assert.That(exchange.Durable, Is.True);
+        }
+
+        [Test]
         public void ShouldSetExchangeName()
         {
-            var exchange = new Exchange(Expected);
+            var exchange = new Exchange().WithName(Expected);
 
             Assert.That(exchange.Name, Is.EqualTo(Expected));
         }
 
         [Test]
-        [ExpectedException(typeof (ArgumentNullException))]
+        [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfNameIsNull()
         {
-            var exchange = new Exchange(null);
+            new Exchange().WithName(null);
         }
 
         [Test]
         [ExpectedException(typeof(MaxLengthException))]
         public void ShouldThrowExceptionIfNameIsTooLong()
         {
-            var exchange = new Exchange(new String('*', 256));
+            new Exchange().WithName(new String('*', 256));
         }
 
         [Test]
-        public void ShouldDefaultDurableToTrue()
+        public void ShouldSetAutoDelete()
         {
-            var exchange = new Exchange(Expected);
+            var actual = new Exchange().WithAutoDelete(true).AutoDelete;
 
-            Assert.That(exchange.Durable, Is.True);
+            Assert.That(actual, Is.True);
         }
+
+        [Test]
+        public void ShouldSetDurable()
+        {
+            var actual = new Exchange().WithDurable(false).Durable;
+
+            Assert.That(actual, Is.False);
+        }
+
+        [Test]
+        public void ShouldSetAlternateExchangeName()
+        {
+            var actual = new Exchange().WithAlternateExchangeName(Expected).AlternateExchangeName;
+
+            Assert.That(actual, Is.EqualTo(Expected));
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldThrowExceptionIfAlternateExchangeNameIsNull()
+        {
+            new Exchange().WithAlternateExchangeName(null);
+        }
+
+        [Test]
+        [ExpectedException(typeof(MaxLengthException))]
+        public void ShouldThrowExceptionIfAlternateExchangeNameIsTooLong()
+        {
+            new Exchange().WithAlternateExchangeName(new String('*', 256));
+        }
+
     }
 }
