@@ -83,36 +83,23 @@
         [Test]
         public void ConsumeShouldConsume()
         {
-            _sut.ConsumeAsync<string>(_queue, x => new AckResponse());
+            _sut.ConsumeAsync(_queue, x => x.Add<string>(y => new AckResponse()));
 
             Assert.Fail();  // TODO: implement once Consumer is mockable
-        }
-
-        [Test]
-        public void ConsumeShouldSendNackResponseIfHandlerThrowsException()
-        {
-            Assert.Fail();
-        }
-
-        [Test]
-        public void ConsumeShouldPassMessageThroughPipeline()
-        {
-            // check that return from pipeline is passed into deserialize()
-            Assert.Fail();
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ConsumeShouldThrowExceptionIfQueueIsNull()
         {
-            await _sut.ConsumeAsync<string>(null, x => new AckResponse());
+            await _sut.ConsumeAsync(null, x => x.Add<string>(y => new AckResponse()));
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public async Task ConsumeShouldThrowExceptionIfHandlerIsNull()
+        public async Task ConsumeShouldThrowExceptionIfConfigureIsNull()
         {
-            await _sut.ConsumeAsync<string>(_queue, null);
+            await _sut.ConsumeAsync(_queue, null);
         }
         #endregion
 

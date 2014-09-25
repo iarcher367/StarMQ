@@ -15,7 +15,7 @@ namespace StarMQ
 
     public interface IAdvancedBus : IDisposable
     {
-        Task ConsumeAsync<T>(Queue queue, Func<T, BaseResponse> messageHandler) where T : class;
+        Task ConsumeAsync(Queue queue, Action<IHandlerRegistrar> configure);
 
         Task ExchangeDeclareAsync(Exchange exchange);
 
@@ -79,34 +79,17 @@ namespace StarMQ
             };
         }
 
-        public async Task ConsumeAsync<T>(Queue queue, Func<T, BaseResponse> messageHandler) where T : class
+        public async Task ConsumeAsync(Queue queue, Action<IHandlerRegistrar> configure)
         {
+            if (configure == null)
+                throw new ArgumentNullException("configure");
             if (queue == null)
                 throw new ArgumentNullException("queue");
-            if (messageHandler == null)
-                throw new ArgumentNullException("messageHandler");
 
-            // TODO: support derived types on same subscription and multiple handlers
+            var consumer = ConsumerFactory.CreateConsumer(queue, configure, _configuration, _connection,
+                _dispatcher, _namingStrategy, _pipeline, _serializationStrategy);
 
-            var consumer = ConsumerFactory.CreateConsumer(queue, _configuration, _connection,
-                _dispatcher, _namingStrategy);
-
-            await consumer.Consume(queue, message =>
-                {
-                    var data = _pipeline.OnReceive(message);
-                    var deserialized = _serializationStrategy.Deserialize<T>(data);
-
-                    try
-                    {
-                        return messageHandler(deserialized.Body);
-                    }
-                    catch (System.Exception ex)
-                    {
-                        _log.Error("Unhandled exception from message handler.", ex);
-
-                        return new NackResponse();
-                    }
-                });
+            await consumer.Consume(queue);
 
             _log.Info(String.Format("Consumption from queue '{0}' started.", queue.Name));
         }

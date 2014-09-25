@@ -1,5 +1,4 @@
-﻿
-namespace StarMQ.Test.Consume
+﻿namespace StarMQ.Test.Consume
 {
     using log4net;
     using Moq;
@@ -7,6 +6,7 @@ namespace StarMQ.Test.Consume
     using RabbitMQ.Client;
     using StarMQ.Consume;
     using StarMQ.Core;
+    using StarMQ.Message;
     using StarMQ.Model;
     using System;
     using System.Collections.Generic;
@@ -17,10 +17,14 @@ namespace StarMQ.Test.Consume
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<IOutboundDispatcher> _dispatcher;
+        private Mock<IHandlerManager> _handlerManager;
         private Mock<ILog> _log;
         private Mock<IModel> _modelOne;
         private Mock<IModel> _modelTwo;
         private Mock<INamingStrategy> _namingStrategy;
+        private Mock<IPipeline> _pipeline;
+        private Mock<ISerializationStrategy> _serializationStrategy;
+        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private IConsumer _sut;
 
         [SetUp]
@@ -29,10 +33,14 @@ namespace StarMQ.Test.Consume
             _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
             _dispatcher = new Mock<IOutboundDispatcher>();
+            _handlerManager = new Mock<IHandlerManager>();
             _log = new Mock<ILog>();
             _modelOne = new Mock<IModel>();
             _modelTwo = new Mock<IModel>();
             _namingStrategy = new Mock<INamingStrategy>();
+            _pipeline = new Mock<IPipeline>();
+            _serializationStrategy = new Mock<ISerializationStrategy>();
+            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.SetupSequence(x => x.CreateModel())
                 .Returns(_modelOne.Object)
@@ -40,7 +48,8 @@ namespace StarMQ.Test.Consume
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(String.Empty);
 
             _sut = new PersistentConsumer(_configuration.Object, _connection.Object,
-                _dispatcher.Object, _log.Object, _namingStrategy.Object);
+                _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
+                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
         }
 
         [TearDown]
@@ -59,7 +68,7 @@ namespace StarMQ.Test.Consume
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             _connection.Raise(x => x.OnConnected += null);
 
@@ -79,7 +88,7 @@ namespace StarMQ.Test.Consume
         [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfQueueIsNull()
         {
-            _sut.Consume(null, x => new AckResponse());
+            _sut.Consume(null);
         }
 
         [Test]
@@ -92,7 +101,7 @@ namespace StarMQ.Test.Consume
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             _sut.HandleBasicCancel(String.Empty);
 

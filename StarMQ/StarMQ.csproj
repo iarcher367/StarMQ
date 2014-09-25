@@ -34,6 +34,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Newtonsoft.Json">
       <HintPath>..\packages\Newtonsoft.Json.6.0.3\lib\net45\Newtonsoft.Json.dll</HintPath>
     </Reference>
@@ -55,6 +56,7 @@
     <Compile Include="Consume\ConsumerFactory.cs" />
     <Compile Include="Consume\PersistentConsumer.cs" />
     <Compile Include="Consume\BasicConsumer.cs" />
+    <Compile Include="Consume\HandlerManager.cs" />
     <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\PublishException.cs" />

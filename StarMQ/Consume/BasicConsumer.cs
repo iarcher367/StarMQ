@@ -2,6 +2,7 @@ namespace StarMQ.Consume
 {
     using Core;
     using log4net;
+    using Message;
     using Model;
     using System;
     using System.Collections.Generic;
@@ -15,22 +16,15 @@ namespace StarMQ.Consume
     public class BasicConsumer : BaseConsumer
     {
         public BasicConsumer(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
-            : base(configuration, connection, dispatcher, log, namingStrategy)
+            IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
+            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy,
+            ITypeNameSerializer typeNameSerializer)
+            : base(configuration, connection, dispatcher, handlerManager, log, namingStrategy, pipeline,
+            serializationStrategy, typeNameSerializer)
         {
         }
 
-        public override async Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
-        {
-            if (messageHandler == null)
-                throw new ArgumentNullException("messageHandler");
-
-            MessageHandler = messageHandler;
-
-            await Consume(queue);   // TODO: catch exceptions
-        }
-
-        protected async Task Consume(Queue queue)
+        public override async Task Consume(Queue queue)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
@@ -42,7 +36,7 @@ namespace StarMQ.Consume
                 Model.BasicQos(0, Configuration.PrefetchCount, false);
 
                 if (Configuration.CancelOnHaFailover || queue.CancelOnHaFailover)
-                    args.Add("x-cancel-on-ha-failover", queue.CancelOnHaFailover);
+                    args.Add("x-cancel-on-ha-failover", true);
                 if (queue.Priority != 0)
                     args.Add("x-priority", queue.Priority);
 

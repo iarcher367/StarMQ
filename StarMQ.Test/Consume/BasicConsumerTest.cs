@@ -6,6 +6,7 @@
     using RabbitMQ.Client;
     using StarMQ.Consume;
     using StarMQ.Core;
+    using StarMQ.Message;
     using StarMQ.Model;
     using System;
     using System.Collections.Generic;
@@ -20,10 +21,14 @@
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<IOutboundDispatcher> _dispatcher;
+        private Mock<IHandlerManager> _handlerManager;
         private Mock<ILog> _log;
         private Mock<IModel> _modelOne;
         private Mock<IModel> _modelTwo;
         private Mock<INamingStrategy> _namingStrategy;
+        private Mock<IPipeline> _pipeline;
+        private Mock<ISerializationStrategy> _serializationStrategy;
+        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private IConsumer _sut;
 
         [SetUp]
@@ -32,20 +37,27 @@
             _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
             _dispatcher = new Mock<IOutboundDispatcher>();
+            _handlerManager = new Mock<IHandlerManager>();
             _log = new Mock<ILog>();
             _modelOne = new Mock<IModel>();
             _modelTwo = new Mock<IModel>();
             _namingStrategy = new Mock<INamingStrategy>();
+            _pipeline = new Mock<IPipeline>();
+            _serializationStrategy = new Mock<ISerializationStrategy>();
+            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.SetupSequence(x => x.CreateModel())
+                .Returns(_modelOne.Object)
                 .Returns(_modelOne.Object)
                 .Returns(_modelTwo.Object);
             _namingStrategy.SetupSequence(x => x.GetConsumerTag())
                 .Returns(ConsumerTagOne)
+                .Returns(ConsumerTagOne)
                 .Returns(ConsumerTagTwo);
 
-            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
-                _log.Object, _namingStrategy.Object);
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object,
+                _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
+                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
         }
 
         [TearDown]
@@ -64,7 +76,7 @@
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             action();
 
@@ -93,14 +105,14 @@
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             action();
 
             _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
 
             Assert.That(args.ContainsKey(key), Is.True);
-            Assert.That(args[key], Is.EqualTo(queue.CancelOnHaFailover));
+            Assert.That(args[key], Is.True);
         }
 
         [Test]
@@ -119,7 +131,7 @@
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             action();
 
@@ -145,7 +157,7 @@
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue, x => new AckResponse());
+            _sut.Consume(queue);
 
             action();
 
@@ -159,11 +171,38 @@
         public async Task ShouldProcessQueuesIndependently()
         {
             const int delay = 10;
-            var fastQueue = new Queue();
             var order = 0;
-            var slowQueue = new Queue();
+
+            var properties = new Mock<IBasicProperties>();
+            _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0])
+                {
+                    Properties = new Properties { Type = typeof(Factory).FullName }
+                });
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<dynamic>(new Factory())
+                {
+                    Properties = new Properties { Type = typeof(Factory).FullName }
+                });
+
+            IHandlerManager handlerOne = new HandlerManager(_log.Object);
+            handlerOne.Add<Factory>(x =>
+            {
+                Task.Delay(delay * 2).Wait();
+                return new AckResponse();
+            });
+            var sutOne = new BasicConsumer(_configuration.Object, _connection.Object,
+                _dispatcher.Object, handlerOne, _log.Object, _namingStrategy.Object,
+                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
+            var handlerTwo = new HandlerManager(_log.Object);
+            handlerTwo.Add<Factory>(x =>
+            {
+                Task.Delay(delay).Wait();
+                return new AckResponse();
+            });
             var sutTwo = new BasicConsumer(_configuration.Object, _connection.Object,
-                _dispatcher.Object, _log.Object, _namingStrategy.Object);
+                _dispatcher.Object, handlerTwo, _log.Object, _namingStrategy.Object,
+                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
 
             _modelOne.Setup(x => x.BasicAck(1, false))
                 .Callback(() => Assert.That(order++, Is.EqualTo(0)));
@@ -174,28 +213,18 @@
             _modelOne.Setup(x => x.BasicAck(3, false))
                 .Callback(() => Assert.That(order++, Is.EqualTo(3)));
 
-            await _sut.Consume(slowQueue, x =>
-                {
-                    Task.Delay(delay * 2).Wait();
-                    return new AckResponse();
-                });
-            await sutTwo.Consume(fastQueue, x =>
-                {
-                    Task.Delay(delay).Wait();
-                    return new AckResponse();
-                });
-
-            _sut.HandleBasicDeliver(ConsumerTagOne, 1, false, String.Empty, String.Empty,
-                It.IsAny<IBasicProperties>(), new byte[1]);
+            sutOne.HandleBasicDeliver(ConsumerTagOne, 1, false, String.Empty, String.Empty,
+                properties.Object, new byte[1]);
             sutTwo.HandleBasicDeliver(ConsumerTagTwo, 2, false, String.Empty, String.Empty,
-                It.IsAny<IBasicProperties>(), new byte[1]);
-            _sut.HandleBasicDeliver(ConsumerTagOne, 3, false, String.Empty, String.Empty,
-                It.IsAny<IBasicProperties>(), new byte[1]);
+                properties.Object, new byte[1]);
+            sutOne.HandleBasicDeliver(ConsumerTagOne, 3, false, String.Empty, String.Empty,
+                properties.Object, new byte[1]);
             sutTwo.HandleBasicDeliver(ConsumerTagTwo, 4, false, String.Empty, String.Empty,
-                It.IsAny<IBasicProperties>(), new byte[1]);
+                properties.Object, new byte[1]);
 
             await Task.Delay(delay * 4);
 
+            sutOne.Dispose();
             sutTwo.Dispose();
         }
 
@@ -203,14 +232,7 @@
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ShouldThrowExceptionIfQueueIsNull()
         {
-            await _sut.Consume(null, message => new AckResponse());
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task ShouldThrowExceptionIfMessageHandlerIsNull()
-        {
-            await _sut.Consume(new Queue(), null);
+            await _sut.Consume(null);
         }
     }
 }

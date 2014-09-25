@@ -34,6 +34,7 @@
       <SpecificVersion>False</SpecificVersion>
       <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
     </Reference>
+    <Reference Include="Microsoft.CSharp" />
     <Reference Include="Moq">
       <HintPath>..\packages\Moq.4.2.1402.2112\lib\net40\Moq.dll</HintPath>
     </Reference>
@@ -57,6 +58,7 @@
   <ItemGroup>
     <Compile Include="AdvancedBusTest.cs" />
     <Compile Include="Consume\BaseConsumerTest.cs" />
+    <Compile Include="Consume\HandlerManagerTest.cs" />
     <Compile Include="GlobalTest.cs" />
     <Compile Include="Message\AesInterceptorTest.cs" />
     <Compile Include="Message\CompressionInterceptorTest.cs" />

@@ -3,8 +3,8 @@
     using Moq;
     using NUnit.Framework;
     using StarMQ.Message;
-    using System;
     using StarMQ.Model;
+    using System;
 
     public class SerializationStrategyTest
     {
@@ -12,8 +12,8 @@
 
         private Mock<ICorrelationStrategy> _correlationStrategy;
         private Mock<ISerializer> _serializer;
-        private ISerializationStrategy _sut;
         private Mock<ITypeNameSerializer> _typeNameSerializer;
+        private ISerializationStrategy _sut;
 
         private IMessage<string> _message;
 
@@ -33,26 +33,30 @@
         [Test]
         public void ShouldDeserializeByteArrayMessageToMessage()
         {
-            var data = new JsonSerializer().ToBytes(Content);
+            var body = new Properties { MessageId = "42" };
+            var data = new JsonSerializer().ToBytes(body);
 
-            _serializer.Setup(x => x.ToObject<string>(data)).Returns(Content);
+            _serializer.Setup(x => x.ToObject(data, typeof(Properties))).Returns(body);
+            _typeNameSerializer.Setup(x => x.Deserialize(It.IsAny<string>())).Returns(typeof(Properties));
 
             var properties = new Properties();
             var message = new Message<byte[]>(data) { Properties = properties };
 
-            var actual = _sut.Deserialize<string>(message);
+            var actual = _sut.Deserialize(message);
 
-            Assert.That(actual.Body, Is.EqualTo(Content));
+            Assert.That(actual.Body, Is.EqualTo(body));
+            Assert.That(actual.Body, Is.InstanceOf<Properties>());
             Assert.That(actual.Properties, Is.SameAs(properties));
 
-            _serializer.Verify(x => x.ToObject<string>(data), Times.Once);
+            _serializer.Verify(x => x.ToObject(data, typeof(Properties)), Times.Once);
+            _typeNameSerializer.Verify(x => x.Deserialize(It.IsAny<string>()), Times.Once);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void DeserializeShouldThrowExceptionIfMessageIsNull()
         {
-            _sut.Deserialize<string>(null);
+            _sut.Deserialize(null);
         }
 
         [Test]
@@ -79,7 +83,7 @@
             const string typeName = "System.String";
 
             _correlationStrategy.Setup(x => x.GenerateCorrelationId()).Returns(String.Empty);
-            _typeNameSerializer.Setup(x => x.Serialize(It.IsAny<Type>())).Returns(typeName);
+            _typeNameSerializer.Setup(x => x.Serialize(typeof(string))).Returns(typeName);
 
             var actual = _sut.Serialize(_message);
 
@@ -106,7 +110,7 @@
 
             _message.Properties.CorrelationId = guid;
 
-            _correlationStrategy.Setup(x => x.GenerateCorrelationId());
+            _correlationStrategy.Setup(x => x.GenerateCorrelationId()).Returns(Guid.NewGuid().ToString);
             _typeNameSerializer.Setup(x => x.Serialize(It.IsAny<Type>())).Returns(String.Empty);
 
             var actual = _sut.Serialize(_message);
@@ -117,7 +121,7 @@
         }
 
         [Test]
-        [ExpectedException(typeof (ArgumentNullException))]
+        [ExpectedException(typeof(ArgumentNullException))]
         public void SerializeShouldThrowExceptionIfMessageIsNull()
         {
             _sut.Serialize<string>(null);

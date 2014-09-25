@@ -2,6 +2,7 @@
 {
     using Core;
     using log4net;
+    using Message;
     using Model;
     using System;
     using System.Threading.Tasks;
@@ -11,8 +12,11 @@
         private Queue _queue;
 
         public PersistentConsumer(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
-            : base(configuration, connection, dispatcher, log, namingStrategy)
+            IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
+            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy,
+            ITypeNameSerializer typeNameSerializer)
+            : base(configuration, connection, dispatcher, handlerManager, log, namingStrategy, pipeline,
+            serializationStrategy, typeNameSerializer)
         {
             Connection.OnConnected += OnConnected;
         }
@@ -23,24 +27,24 @@
 
             Log.Info("Synchronized model.");
 
-            Consume(_queue);
+            base.Consume(_queue);
         }
 
-        public override Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler)
+        public override Task Consume(Queue queue)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
             _queue = queue;
 
-            return base.Consume(queue, messageHandler);
+            return base.Consume(queue);
         }
 
         public override void HandleBasicCancel(string consumerTag)
         {
             base.HandleBasicCancel(consumerTag);
 
-            Consume(_queue);    // TODO: verify not using OnConnected
+            base.Consume(_queue);    // TODO: verify new Model is not needed; no need to use OnConnected
         }
     }
 }

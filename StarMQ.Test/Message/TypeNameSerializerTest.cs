@@ -11,7 +11,7 @@
     {
         private ITypeNameSerializer _sut;
 
-        private const string Name = "StarMQ.Model.Properties:StarMQ";
+        private const string Name = "StarMQ.Model.Properties, StarMQ, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
 
         [SetUp]
         public void Setup()
@@ -32,22 +32,6 @@
         public void ShouldThrowExceptionIfNameIsNull()
         {
             _sut.Deserialize(null);
-        }
-
-        [Test]
-        [ExpectedException(typeof(StarMqException))]
-        public void ShouldThrowExceptionForTooFewDelimitersInName()
-        {
-            _sut.Deserialize(Name.Split(':')[0]);
-        }
-
-        [Test]
-        [ExpectedException(typeof(StarMqException))]
-        public void ShouldThrowExceptionForTooManyDelimitersInName()
-        {
-            const string input = Name + ":bug";
-
-            _sut.Deserialize(input);
         }
 
         [Test]

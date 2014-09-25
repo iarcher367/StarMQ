@@ -7,8 +7,10 @@
     using RabbitMQ.Client.Exceptions;
     using StarMQ.Consume;
     using StarMQ.Core;
+    using StarMQ.Message;
     using StarMQ.Model;
     using System;
+    using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
@@ -16,16 +18,20 @@
     public class BaseConsumerTest
     {
         private const string ConsumerTag = "a3467096-7250-47b8-b5d7-08472505fc2d";
-        private const int Delay = 10;
+        private const int Timeout = 1000;
         private const ulong DeliveryTag = 42;
 
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
         private Mock<IOutboundDispatcher> _dispatcher;
+        private Mock<IHandlerManager> _handlerManager;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<INamingStrategy> _namingStrategy;
+        private Mock<IPipeline> _pipeline;
         private Mock<IBasicProperties> _properties;
+        private Mock<ISerializationStrategy> _serializationStrategy;
+        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private BaseConsumer _sut;
 
         private Queue _queue;
@@ -36,16 +42,17 @@
             _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
             _dispatcher = new Mock<IOutboundDispatcher>();
+            _handlerManager = new Mock<IHandlerManager>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
             _namingStrategy = new Mock<INamingStrategy>();
+            _pipeline = new Mock<IPipeline>();
             _properties = new Mock<IBasicProperties>();
+            _serializationStrategy = new Mock<ISerializationStrategy>();
+            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
-
-            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
-                _log.Object, _namingStrategy.Object);
 
             _queue = new Queue();
         }
@@ -56,12 +63,19 @@
             _sut.Dispose();
         }
 
-        [Test]
-        public void ShouldDisposeModelAndDiscardMessagesIfOnDisconnectedFires()
+        private void GenericSetup()
         {
-            _connection.Raise(x => x.OnDisconnected += null);
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                _handlerManager.Object, _log.Object, _namingStrategy.Object, _pipeline.Object,
+                _serializationStrategy.Object, _typeNameSerializer.Object);
+        }
 
-            _model.Verify(x => x.Dispose(), Times.Once);
+        [Test]
+        public void ShouldDiscardMessagesIfOnDisconnectedFires()
+        {
+            GenericSetup();
+
+            _connection.Raise(x => x.OnDisconnected += null);
 
             Assert.Inconclusive();
         }
@@ -70,6 +84,8 @@
         public void CancelShouldFireConsumerCancelledEvent()
         {
             var flag = false;
+
+            GenericSetup();
 
             _sut.ConsumerCancelled += (o, e) => flag = true;
 
@@ -81,6 +97,8 @@
         [Test]
         public void CancelOkShouldDoNothing()
         {
+            GenericSetup();
+
             _sut.HandleBasicCancelOk(ConsumerTag);
         }
 
@@ -88,6 +106,8 @@
         public void ConsumeOkShouldSetConsumerTag()
         {
             var tag = Guid.NewGuid().ToString();
+
+            GenericSetup();
 
             _sut.HandleBasicConsumeOk(tag);
 
@@ -98,56 +118,84 @@
         [ExpectedException(typeof(ArgumentNullException))]
         public void ConsumeOkShouldThrowExceptionIfConsumerTagIsNull()
         {
+            GenericSetup();
+
             _sut.HandleBasicConsumeOk(null);
         }
 
+        private void DeliverSetup(Action<IHandlerRegistrar> configure)
+        {
+            var type = typeof(string);
+
+            var handlerManager = new HandlerManager(_log.Object);
+            configure(handlerManager);
+
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
+                _serializationStrategy.Object, _typeNameSerializer.Object);
+
+            _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0])
+                {
+                    Properties = new Properties { Type = type.FullName }
+                });
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<dynamic>(new Factory())
+                {
+                    Properties = new Properties { Type = type.FullName }
+                });
+        }
+
         [Test]
-        public async Task DeliverShouldExecuteMessageHandler()
+        public void DeliverShouldProcessMessage()
         {
             var signal = new ManualResetEventSlim(false);
 
-            await _sut.Consume(_queue, x =>
-            {
-                signal.Set();
-                return new AckResponse();
-            });
+            DeliverSetup(x => x.Add<Factory>(y => signal.Set()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            signal.Wait();
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
+
+            _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Once);
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()), Times.Once);
         }
 
         [Test]
-        public async Task DeliverShouldNotBeginProcessingIfCancelled()
+        public void DeliverShouldNotBeginProcessingIfCancelled()
         {
             var count = 0;
 
-            await _sut.Consume(_queue, x =>
-                {
-                    count += 2;
-                    return new AckResponse();
-                });
+            DeliverSetup(x => x.Add<Factory>(y => count++));
 
             _sut.Dispose();
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
-
             Assert.That(count, Is.EqualTo(0));
+
+            _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Never);
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()), Times.Never);
         }
 
         [Test]
-        public async Task DeliverShouldBasicAckWithDeliveryTag()
+        public void DeliverShouldBasicAckWithDeliveryTag()
         {
-            await _sut.Consume(_queue, x => new AckResponse());
+            var signal = new ManualResetEventSlim(false);
+
+            DeliverSetup(x => x.Add<Factory>(y => { }));
+
+            _model.Setup(x => x.BasicAck(DeliveryTag, false))
+                .Callback(signal.Set);
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
 
             _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
         }
@@ -155,25 +203,37 @@
         [Test]
         public async Task DeliverShouldBasicNackWithDeliveryTag()
         {
-            await _sut.Consume(_queue, x => new NackResponse());
+            var signal = new ManualResetEventSlim(false);
+
+            _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
+                .Callback(signal.Set);
+
+            DeliverSetup(x => x.Add<Factory>(y => new NackResponse()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
 
             _model.Verify(x => x.BasicNack(DeliveryTag, false, false), Times.Once);
         }
 
         [Test]
-        public async Task DeliverShouldBasicCancelOnUnsubscribeAction()
+        public void DeliverShouldBasicCancelOnUnsubscribeAction()
         {
-            await _sut.Consume(_queue, x => new AckResponse { Action = ResponseAction.Unsubscribe });
+            var signal = new ManualResetEventSlim(false);
+
+            _model.Setup(x => x.BasicCancel(ConsumerTag))
+                .Callback(signal.Set);
+
+            DeliverSetup(x => x.Add<Factory>(y => new AckResponse { Action = ResponseAction.Unsubscribe }));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
 
             _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
             _model.Verify(x => x.BasicCancel(ConsumerTag), Times.Once);
@@ -181,34 +241,73 @@
         }
 
         [Test]
-        public async Task DeliverShouldDoNothingOnModelAlreadyClosedException()
+        public void DeliverShouldDoNothingOnModelAlreadyClosedException()
         {
-            _model.Setup(x => x.BasicAck(DeliveryTag, false)).Throws(new AlreadyClosedException(null));
+            var signal = new ManualResetEventSlim(false);
 
-            await _sut.Consume(_queue, x => new AckResponse());
+            DeliverSetup(x => x.Add<Factory>(y => { }));
+
+            _model.Setup(x => x.BasicAck(DeliveryTag, false))
+                .Callback(() =>
+                {
+                    signal.Set();
+                    throw new AlreadyClosedException(null);
+                });
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
         }
 
         [Test]
-        public async Task DeliverShouldDoNothingOnModelNotSupportedException()
+        public void DeliverShouldDoNothingOnModelIoException()
         {
-            _model.Setup(x => x.BasicAck(DeliveryTag, false)).Throws(new NotSupportedException(null));
+            var signal = new ManualResetEventSlim(false);
 
-            await _sut.Consume(_queue, x => new AckResponse());
+            DeliverSetup(x => x.Add<Factory>(y => { }));
+
+            _model.Setup(x => x.BasicAck(DeliveryTag, false))
+                .Callback(() =>
+                {
+                    signal.Set();
+                    throw new IOException();
+                });
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
 
-            await Task.Delay(Delay);
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
+        }
+
+        [Test]
+        public void DeliverShouldDoNothingOnModelNotSupportedException()
+        {
+            var signal = new ManualResetEventSlim(false);
+
+            DeliverSetup(x => x.Add<Factory>(y => { }));
+
+            _model.Setup(x => x.BasicAck(DeliveryTag, false))
+                .Callback(() =>
+                {
+                    signal.Set();
+                    throw new NotSupportedException();
+                });
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
         }
 
         [Test]
         public void ModelShutdownShouldDoNothing()
         {
+            GenericSetup();
+
             _sut.HandleModelShutdown(It.IsAny<IModel>(),
                 new ShutdownEventArgs(ShutdownInitiator.Application, 0, String.Empty));
         }
@@ -216,6 +315,8 @@
         [Test]
         public void ShouldDispose()
         {
+            GenericSetup();
+
             _sut.Dispose();
 
             _model.Verify(x => x.Dispose(), Times.Once);

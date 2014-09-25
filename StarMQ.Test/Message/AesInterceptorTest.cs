@@ -83,7 +83,7 @@ namespace StarMQ.Test.Message
             message.Properties.Headers.Add("iv", _iv);
 
             var decryptedData = _sut.OnReceive(message).Body;
-            var actual = new JsonSerializer().ToObject<string>(decryptedData);
+            var actual = new JsonSerializer().ToObject(decryptedData, typeof(string));
 
             Assert.That(actual, Is.EqualTo(Content));
         }

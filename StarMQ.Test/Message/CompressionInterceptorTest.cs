@@ -70,7 +70,7 @@
             var message = new Message<byte[]>(_compressedContent);
 
             var uncompressedData = _sut.OnReceive(message).Body;
-            var actual = new JsonSerializer().ToObject<string>(uncompressedData);
+            var actual = new JsonSerializer().ToObject(uncompressedData, typeof(string));
 
             Assert.That(actual, Is.EqualTo(Content));
         }

@@ -1,9 +1,9 @@
 ﻿namespace StarMQ
 {
+    using Consume;
     using Core;
     using Model;
     using System;
-    using System.Collections.Generic;
     using System.Linq;
     using System.Threading.Tasks;
 
@@ -20,22 +20,12 @@
         Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class;
 
         /// <summary>
-        /// Subscribes to messages of type T matching at least one binding key.
-        /// Sends a nack to the broker for unhandled exceptions and an ack otherwise.
+        /// Subscribes to messages matching at least one binding key.
         ///
         /// Subscribers to the same queue compete for messages.
         /// Subscribers to different queues with same binding keys receive copies of each message.
         /// </summary>
-        Task SubscribeAsync<T>(Action<T> messageHandler, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null) where T : class;
-
-        /// <summary>
-        /// Subscribes to messages of type T matching at least one binding key.
-        /// Allows custom responses to be sent to the broker.
-        ///
-        /// Subscribers to the same queue compete for messages.
-        /// Subscribers to different queues with same binding keys receive copies of each message.
-        /// </summary>
-        Task SubscribeAsync<T>(Func<T, BaseResponse> messageHandler, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null) where T : class;
+        Task SubscribeAsync(Action<IHandlerRegistrar> configureHandlers, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null);
     }
 
     public class SimpleBus : ISimpleBus
@@ -56,12 +46,12 @@
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
-            var exchange = await SetExchanges<T>(configure);
+            var exchange = await SetExchanges(configure, typeof(T));
 
             await _advancedBus.PublishAsync(exchange, routingKey, mandatory, immediate, new Message<T>(content));
         }
 
-        private async Task<Exchange> SetExchanges<T>(Action<Exchange> configure)
+        private async Task<Exchange> SetExchanges(Action<Exchange> configure, Type type)
         {
             var exchange = new Exchange { Type = ExchangeType.Topic };
 
@@ -69,7 +59,7 @@
                 configure(exchange);
 
             if (String.IsNullOrEmpty(exchange.Name))
-                exchange.WithName(_namingStrategy.GetExchangeName(typeof(T)));
+                exchange.WithName(_namingStrategy.GetExchangeName(type));
             if (String.IsNullOrEmpty(exchange.AlternateExchangeName))
                 exchange.WithAlternateExchangeName(_namingStrategy.GetAlternateName(exchange));
 
@@ -90,32 +80,16 @@
             await _advancedBus.QueueBindAsync(exchange, queue, String.Empty);
         }
 
-        public async Task SubscribeAsync<T>(Action<T> messageHandler, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null) where T : class
+        public async Task SubscribeAsync(Action<IHandlerRegistrar> configureHandler, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null)
         {
-            if (messageHandler == null)
-                throw new ArgumentNullException("messageHandler");
+            if (configureHandler == null)
+                throw new ArgumentNullException("configureHandler");
 
-            await SubscribeAsync<T>(x =>
-                {
-                    try
-                    {
-                        messageHandler(x);
+            var transient = new HandlerManager(null);   // TODO: DI refactor
+            configureHandler(transient);
+            var type = transient.Validate().Default;   // TODO: optimization?
 
-                        return new AckResponse();
-                    }
-                    catch (System.Exception)
-                    {
-                        return new NackResponse();
-                    }
-                }, configureQueue, configureExchange);
-        }
-
-        public async Task SubscribeAsync<T>(Func<T, BaseResponse> messageHandler, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null) where T : class
-        {
-            if (messageHandler == null)
-                throw new ArgumentNullException("messageHandler");
-
-            var exchange = await SetExchanges<T>(configureExchange);
+            var exchange = await SetExchanges(configureExchange, type);
 
             var queue = new Queue();
 
@@ -123,31 +97,40 @@
                 configureQueue(queue);
 
             if (String.IsNullOrEmpty(queue.Name))
-                queue.WithName(_namingStrategy.GetQueueName(typeof(T)));
+                queue.WithName(_namingStrategy.GetQueueName(type));
             if (String.IsNullOrEmpty(queue.DeadLetterExchangeName))
                 queue.WithDeadLetterExchangeName(_namingStrategy.GetDeadLetterName(exchange.Name));
 
+            await SetQueue(exchange, queue);
+
+            await SetDeadLettering(queue);
+
+            await _advancedBus.ConsumeAsync(queue, configureHandler);
+        }
+
+        private async Task SetQueue(Exchange exchange, Queue queue)
+        {
             await _advancedBus.QueueDeclareAsync(queue);
 
             foreach (var key in queue.BindingKeys.DefaultIfEmpty("#"))
                 await _advancedBus.QueueBindAsync(exchange, queue, key);
-
-            await SetDeadLettering(queue, queue.BindingKeys);
-
-            await _advancedBus.ConsumeAsync(queue, messageHandler);
         }
 
-        private async Task SetDeadLettering(Queue source, IEnumerable<string> bindingKeys)
+        private async Task SetDeadLettering(Queue source)
         {
             var exchange = new Exchange { Type = ExchangeType.Topic }
                 .WithName(source.DeadLetterExchangeName);
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
             var queue = new Queue().WithName(_namingStrategy.GetDeadLetterName(source.Name));
-            await _advancedBus.QueueDeclareAsync(queue);
 
-            foreach (var key in bindingKeys.DefaultIfEmpty("#"))
-                await _advancedBus.QueueBindAsync(exchange, queue, key);
+            if (String.IsNullOrEmpty(source.DeadLetterRoutingKey))
+                foreach(var key in source.BindingKeys)
+                    queue.WithBindingKey(key);
+            else
+                queue.WithBindingKey(source.DeadLetterRoutingKey);
+
+            await SetQueue(exchange, queue);
         }
 
         public void Dispose()

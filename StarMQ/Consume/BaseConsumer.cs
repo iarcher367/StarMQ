@@ -3,18 +3,20 @@ namespace StarMQ.Consume
     using Core;
     using Exception;
     using log4net;
+    using Message;
     using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using RabbitMQ.Client.Exceptions;
     using System;
     using System.Collections.Concurrent;
+    using System.IO;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
     public interface IConsumer : IBasicConsumer, IDisposable
     {
-        Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler);
+        Task Consume(Queue queue);
     }
 
     public abstract class BaseConsumer : IConsumer
@@ -23,9 +25,12 @@ namespace StarMQ.Consume
         protected readonly IConnection Connection;
         protected readonly IOutboundDispatcher Dispatcher;
         protected readonly ILog Log;
-        protected Func<IMessage<byte[]>, BaseResponse> MessageHandler;
 
+        private readonly IHandlerManager _handlerManager;
+        private readonly IPipeline _pipeline;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
+        private readonly ISerializationStrategy _serializationStrategy;
+        private readonly ITypeNameSerializer _typeNameSerializer;
         private bool _disposed;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
@@ -34,13 +39,19 @@ namespace StarMQ.Consume
         public IModel Model { get; protected set; }
 
         protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy)
+            IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
+            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy,
+            ITypeNameSerializer typeNameSerializer)
         {
             Configuration = configuration;
             Connection = connection;
             ConsumerTag = namingStrategy.GetConsumerTag();
             Dispatcher = dispatcher;
+            _handlerManager = handlerManager;
             Log = log;
+            _pipeline = pipeline;
+            _serializationStrategy = serializationStrategy;
+            _typeNameSerializer = typeNameSerializer;
             Model = Connection.CreateModel();
 
             Connection.OnDisconnected += OnDisconnected;
@@ -62,11 +73,9 @@ namespace StarMQ.Consume
 
             while (_queue.TryTake(out action))
                 Log.Info("Message discarded.");
-
-            Model.Dispose();
         }
 
-        public abstract Task Consume(Queue queue, Func<IMessage<byte[]>, BaseResponse> messageHandler);
+        public abstract Task Consume(Queue queue);
 
         public virtual void HandleBasicCancel(string consumerTag)
         {
@@ -115,7 +124,14 @@ namespace StarMQ.Consume
 
                         if (_disposed) return;
 
-                        var response = MessageHandler(message);
+                        var data = _pipeline.OnReceive(message);
+
+                        if (String.IsNullOrEmpty(data.Properties.Type))
+                            data.Properties.Type = _typeNameSerializer.Serialize(_handlerManager.Default);
+
+                        var processed = _serializationStrategy.Deserialize(data);
+                        var handler = _handlerManager.Get(processed.Body.GetType());
+                        var response = (BaseResponse)handler(processed.Body);
                         response.DeliveryTag = deliveryTag;
 
                         try
@@ -129,6 +145,11 @@ namespace StarMQ.Consume
                             }
                         }
                         catch (AlreadyClosedException ex)
+                        {
+                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                                ex.GetType().Name));
+                        }
+                        catch (IOException ex)
                         {
                             Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
                                 ex.GetType().Name));
@@ -156,8 +177,13 @@ namespace StarMQ.Consume
             _disposed = true;
 
             _queue.CompleteAdding();
-
             OnDisconnected();
+
+            try
+            {
+                Model.Dispose();
+            }
+            catch (IOException) { }
 
             Log.Info("Dispose completed.");
         }

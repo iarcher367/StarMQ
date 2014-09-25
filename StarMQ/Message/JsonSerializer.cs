@@ -7,7 +7,7 @@ namespace StarMQ.Message
     public interface ISerializer
     {
         byte[] ToBytes<T>(T content) where T : class;
-        T ToObject<T>(byte[] content) where T : class;
+        dynamic ToObject(byte[] content, Type type);
     }
 
     public class JsonSerializer : ISerializer
@@ -26,13 +26,13 @@ namespace StarMQ.Message
             return Encoding.UTF8.GetBytes(json);
         }
 
-        public T ToObject<T>(byte[] content) where T : class
+        public dynamic ToObject(byte[] content, Type type)
         {
             if (content == null || content.Length == 0)
                 throw new ArgumentNullException("content");
 
             var json = Encoding.UTF8.GetString(content);
-            return JsonConvert.DeserializeObject<T>(json, _settings);
+            return JsonConvert.DeserializeObject(json, type, _settings);
         }
     }
 }
