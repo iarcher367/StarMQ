@@ -44,7 +44,7 @@
         }
 
         [Test]
-        public void ShouldSetDefaultRetryInterval()
+        public void ShouldSetDefaultReconnect()
         {
             Assert.That(_sut.Reconnect, Is.EqualTo(5000));
         }
@@ -66,6 +66,5 @@
         {
             Assert.That(_sut.VirtualHost, Is.EqualTo("/"));
         }
-
     }
 }

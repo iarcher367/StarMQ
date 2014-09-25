@@ -201,7 +201,7 @@
         }
 
         [Test]
-        public async Task DeliverShouldBasicNackWithDeliveryTag()
+        public void DeliverShouldBasicNackWithDeliveryTag()
         {
             var signal = new ManualResetEventSlim(false);
 

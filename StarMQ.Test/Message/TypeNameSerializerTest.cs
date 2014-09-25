@@ -11,7 +11,7 @@
     {
         private ITypeNameSerializer _sut;
 
-        private const string Name = "StarMQ.Model.Properties, StarMQ, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null";
+        private readonly string _name = typeof(Properties).AssemblyQualifiedName;
 
         [SetUp]
         public void Setup()
@@ -22,7 +22,7 @@
         [Test]
         public void ShouldDeserializeNameToType()
         {
-            var actual = _sut.Deserialize(Name);
+            var actual = _sut.Deserialize(_name);
 
             Assert.That(actual, Is.EqualTo(typeof(Properties)));
         }
@@ -48,7 +48,7 @@
         {
             var actual = _sut.Serialize(typeof(Properties));
 
-            Assert.That(actual, Is.EqualTo(Name));
+            Assert.That(actual, Is.EqualTo(_name));
         }
 
         [Test]

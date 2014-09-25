@@ -1,6 +1,5 @@
 namespace StarMQ.Core
 {
-
     public interface IConnectionConfiguration
     {
         bool CancelOnHaFailover { get; }
