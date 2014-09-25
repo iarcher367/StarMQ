@@ -1,6 +1,7 @@
 namespace StarMQ.Test
 {
     using NUnit.Framework;
+    using RabbitMQ.Client;
     using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
@@ -38,6 +39,14 @@ namespace StarMQ.Test
         public void ShouldConfigureConnectionFactoryFromConnectionConfiguration()
         {
             Assert.Inconclusive();
+        }
+
+        [Test]
+        public void ShouldSetClientPropertiesInConnectionFactory()
+        {
+            var factory = new Factory().Container.GetInstance<ConnectionFactory>();
+
+            Assert.That(factory.ClientProperties.Count, Is.GreaterThan(0));
         }
 
         [Test]

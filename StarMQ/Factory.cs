@@ -8,7 +8,9 @@
     using SimpleInjector;
     using SimpleInjector.Advanced.Extensions;
     using System;
+    using System.Collections.Generic;
     using System.Linq;
+    using System.Reflection;
     using IConnection = Core.IConnection;
 
     public class Factory : IDisposable
@@ -38,7 +40,10 @@
 
             Container.Register(() =>
             {
+                var apiAssembly = Assembly.GetExecutingAssembly().GetName();
                 var config = Container.GetInstance<IConnectionConfiguration>();
+                var sourceAssembly = (Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly())
+                    .GetName();
 
                 return new ConnectionFactory
                 {
@@ -48,7 +53,16 @@
                     UserName = config.Username,
                     VirtualHost = config.VirtualHost,
                     RequestedHeartbeat = config.Heartbeat,
-                    RequestedConnectionTimeout = config.Timeout
+                    RequestedConnectionTimeout = config.Timeout,
+                    ClientProperties = new Dictionary<string, object>
+                    {
+                        { "clientApi", apiAssembly.Name },
+                        { "clientApiVersion", apiAssembly.Version.ToString() },
+                        { "machineName", Environment.MachineName },
+                        { "platform", ".NET" },
+                        { "product", sourceAssembly.Name },
+                        { "version", sourceAssembly.Version.ToString() },
+                    }
                 };
             });
 
