@@ -17,7 +17,6 @@
             if (configure == null)
                 throw new ArgumentNullException("configure");
 
-            var typeNameSerializer = new TypeNameSerializer();
             var log = LogManager.GetLogger(typeof(HandlerManager));
 
             var handlerManager = new HandlerManager(log);   // TODO: cleanup, DI-compatible?
@@ -28,13 +27,13 @@
             {
                 log = LogManager.GetLogger(typeof(BasicConsumer));
                 return new BasicConsumer(configuration, connection, dispatcher, handlerManager, log,
-                    namingStrategy, pipeline, serializationStrategy, typeNameSerializer);
+                    namingStrategy, pipeline, serializationStrategy);
             }
             else
             {
                 log = LogManager.GetLogger(typeof(PersistentConsumer));
                 return new PersistentConsumer(configuration, connection, dispatcher, handlerManager, log,
-                    namingStrategy, pipeline, serializationStrategy, typeNameSerializer);
+                    namingStrategy, pipeline, serializationStrategy);
             }
         }
     }

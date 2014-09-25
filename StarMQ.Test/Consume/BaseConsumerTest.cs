@@ -67,7 +67,7 @@
         {
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 _handlerManager.Object, _log.Object, _namingStrategy.Object, _pipeline.Object,
-                _serializationStrategy.Object, _typeNameSerializer.Object);
+                _serializationStrategy.Object);
         }
 
         [Test]
@@ -132,14 +132,14 @@
 
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
-                _serializationStrategy.Object, _typeNameSerializer.Object);
+                _serializationStrategy.Object);
 
             _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0])
                 {
                     Properties = new Properties { Type = type.FullName }
                 });
-            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()))
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
                 .Returns(new Message<dynamic>(new Factory())
                 {
                     Properties = new Properties { Type = type.FullName }
@@ -160,7 +160,8 @@
                 Assert.Fail();
 
             _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Once);
-            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()), Times.Once);
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)),
+                Times.Once);
         }
 
         [Test]
@@ -178,7 +179,8 @@
             Assert.That(count, Is.EqualTo(0));
 
             _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Never);
-            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()), Times.Never);
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)),
+                Times.Never);
         }
 
         [Test]

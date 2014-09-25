@@ -28,7 +28,6 @@
         private Mock<INamingStrategy> _namingStrategy;
         private Mock<IPipeline> _pipeline;
         private Mock<ISerializationStrategy> _serializationStrategy;
-        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private IConsumer _sut;
 
         [SetUp]
@@ -44,7 +43,6 @@
             _namingStrategy = new Mock<INamingStrategy>();
             _pipeline = new Mock<IPipeline>();
             _serializationStrategy = new Mock<ISerializationStrategy>();
-            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.SetupSequence(x => x.CreateModel())
                 .Returns(_modelOne.Object)
@@ -57,7 +55,7 @@
 
             _sut = new BasicConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
+                _pipeline.Object, _serializationStrategy.Object);
         }
 
         [TearDown]
@@ -179,7 +177,7 @@
                 {
                     Properties = new Properties { Type = typeof(Factory).FullName }
                 });
-            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>()))
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
                 .Returns(new Message<dynamic>(new Factory())
                 {
                     Properties = new Properties { Type = typeof(Factory).FullName }
@@ -193,7 +191,7 @@
             });
             var sutOne = new BasicConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, handlerOne, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
+                _pipeline.Object, _serializationStrategy.Object);
             var handlerTwo = new HandlerManager(_log.Object);
             handlerTwo.Add<Factory>(x =>
             {
@@ -202,7 +200,7 @@
             });
             var sutTwo = new BasicConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, handlerTwo, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
+                _pipeline.Object, _serializationStrategy.Object);
 
             _modelOne.Setup(x => x.BasicAck(1, false))
                 .Callback(() => Assert.That(order++, Is.EqualTo(0)));

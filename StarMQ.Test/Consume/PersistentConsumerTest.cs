@@ -24,7 +24,6 @@
         private Mock<INamingStrategy> _namingStrategy;
         private Mock<IPipeline> _pipeline;
         private Mock<ISerializationStrategy> _serializationStrategy;
-        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private IConsumer _sut;
 
         [SetUp]
@@ -40,7 +39,6 @@
             _namingStrategy = new Mock<INamingStrategy>();
             _pipeline = new Mock<IPipeline>();
             _serializationStrategy = new Mock<ISerializationStrategy>();
-            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.SetupSequence(x => x.CreateModel())
                 .Returns(_modelOne.Object)
@@ -49,7 +47,7 @@
 
             _sut = new PersistentConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _serializationStrategy.Object, _typeNameSerializer.Object);
+                _pipeline.Object, _serializationStrategy.Object);
         }
 
         [TearDown]

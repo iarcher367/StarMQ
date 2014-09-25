@@ -17,10 +17,9 @@ namespace StarMQ.Consume
     {
         public BasicConsumer(IConnectionConfiguration configuration, IConnection connection,
             IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
-            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy,
-            ITypeNameSerializer typeNameSerializer)
-            : base(configuration, connection, dispatcher, handlerManager, log, namingStrategy, pipeline,
-            serializationStrategy, typeNameSerializer)
+            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy)
+            : base(configuration, connection, dispatcher, handlerManager, log, namingStrategy,
+            pipeline, serializationStrategy)
         {
         }
 

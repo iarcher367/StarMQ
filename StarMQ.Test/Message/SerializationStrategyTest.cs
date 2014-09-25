@@ -39,10 +39,10 @@
             _serializer.Setup(x => x.ToObject(data, typeof(Properties))).Returns(body);
             _typeNameSerializer.Setup(x => x.Deserialize(It.IsAny<string>())).Returns(typeof(Properties));
 
-            var properties = new Properties();
+            var properties = new Properties { Type = typeof(Properties).AssemblyQualifiedName };
             var message = new Message<byte[]>(data) { Properties = properties };
 
-            var actual = _sut.Deserialize(message);
+            var actual = _sut.Deserialize(message, typeof(Properties));
 
             Assert.That(actual.Body, Is.EqualTo(body));
             Assert.That(actual.Body, Is.InstanceOf<Properties>());
@@ -53,10 +53,38 @@
         }
 
         [Test]
+        public void ShouldDeserializeByteArrayMessageToDefaultMessageIfNoType()
+        {
+            var body = new Properties { MessageId = "42" };
+            var data = new JsonSerializer().ToBytes(body);
+
+            _serializer.Setup(x => x.ToObject(data, typeof(Properties))).Returns(body);
+
+            var properties = new Properties();
+            var message = new Message<byte[]>(data) { Properties = properties };
+
+            var actual = _sut.Deserialize(message, typeof(Properties));
+
+            Assert.That(actual.Body, Is.EqualTo(body));
+            Assert.That(actual.Body, Is.InstanceOf<Properties>());
+            Assert.That(actual.Properties, Is.SameAs(properties));
+
+            _serializer.Verify(x => x.ToObject(data, typeof(Properties)), Times.Once);
+            _typeNameSerializer.Verify(x => x.Deserialize(It.IsAny<string>()), Times.Never);
+        }
+
+        [Test]
         [ExpectedException(typeof(ArgumentNullException))]
         public void DeserializeShouldThrowExceptionIfMessageIsNull()
         {
-            _sut.Deserialize(null);
+            _sut.Deserialize(null, typeof(Properties));
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void DeserializeShouldThrowExceptionIfDefaultTypeIsNull()
+        {
+            _sut.Deserialize(new Message<byte[]>(new byte[0]), null);
         }
 
         [Test]

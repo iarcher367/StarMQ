@@ -5,7 +5,7 @@
 
     public interface ISerializationStrategy
     {
-        IMessage<dynamic> Deserialize(IMessage<byte[]> message);
+        IMessage<dynamic> Deserialize(IMessage<byte[]> message, Type defaultType);
         IMessage<byte[]> Serialize<T>(IMessage<T> message) where T : class;
     }
 
@@ -23,12 +23,17 @@
             _typeNameSerializer = typeNameSerializer;
         }
 
-        public IMessage<dynamic> Deserialize(IMessage<byte[]> message)
+        public IMessage<dynamic> Deserialize(IMessage<byte[]> message, Type defaultType)
         {
             if (message == null)
                 throw new ArgumentNullException("message");
+            if (defaultType == null)
+                throw new ArgumentNullException("defaultType");
 
-            var type = _typeNameSerializer.Deserialize(message.Properties.Type);
+            var type = String.IsNullOrEmpty(message.Properties.Type)
+                ? defaultType
+                : _typeNameSerializer.Deserialize(message.Properties.Type);
+
             var body = _serializer.ToObject(message.Body, type);
 
             return new Message<dynamic>(body) { Properties = message.Properties };

@@ -30,7 +30,6 @@ namespace StarMQ.Consume
         private readonly IPipeline _pipeline;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
         private readonly ISerializationStrategy _serializationStrategy;
-        private readonly ITypeNameSerializer _typeNameSerializer;
         private bool _disposed;
 
         public event ConsumerCancelledEventHandler ConsumerCancelled;
@@ -40,8 +39,7 @@ namespace StarMQ.Consume
 
         protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
             IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
-            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy,
-            ITypeNameSerializer typeNameSerializer)
+            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy)
         {
             Configuration = configuration;
             Connection = connection;
@@ -51,7 +49,6 @@ namespace StarMQ.Consume
             Log = log;
             _pipeline = pipeline;
             _serializationStrategy = serializationStrategy;
-            _typeNameSerializer = typeNameSerializer;
             Model = Connection.CreateModel();
 
             Connection.OnDisconnected += OnDisconnected;
@@ -125,11 +122,7 @@ namespace StarMQ.Consume
                         if (_disposed) return;
 
                         var data = _pipeline.OnReceive(message);
-
-                        if (String.IsNullOrEmpty(data.Properties.Type))
-                            data.Properties.Type = _typeNameSerializer.Serialize(_handlerManager.Default);
-
-                        var processed = _serializationStrategy.Deserialize(data);
+                        var processed = _serializationStrategy.Deserialize(data, _handlerManager.Default);
                         var handler = _handlerManager.Get(processed.Body.GetType());
                         var response = (BaseResponse)handler(processed.Body);
                         response.DeliveryTag = deliveryTag;
