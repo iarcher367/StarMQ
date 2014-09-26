@@ -84,7 +84,7 @@
     <Compile Include="Message\TypeNameSerializerTest.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Consume\ConsumerFactoryTest.cs" />
-    <Compile Include="Consume\PersistentConsumerTest.cs" />
+    <Compile Include="Consume\PersistentConsumerDecoratorTest.cs" />
     <Compile Include="Consume\BasicConsumerTest.cs" />
   </ItemGroup>
   <ItemGroup>

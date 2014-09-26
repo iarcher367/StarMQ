@@ -12,7 +12,6 @@
     using System;
     using System.IO;
     using System.Threading;
-    using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BaseConsumerTest
@@ -31,10 +30,7 @@
         private Mock<IPipeline> _pipeline;
         private Mock<IBasicProperties> _properties;
         private Mock<ISerializationStrategy> _serializationStrategy;
-        private Mock<ITypeNameSerializer> _typeNameSerializer;
         private BaseConsumer _sut;
-
-        private Queue _queue;
 
         [SetUp]
         public void Setup()
@@ -49,12 +45,9 @@
             _pipeline = new Mock<IPipeline>();
             _properties = new Mock<IBasicProperties>();
             _serializationStrategy = new Mock<ISerializationStrategy>();
-            _typeNameSerializer = new Mock<ITypeNameSerializer>();
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
             _namingStrategy.Setup(x => x.GetConsumerTag()).Returns(ConsumerTag);
-
-            _queue = new Queue();
         }
 
         [TearDown]

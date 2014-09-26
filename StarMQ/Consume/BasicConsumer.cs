@@ -4,6 +4,7 @@ namespace StarMQ.Consume
     using log4net;
     using Message;
     using Model;
+    using RabbitMQ.Client;
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
@@ -23,7 +24,7 @@ namespace StarMQ.Consume
         {
         }
 
-        public override async Task Consume(Queue queue)
+        public override async Task Consume(Queue queue, IBasicConsumer instance = null)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
@@ -32,6 +33,13 @@ namespace StarMQ.Consume
             {
                 var args = new Dictionary<string, object>();
 
+                if (Model.IsClosed)
+                {
+                    Model.Dispose();
+                    Model = Connection.CreateModel();
+                    Log.Info("Channel opened.");
+                }
+
                 Model.BasicQos(0, Configuration.PrefetchCount, false);
 
                 if (Configuration.CancelOnHaFailover || queue.CancelOnHaFailover)
@@ -39,7 +47,7 @@ namespace StarMQ.Consume
                 if (queue.Priority != 0)
                     args.Add("x-priority", queue.Priority);
 
-                Model.BasicConsume(queue.Name, false, ConsumerTag, args, this);
+                Model.BasicConsume(queue.Name, false, ConsumerTag, args, instance ?? this);
 
                 Log.Info(String.Format("Consumer '{0}' declared on queue '{1}'.", ConsumerTag, queue.Name));
             });

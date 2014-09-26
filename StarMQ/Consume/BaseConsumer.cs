@@ -16,7 +16,7 @@ namespace StarMQ.Consume
 
     public interface IConsumer : IBasicConsumer, IDisposable
     {
-        Task Consume(Queue queue);
+        Task Consume(Queue queue, IBasicConsumer consumer = null);
     }
 
     public abstract class BaseConsumer : IConsumer
@@ -49,10 +49,10 @@ namespace StarMQ.Consume
             Log = log;
             _pipeline = pipeline;
             _serializationStrategy = serializationStrategy;
-            Model = Connection.CreateModel();
 
             Connection.OnDisconnected += OnDisconnected;
             Dispatch();
+            Model = Connection.CreateModel();
         }
 
         private void Dispatch()
@@ -72,7 +72,7 @@ namespace StarMQ.Consume
                 Log.Info("Message discarded.");
         }
 
-        public abstract Task Consume(Queue queue);
+        public abstract Task Consume(Queue queue, IBasicConsumer consumer = null);
 
         public virtual void HandleBasicCancel(string consumerTag)
         {
@@ -172,11 +172,7 @@ namespace StarMQ.Consume
             _queue.CompleteAdding();
             OnDisconnected();
 
-            try
-            {
-                Model.Dispose();
-            }
-            catch (IOException) { }
+            Model.Dispose();
 
             Log.Info("Dispose completed.");
         }

@@ -36,7 +36,7 @@ The example shows how to register custom implementations, enable built-in pre-pr
 With a SimpleBus, publishing and subscribing is as simple as:
 ```
 simpleBus.PublishAsync("hello world", "my.routing.key").Wait(); // Wait() forces a synchronous call
-simpleBus.SubscribeAsync<string>(x => MyMessageHandler(x));
+simpleBus.SubscribeAsync<string>(x => x.Add<string>(y => MyMessageHandler(y)));
 ```
 The above makes use of all the defaults. Alternatively, to customize:
 ```
@@ -46,7 +46,7 @@ simpleBus.PublishAsync("hello world", "my.routing.key", true, true,
         .WithDurable(false)
         .WithName("primary exchange"));
 
-simpleBus.SubscribeAsync<string>(x => MyMessageHandler(x),
+simpleBus.SubscribeAsync<string>(x => x.Add<string>(y => MyMessageHandler(y)),
     queue => queue.WithAutoDelete(true)
         .WithBindingKey("*.b")
         .WithBindingKey("a.*")

@@ -23,18 +23,13 @@
             configure(handlerManager);
             handlerManager.Validate();
 
-            if (queue.Exclusive)
-            {
-                log = LogManager.GetLogger(typeof(BasicConsumer));
-                return new BasicConsumer(configuration, connection, dispatcher, handlerManager, log,
-                    namingStrategy, pipeline, serializationStrategy);
-            }
-            else
-            {
-                log = LogManager.GetLogger(typeof(PersistentConsumer));
-                return new PersistentConsumer(configuration, connection, dispatcher, handlerManager, log,
-                    namingStrategy, pipeline, serializationStrategy);
-            }
+            log = LogManager.GetLogger(typeof(BasicConsumer));
+            var consumer = new BasicConsumer(configuration, connection, dispatcher, handlerManager, log,
+                namingStrategy, pipeline, serializationStrategy);
+
+            return queue.Exclusive
+                ? (IConsumer)consumer
+                : new PersistentConsumerDecorator(consumer, connection);
         }
     }
 }

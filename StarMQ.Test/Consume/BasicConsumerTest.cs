@@ -30,6 +30,8 @@
         private Mock<ISerializationStrategy> _serializationStrategy;
         private IConsumer _sut;
 
+        private Queue _queue;
+
         [SetUp]
         public void Setup()
         {
@@ -56,6 +58,8 @@
             _sut = new BasicConsumer(_configuration.Object, _connection.Object,
                 _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
                 _pipeline.Object, _serializationStrategy.Object);
+
+            _queue = new Queue().WithName("StarMQ.Slave");
         }
 
         [TearDown]
@@ -65,16 +69,31 @@
         }
 
         [Test]
+        public void ShouldHandleReconnectByDisposingAndCreatingNowModelIfModelIsClosed()
+        {
+            Action action = () => { };
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+            _modelOne.Setup(x => x.IsClosed).Returns(true);
+
+            _sut.Consume(_queue);
+
+            action();
+
+            _modelOne.Verify(x => x.Dispose(), Times.Once);
+            _connection.Verify(x => x.CreateModel(), Times.Exactly(2));
+        }
+
+        [Test]
         public void ShouldSetQosAndConsume()
         {
             const ushort prefetchCount = 10;
             Action action = () => { };
-            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.PrefetchCount).Returns(prefetchCount);
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue);
+            _sut.Consume(_queue);
 
             action();
 
@@ -82,8 +101,24 @@
             _connection.Verify(x => x.CreateModel(), Times.Once);
             _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
             _modelOne.Verify(x => x.BasicQos(0, prefetchCount, false), Times.Once);
-            _modelOne.Verify(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+            _modelOne.Verify(x => x.BasicConsume(_queue.Name, false, It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()), Times.Once);
+        }
+
+        [Test]
+        public void ShouldOverrideConsumerTypeIfSet()
+        {
+            Action action = () => { };
+            var decorator = new PersistentConsumerDecorator(_sut, _connection.Object);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+
+            _sut.Consume(_queue, decorator);
+
+            action();
+
+            _modelOne.Verify(x => x.BasicConsume(_queue.Name, false, It.IsAny<string>(),
+                It.IsAny<Dictionary<string, object>>(), decorator), Times.Once);
         }
 
         [Test]
@@ -93,17 +128,16 @@
 
             Action action = () => { };
             IDictionary<string, object> args = new Dictionary<string, object>();
-            var queue = new Queue().WithName(String.Empty);
 
             _configuration.Setup(x => x.CancelOnHaFailover).Returns(true);
-            _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+            _modelOne.Setup(x => x.BasicConsume(_queue.Name, false, It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
                 .Callback<string, bool, string, IDictionary<String, object>, IBasicConsumer>(
                     (a, b, c, x, d) => args = x);
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue);
+            _sut.Consume(_queue);
 
             action();
 
@@ -120,23 +154,23 @@
 
             Action action = () => { };
             IDictionary<string, object> args = new Dictionary<string, object>();
-            var queue = new Queue().WithName(String.Empty).WithCancelOnHaFailover(true);
+            _queue.WithCancelOnHaFailover(true);
 
-            _modelOne.Setup(x => x.BasicConsume(queue.Name, false, It.IsAny<string>(),
+            _modelOne.Setup(x => x.BasicConsume(_queue.Name, false, It.IsAny<string>(),
                 It.IsAny<Dictionary<string, object>>(), It.IsAny<IConsumer>()))
                 .Callback<string, bool, string, IDictionary<String, object>, IBasicConsumer>(
                     (a, b, c, x, d) => args = x);
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(queue);
+            _sut.Consume(_queue);
 
             action();
 
             _dispatcher.Verify(x => x.Invoke(It.IsAny<Action>()), Times.Once);
 
             Assert.That(args.ContainsKey(key), Is.True);
-            Assert.That(args[key], Is.EqualTo(queue.CancelOnHaFailover));
+            Assert.That(args[key], Is.EqualTo(_queue.CancelOnHaFailover));
         }
 
         [Test]
@@ -210,6 +244,9 @@
                 .Callback(() => Assert.That(order++, Is.EqualTo(2)));
             _modelOne.Setup(x => x.BasicAck(3, false))
                 .Callback(() => Assert.That(order++, Is.EqualTo(3)));
+
+            await sutOne.Consume(new Queue().WithName("slowQueue"));
+            await sutTwo.Consume(new Queue().WithName("fastQueue"));
 
             sutOne.HandleBasicDeliver(ConsumerTagOne, 1, false, String.Empty, String.Empty,
                 properties.Object, new byte[1]);

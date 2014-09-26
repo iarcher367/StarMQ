@@ -54,9 +54,9 @@
     <Compile Include="AdvancedBus.cs" />
     <Compile Include="Consume\BaseConsumer.cs" />
     <Compile Include="Consume\ConsumerFactory.cs" />
-    <Compile Include="Consume\PersistentConsumer.cs" />
     <Compile Include="Consume\BasicConsumer.cs" />
     <Compile Include="Consume\HandlerManager.cs" />
+    <Compile Include="Consume\PersistentConsumerDecorator.cs" />
     <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\PublishException.cs" />

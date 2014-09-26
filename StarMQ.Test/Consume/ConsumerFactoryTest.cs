@@ -43,7 +43,7 @@
                 _connection.Object, _dispatcher.Object, _namingStrategy.Object, _pipeline.Object,
                 _serializationStrategy.Object);
 
-            Assert.That(actual, Is.TypeOf(typeof(PersistentConsumer)));
+            Assert.That(actual, Is.TypeOf(typeof(PersistentConsumerDecorator)));
         }
 
         [Test]
