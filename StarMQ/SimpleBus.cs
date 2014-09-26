@@ -3,6 +3,7 @@
     using Consume;
     using Core;
     using Model;
+    using Publish;
     using System;
     using System.Linq;
     using System.Threading.Tasks;
@@ -26,6 +27,8 @@
         /// Subscribers to different queues with same binding keys receive copies of each message.
         /// </summary>
         Task SubscribeAsync(Action<IHandlerRegistrar> configureHandlers, Action<Queue> configureQueue = null, Action<Exchange> configureExchange = null);
+
+        event BasicReturnHandler BasicReturn;
     }
 
     public class SimpleBus : ISimpleBus
@@ -33,10 +36,19 @@
         private readonly IAdvancedBus _advancedBus;
         private readonly INamingStrategy _namingStrategy;
 
+        public event BasicReturnHandler BasicReturn;
+
         public SimpleBus(IAdvancedBus advancedBus, INamingStrategy namingStrategy)
         {
             _advancedBus = advancedBus;
             _namingStrategy = namingStrategy;
+
+            _advancedBus.BasicReturn += (o, args) =>
+            {
+                var basicReturn = BasicReturn;
+                if (basicReturn != null)
+                    BasicReturn(o, args);
+            };
         }
 
         public async Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class
@@ -125,7 +137,7 @@
             var queue = new Queue().WithName(_namingStrategy.GetDeadLetterName(source.Name));
 
             if (String.IsNullOrEmpty(source.DeadLetterRoutingKey))
-                foreach(var key in source.BindingKeys)
+                foreach (var key in source.BindingKeys)
                     queue.WithBindingKey(key);
             else
                 queue.WithBindingKey(source.DeadLetterRoutingKey);

@@ -3,6 +3,7 @@
     using Exception;
     using Moq;
     using NUnit.Framework;
+    using RabbitMQ.Client.Events;
     using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Model;
@@ -36,6 +37,18 @@
                 .Returns("DLX:StarMQ.Master");
             _namingStrategy.Setup(x => x.GetAlternateName(It.IsAny<Exchange>()))
                 .Returns("AE:StarMQ.Master");
+        }
+
+        [Test]
+        public void ShouldBasicReturn()
+        {
+            var flag = false;
+
+            _sut.BasicReturn += (o, e) => flag = true;
+
+            _advancedBus.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs());
+
+            Assert.That(flag, Is.True);
         }
 
         #region PublishAsync

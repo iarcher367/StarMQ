@@ -67,14 +67,10 @@
         public void ShouldFireBasicReturnEventIfPublisherFiresBasicReturn()
         {
             var flag = false;
-            var properties = new Mock<IBasicProperties>();
 
             _sut.BasicReturn += (o, e) => { flag = true; };
 
-            _publisher.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs
-            {
-                BasicProperties = properties.Object
-            });
+            _publisher.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs());
 
             Assert.That(flag, Is.True);
         }
