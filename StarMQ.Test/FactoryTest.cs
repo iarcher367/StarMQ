@@ -38,7 +38,10 @@ namespace StarMQ.Test
         [Test]
         public void ShouldConfigureConnectionFactoryFromConnectionConfiguration()
         {
-            Assert.Inconclusive();
+            var factory = new Factory().Container.GetInstance<ConnectionFactory>();
+
+            Assert.That(factory.Port, Is.Not.EqualTo(-1));
+            Assert.That(factory.RequestedHeartbeat, Is.Not.EqualTo(0));
         }
 
         [Test]
@@ -46,7 +49,7 @@ namespace StarMQ.Test
         {
             var factory = new Factory().Container.GetInstance<ConnectionFactory>();
 
-            Assert.That(factory.ClientProperties.Count, Is.GreaterThan(0));
+            Assert.That(factory.ClientProperties.Count, Is.GreaterThan(5));
         }
 
         [Test]
@@ -166,17 +169,23 @@ namespace StarMQ.Test
         }
 
         [Test]
-        public void ShouldGetBusWithConnectionString()
+        public void ShouldGetBusAndSetConfigurationFromConnectionString()
         {
-            const string connectionString = "username=admin;password=password";
+            const string username = "admin";
+            const string password = "password";
+
+            var connectionString = String.Format("username={0};password={1}", username, password);
 
             var actual = _sut.GetBus(connectionString);
 
             Assert.That(actual, Is.Not.Null);
 
-            actual.Dispose();
+            var config = _sut.Container.GetInstance<IConnectionConfiguration>();
 
-            Assert.Inconclusive();
+            Assert.That(config.Username, Is.EqualTo(username));
+            Assert.That(config.Password, Is.EqualTo(password));
+
+            actual.Dispose();
         }
     }
 }
