@@ -16,7 +16,7 @@
         ///  To call synchronously and ensure order, use Wait() to block before publishing again.
         ///  </summary>
         /// <param name="mandatory">If true, published messages must be routed at least one queue. Otherwise, returned via basic.return.</param>
-        /// <param name="immediate">If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
+        /// <param name="immediate">Not supported by RabbitMQ - use TTL=0. If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
         Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class;
 
         /// <summary>

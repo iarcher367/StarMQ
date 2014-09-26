@@ -38,7 +38,14 @@
         [Test]
         public void ShouldFireOnConnected()
         {
-            Assert.Inconclusive();
+            var flag = false;
+
+            _sut.OnConnected += () => flag = true;
+
+            _connection.Raise(x => x.ConnectionShutdown += null,
+                new ShutdownEventArgs(It.IsAny<ShutdownInitiator>(), It.IsAny<ushort>(), String.Empty));
+
+            Assert.That(flag, Is.True);
         }
 
         [Test]

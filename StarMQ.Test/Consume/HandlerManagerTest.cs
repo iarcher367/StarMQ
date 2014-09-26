@@ -34,7 +34,7 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldReturnNackResponseIfHandlerThrowsException()
         {
-            _sut.Add<Factory>(x => { throw new Exception(); });
+            _sut.Add((Action<Factory>)(x => { throw new Exception(); }));
 
             var handler = _sut.Get(typeof(Factory));
             var response = handler(new Factory());

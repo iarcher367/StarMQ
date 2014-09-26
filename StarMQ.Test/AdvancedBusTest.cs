@@ -195,8 +195,8 @@
         [Test]
         public async Task PublishAsyncShouldPublishMessage()
         {
-            Action<IModel> publishAction = x => { };
             var properties = new Mock<IBasicProperties>();
+            Action<IModel> publishAction = x => { };
 
             _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
             _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
@@ -215,6 +215,51 @@
             _pipeline.Verify(x => x.OnSend(It.IsAny<IMessage<byte[]>>()), Times.Once);
             _publisher.Verify(x => x.Publish(It.IsAny<Action<IModel>>()), Times.Once);
             _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldSetMandatory()
+        {
+            const bool mandatory = true;
+            var properties = new Mock<IBasicProperties>();
+            Action<IModel> publishAction = x => { };
+
+            _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
+            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0]));
+            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
+                .Callback<Action<IModel>>(x => publishAction = x);
+
+            await _sut.PublishAsync(_exchange, RoutingKey, mandatory, false, _message);
+
+            _action(_model.Object);
+            publishAction(_model.Object);
+
+            _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, mandatory, false,
+                It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
+        }
+
+        [Ignore("Immediate is not supported by RabbitMQ AMQP 0-9-1")]
+        [Test]
+        public async Task PublishAsyncShouldSetImmediate()
+        {
+            const bool immediate = true;
+            var properties = new Mock<IBasicProperties>();
+            Action<IModel> publishAction = x => { };
+
+            _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
+            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0]));
+            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
+                .Callback<Action<IModel>>(x => publishAction = x);
+
+            await _sut.PublishAsync(_exchange, RoutingKey, false, immediate, _message);
+
+            _action(_model.Object);
+            publishAction(_model.Object);
+
+            _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, false, immediate,
+                It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
         }
 
         [Test]

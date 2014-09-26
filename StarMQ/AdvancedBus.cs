@@ -24,7 +24,7 @@ namespace StarMQ
         /// If timeout elapses, message is published again.
         /// </summary>
         /// <param name="mandatory">If true, published messages must be routed at least one queue. Otherwise, returned via basic.return.</param>
-        /// <param name="immediate">If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
+        /// <param name="immediate">Not supported by RabbitMQ - use TTL=0. If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
         Task PublishAsync<T>(Exchange exchange, string routingKey, bool mandatory, bool immediate, IMessage<T> message) where T : class;
 
         /// <summary>
@@ -150,7 +150,7 @@ namespace StarMQ
                 data.Properties.CopyTo(properties);
 
                 _publisher.Publish(a => a.BasicPublish(exchange.Name, routingKey,
-                    mandatory, immediate, properties, data.Body));
+                    mandatory, false, properties, data.Body));
             });
 
             _log.Info(String.Format("Message published to '{0}' with routing key '{1}'",
