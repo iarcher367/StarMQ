@@ -69,9 +69,9 @@ namespace StarMQ.Test.Consume
                 .Returns(ConsumerTagOne)
                 .Returns(ConsumerTagTwo);
 
-            _sut = new BasicConsumer(_configuration.Object, _connection.Object,
-                _dispatcher.Object, _handlerManager.Object, _log.Object, _namingStrategy.Object,
-                _pipeline.Object, _serializationStrategy.Object);
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                _handlerManager.Object, _log.Object, _namingStrategy.Object, _pipeline.Object,
+                _serializationStrategy.Object);
 
             _queue = new Queue().WithName("StarMQ.Slave");
         }

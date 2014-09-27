@@ -30,12 +30,16 @@ namespace StarMQ.Consume
     /// </summary>
     public class BasicConsumer : BaseConsumer
     {
+        private readonly IConnectionConfiguration _configuration;
+        private readonly IOutboundDispatcher _dispatcher;
+
         public BasicConsumer(IConnectionConfiguration configuration, IConnection connection,
             IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
             INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy)
-            : base(configuration, connection, dispatcher, handlerManager, log, namingStrategy,
-            pipeline, serializationStrategy)
+            : base(connection, handlerManager, log, namingStrategy, pipeline, serializationStrategy)
         {
+            _configuration = configuration;
+            _dispatcher = dispatcher;
         }
 
         public override async Task Consume(Queue queue, IBasicConsumer instance = null)
@@ -43,7 +47,7 @@ namespace StarMQ.Consume
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
-            await Dispatcher.Invoke(() =>
+            await _dispatcher.Invoke(() =>
             {
                 var args = new Dictionary<string, object>();
 
@@ -54,9 +58,9 @@ namespace StarMQ.Consume
                     Log.Info("Channel opened.");
                 }
 
-                Model.BasicQos(0, Configuration.PrefetchCount, false);
+                Model.BasicQos(0, _configuration.PrefetchCount, false);
 
-                if (Configuration.CancelOnHaFailover || queue.CancelOnHaFailover)
+                if (_configuration.CancelOnHaFailover || queue.CancelOnHaFailover)
                     args.Add("x-cancel-on-ha-failover", true);
                 if (queue.Priority != 0)
                     args.Add("x-priority", queue.Priority);

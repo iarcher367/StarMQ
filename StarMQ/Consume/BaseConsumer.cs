@@ -35,9 +35,7 @@ namespace StarMQ.Consume
 
     public abstract class BaseConsumer : IConsumer
     {
-        protected readonly IConnectionConfiguration Configuration;
         protected readonly IConnection Connection;
-        protected readonly IOutboundDispatcher Dispatcher;
         protected readonly ILog Log;
 
         private readonly IHandlerManager _handlerManager;
@@ -51,14 +49,11 @@ namespace StarMQ.Consume
         public string ConsumerTag { get; private set; }
         public IModel Model { get; protected set; }
 
-        protected BaseConsumer(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, IHandlerManager handlerManager, ILog log,
+        protected BaseConsumer(IConnection connection, IHandlerManager handlerManager, ILog log,
             INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy)
         {
-            Configuration = configuration;
             Connection = connection;
             ConsumerTag = namingStrategy.GetConsumerTag();
-            Dispatcher = dispatcher;
             _handlerManager = handlerManager;
             Log = log;
             _pipeline = pipeline;
