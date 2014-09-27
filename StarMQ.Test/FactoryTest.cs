@@ -83,7 +83,7 @@ namespace StarMQ.Test
 
             var actual = _sut.Container.GetInstance<IPublisher>();
 
-            Assert.That(actual, Is.TypeOf<ConfirmPublisher>());
+            Assert.That(actual, Is.TypeOf<ConfirmPublisherDecorator>());
         }
 
         [Test]

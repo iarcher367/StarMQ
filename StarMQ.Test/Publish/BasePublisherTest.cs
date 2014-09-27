@@ -19,7 +19,6 @@ namespace StarMQ.Test.Publish
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
-    using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Publish;
     using IConnection = StarMQ.Core.IConnection;
@@ -27,7 +26,6 @@ namespace StarMQ.Test.Publish
     public class BasePublisherTest
     {
         private Mock<IConnection> _connection;
-        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<IPipeline> _pipeline;
@@ -40,7 +38,6 @@ namespace StarMQ.Test.Publish
         public void Setup()
         {
             _connection = new Mock<IConnection>();
-            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
             _pipeline = new Mock<IPipeline>();
@@ -48,8 +45,8 @@ namespace StarMQ.Test.Publish
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
 
-            _sut = new BasicPublisher(_connection.Object, _dispatcher.Object, _log.Object,
-                _pipeline.Object, _serializationStrategy.Object);
+            _sut = new BasicPublisher(_connection.Object, _log.Object, _pipeline.Object,
+                _serializationStrategy.Object);
 
             _properties = new Mock<IBasicProperties>();
         }

@@ -76,7 +76,7 @@
     <Compile Include="Message\CorrelationStrategy.cs" />
     <Compile Include="Model\Queue.cs" />
     <Compile Include="Publish\BasicPublisher.cs" />
-    <Compile Include="Publish\ConfirmPublisher.cs" />
+    <Compile Include="Publish\ConfirmPublisherDecorator.cs" />
     <Compile Include="Publish\BasePublisher.cs" />
     <Compile Include="Factory.cs" />
     <Compile Include="Message\JsonSerializer.cs" />

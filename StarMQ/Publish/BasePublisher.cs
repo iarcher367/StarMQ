@@ -26,6 +26,7 @@ namespace StarMQ.Publish
 
     public interface IPublisher : IDisposable
     {
+        IModel Model { get; }
         Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action) where T : class;
 
         event BasicReturnHandler BasicReturn;
@@ -39,9 +40,10 @@ namespace StarMQ.Publish
     {
         protected readonly IConnection Connection;
         protected readonly ILog Log;
-        protected IModel Model;
 
         public event BasicReturnHandler BasicReturn;
+
+        public IModel Model { get; private set; }
 
         protected BasePublisher(IConnection connection, ILog log)
         {
@@ -50,9 +52,11 @@ namespace StarMQ.Publish
 
             Connection.OnConnected += OnConnected;
             Connection.OnDisconnected += OnDisconnected;
+
+            OnConnected();
         }
 
-        protected virtual void OnConnected()
+        protected void OnConnected()
         {
             Model = Connection.CreateModel();
             Model.BasicReturn += HandleBasicReturn;
@@ -60,7 +64,7 @@ namespace StarMQ.Publish
             Log.Info("Channel opened.");
         }
 
-        protected virtual void OnDisconnected()
+        protected void OnDisconnected()
         {
             Model.BasicReturn -= HandleBasicReturn;
         }

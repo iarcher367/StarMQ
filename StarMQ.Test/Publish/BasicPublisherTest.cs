@@ -18,21 +18,21 @@ namespace StarMQ.Test.Publish
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
-    using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
     using StarMQ.Publish;
     using System;
+    using System.IO;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BasicPublisherTest
     {
         private Mock<IConnection> _connection;
-        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<IPipeline> _pipeline;
+        private Mock<IBasicProperties> _properties;
         private Mock<ISerializationStrategy> _serializationStrategy;
         private BasePublisher _sut;
 
@@ -42,16 +42,17 @@ namespace StarMQ.Test.Publish
         public void Setup()
         {
             _connection = new Mock<IConnection>();
-            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
             _pipeline = new Mock<IPipeline>();
+            _properties = new Mock<IBasicProperties>();
             _serializationStrategy = new Mock<ISerializationStrategy>();
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
+            _model.Setup(x => x.CreateBasicProperties()).Returns(_properties.Object);
 
-            _sut = new BasicPublisher(_connection.Object, _dispatcher.Object, _log.Object,
-                _pipeline.Object, _serializationStrategy.Object);
+            _sut = new BasicPublisher(_connection.Object, _log.Object, _pipeline.Object,
+                _serializationStrategy.Object);
 
             _message = new Message<string>(String.Empty);
         }
@@ -60,14 +61,8 @@ namespace StarMQ.Test.Publish
         public async Task ShouldSetProperties()
         {
             const int priority = 9;
-            Action action = () => { };
-            var basicProperties = new Mock<IBasicProperties>();
             var publishAction = new Mock<Action<IModel, IBasicProperties, byte[]>>();
 
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
-                .Callback<Action>(x => action = x)
-                .Returns(Task.FromResult(0));
-            _model.Setup(x => x.CreateBasicProperties()).Returns(basicProperties.Object);
             _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0])
                 {
@@ -76,35 +71,53 @@ namespace StarMQ.Test.Publish
 
             await _sut.Publish(_message, publishAction.Object);
 
-            action();
-
-            basicProperties.VerifySet(x => x.Priority = priority, Times.Once);
-            publishAction.Verify(x => x(_model.Object, basicProperties.Object, It.IsAny<byte[]>()));
+            _properties.VerifySet(x => x.Priority = priority, Times.Once);
+            publishAction.Verify(x => x(_model.Object, _properties.Object, It.IsAny<byte[]>()));
         }
 
         [Test]
         public async Task ShouldInvokeActionAndProcessMessage()
         {
-            Action action = () => { };
-            var basicProperties = new Mock<IBasicProperties>();
             var publishAction = new Mock<Action<IModel, IBasicProperties, byte[]>>();
             var serialized = new Mock<IMessage<byte[]>>();
 
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
-                .Callback<Action>(x => action = x)
-                .Returns(Task.FromResult(0));
-            _model.Setup(x => x.CreateBasicProperties()).Returns(basicProperties.Object);
             _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0]) { Properties = new Properties() });
             _serializationStrategy.Setup(x => x.Serialize(_message)).Returns(serialized.Object);
 
             await _sut.Publish(_message, publishAction.Object);
 
-            action();
-
             _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
             _pipeline.Verify(x => x.OnSend(serialized.Object), Times.Once);
-            publishAction.Verify(x => x(_model.Object, basicProperties.Object, It.IsAny<byte[]>()));
+            publishAction.Verify(x => x(_model.Object, _properties.Object, It.IsAny<byte[]>()));
+        }
+
+        [Test]
+        [ExpectedException(typeof(IOException))]
+        public async Task ShouldHaveDispatcherRetryOnIoException()
+        {
+            _model.Setup(x => x.BasicAck(0, false))
+                .Throws(new IOException());
+            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0]) { Properties = new Properties() });
+
+            await _sut.Publish(_message, (x, y, z) => x.BasicAck(0, false));
+
+            _model.Verify(x => x.BasicAck(0, false), Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(NotSupportedException))]
+        public async Task ShouldHaveDispatcherRetryOnNotSupportedException()
+        {
+            _model.Setup(x => x.BasicAck(0, false))
+                .Throws(new NotSupportedException());
+            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0]) { Properties = new Properties() });
+
+            await _sut.Publish(_message, (x, y, z) => x.BasicAck(0, false));
+
+            _model.Verify(x => x.BasicAck(0, false), Times.Once);
         }
 
         [Test]

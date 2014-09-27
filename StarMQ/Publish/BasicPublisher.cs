@@ -14,50 +14,45 @@
 
 namespace StarMQ.Publish
 {
-    using Core;
     using log4net;
     using Message;
     using Model;
     using RabbitMQ.Client;
     using System;
+    using System.IO;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
     /// <summary>
     /// Offers no advanced functionality or messaging guarantees.
     /// </summary>
-    public sealed class BasicPublisher : BasePublisher
+    public class BasicPublisher : BasePublisher
     {
-        private readonly IOutboundDispatcher _dispatcher;
         private readonly IPipeline _pipeline;
         private readonly ISerializationStrategy _serializationStrategy;
 
-        public BasicPublisher(IConnection connection, IOutboundDispatcher dispatcher, ILog log,
-            IPipeline pipeline, ISerializationStrategy serializationStrategy)
+        public BasicPublisher(IConnection connection, ILog log, IPipeline pipeline,
+            ISerializationStrategy serializationStrategy)
             : base(connection, log)
         {
-            _dispatcher = dispatcher;
             _pipeline = pipeline;
             _serializationStrategy = serializationStrategy;
-
-            OnConnected();
         }
 
-        public override async Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action)
+        public override Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action)
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            await _dispatcher.Invoke(() =>
-            {
-                var serialized = _serializationStrategy.Serialize(message);
-                var data = _pipeline.OnSend(serialized);
+            var serialized = _serializationStrategy.Serialize(message);
+            var data = _pipeline.OnSend(serialized);
 
-                var properties = Model.CreateBasicProperties();
-                data.Properties.CopyTo(properties);
+            var properties = Model.CreateBasicProperties();
+            data.Properties.CopyTo(properties);
 
-                action(Model, properties, data.Body);
-            });
+            action(Model, properties, data.Body);
+
+            return Task.FromResult(0);
         }
     }
 }

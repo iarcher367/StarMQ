@@ -17,7 +17,6 @@ namespace StarMQ.Publish
     using Core;
     using Exception;
     using log4net;
-    using Message;
     using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
@@ -32,15 +31,18 @@ namespace StarMQ.Publish
     /// <summary>
     /// Guarantees messaging via publisher confirms and ensures order of unconfirmed messages.
     /// </summary>
-    public sealed class ConfirmPublisher : BasePublisher
+    public class ConfirmPublisherDecorator : IPublisher
     {
         private readonly static Object LockObj = new Object();
-
-        private readonly IConnectionConfiguration _configuration;
-        private readonly IOutboundDispatcher _dispatcher;
         private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();
-        private readonly IPipeline _pipeline;
-        private readonly ISerializationStrategy _serializationStrategy;
+        private readonly IConnection _connection;
+        private readonly ILog _log;
+        private readonly IPublisher _publisher;
+        private readonly IConnectionConfiguration _configuration;
+
+        public IModel Model { get { return _publisher.Model; } }
+
+        public event BasicReturnHandler BasicReturn;
 
         private class PublishState
         {
@@ -52,42 +54,50 @@ namespace StarMQ.Publish
             public Timer Timer { get; set; }
         }
 
-        public ConfirmPublisher(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, ILog log, IPipeline pipeline,
-            ISerializationStrategy serializationStrategy)
-            : base(connection, log)
+        public ConfirmPublisherDecorator(IPublisher publisher, IConnectionConfiguration configuration,
+            IConnection connection, ILog log)
         {
+            _connection = connection;
+            _log = log;
+            _publisher = publisher;
             _configuration = configuration;
-            _dispatcher = dispatcher;
-            _pipeline = pipeline;
-            _serializationStrategy = serializationStrategy;
 
             OnConnected();
+
+            connection.OnConnected += OnConnected;
+            connection.OnDisconnected += OnDisconnected;
+
+            _publisher.BasicReturn += (o, e) =>
+            {
+                var basicReturn = BasicReturn;
+                if (basicReturn != null)
+                    basicReturn(o, e);
+            };
         }
 
-        protected override void OnConnected()
+        protected void OnConnected()
         {
-            base.OnConnected();
-
             Model.BasicAcks += ModelOnBasicAcks;
             Model.BasicNacks += ModelOnBasicNacks;
             Model.ConfirmSelect();
 
             RequeuePendingMessages();
+
+            _log.Info("Pending messages requeued.");
         }
 
-        protected override void OnDisconnected()
+        protected void OnDisconnected()
         {
-            base.OnDisconnected();
-
             Model.BasicAcks -= ModelOnBasicAcks;
             Model.BasicNacks -= ModelOnBasicNacks;
 
             _pendingMessages.Values.ToList().ForEach(x =>
-                {
-                    if (x.Timer != null)
-                        x.Timer.Dispose();
-                });
+            {
+                if (x.Timer != null)
+                    x.Timer.Dispose();
+
+                _log.Info("Timer disposed.");
+            });
         }
 
         private void RequeuePendingMessages()
@@ -123,9 +133,9 @@ namespace StarMQ.Publish
             state.Timer = CreateTimer(sequenceId);
 
             if (state.SequenceIds.Count == 1)
-                Log.Info(String.Format("Message #{0} published.", sequenceId));
+                _log.Info(String.Format("Message #{0} published.", sequenceId));
             else
-                Log.Info(String.Format("Message #{0} republished as #{1}.",
+                _log.Info(String.Format("Message #{0} republished as #{1}.",
                     state.SequenceIds.OrderBy(x => x).First(), sequenceId));
         }
 
@@ -133,10 +143,10 @@ namespace StarMQ.Publish
         {
             return new Timer(x =>
             {
-                Log.Warn(String.Format("Message #{0} timed out waiting for broker response.",
+                _log.Warn(String.Format("Message #{0} timed out waiting for broker response.",
                     sequenceId));
 
-                if (Connection.IsConnected)
+                if (_connection.IsConnected)
                     Publish(_pendingMessages[sequenceId]);
             }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
@@ -145,7 +155,7 @@ namespace StarMQ.Publish
         {
             ProcessResponse(args.DeliveryTag, args.Multiple, x =>
             {
-                Log.Info(String.Format("Message #{0} confirmed. Multiple: {1}",
+                _log.Info(String.Format("Message #{0} confirmed. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
                 x.Timer.Dispose();
@@ -160,7 +170,7 @@ namespace StarMQ.Publish
         {
             ProcessResponse(args.DeliveryTag, args.Multiple, x =>
             {
-                Log.Error(String.Format("Internal broker error for message #{0}. Multiple: {1}",
+                _log.Error(String.Format("Internal broker error for message #{0}. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
                 x.Timer.Dispose();
@@ -196,32 +206,25 @@ namespace StarMQ.Publish
                 _pendingMessages.TryRemove(key, out tmp);
         }
 
-        public override async Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action)
+        public Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action) where T : class
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            await _dispatcher.Invoke(() =>
+            var tcs = new TaskCompletionSource<object>();
+
+            Publish(new PublishState
             {
-                var tcs = new TaskCompletionSource<object>();
-
-                Publish(new PublishState
-                {
-                    Action = () =>
-                    {
-                        var serialized = _serializationStrategy.Serialize(message);
-                        var data = _pipeline.OnSend(serialized);
-
-                        var properties = Model.CreateBasicProperties();
-                        data.Properties.CopyTo(properties);
-
-                        action(Model, properties, data.Body);
-                    },
-                    Source = tcs
-                });
-
-                return tcs.Task;
+                Action = () => _publisher.Publish(message, action),
+                Source = tcs
             });
+
+            return tcs.Task;
+        }
+
+        public void Dispose()
+        {
+            _publisher.Dispose();
         }
     }
 }

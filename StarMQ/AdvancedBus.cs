@@ -138,8 +138,8 @@ namespace StarMQ
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
-            await _publisher.Publish(message,
-                (x, y, z) => x.BasicPublish(exchange.Name, routingKey, mandatory, false, y, z));
+            await _dispatcher.Invoke(() => _publisher.Publish(message,
+                (x, y, z) => x.BasicPublish(exchange.Name, routingKey, mandatory, false, y, z)));
 
             _log.Info(String.Format("Message published to '{0}' with routing key '{1}'",
                 exchange.Name, routingKey));

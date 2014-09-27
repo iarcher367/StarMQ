@@ -111,9 +111,9 @@ namespace StarMQ
             if (configureHandler == null)
                 throw new ArgumentNullException("configureHandler");
 
-            var transient = new HandlerManager(null);   // TODO: DI refactor
+            var transient = new HandlerManager(null);
             configureHandler(transient);
-            var type = transient.Validate().Default;   // TODO: optimization?
+            var type = transient.Validate().Default;    // TODO: optimization?
 
             var exchange = await SetExchanges(configureExchange, type);
 
