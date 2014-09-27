@@ -30,15 +30,15 @@ namespace StarMQ.Consume
 
     public interface IConsumer : IBasicConsumer, IDisposable
     {
-        Task Consume(Queue queue, IBasicConsumer consumer = null);
+        Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer consumer = null);
     }
 
     public abstract class BaseConsumer : IConsumer
     {
         protected readonly IConnection Connection;
+        protected readonly IHandlerManager HandlerManager;
         protected readonly ILog Log;
 
-        private readonly IHandlerManager _handlerManager;
         private readonly IPipeline _pipeline;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
         private readonly ISerializationStrategy _serializationStrategy;
@@ -54,7 +54,7 @@ namespace StarMQ.Consume
         {
             Connection = connection;
             ConsumerTag = namingStrategy.GetConsumerTag();
-            _handlerManager = handlerManager;
+            HandlerManager = handlerManager;
             Log = log;
             _pipeline = pipeline;
             _serializationStrategy = serializationStrategy;
@@ -81,7 +81,7 @@ namespace StarMQ.Consume
                 Log.Info("Message discarded.");
         }
 
-        public abstract Task Consume(Queue queue, IBasicConsumer consumer = null);
+        public abstract Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer consumer = null);
 
         public virtual void HandleBasicCancel(string consumerTag)
         {
@@ -136,8 +136,8 @@ namespace StarMQ.Consume
                     try
                     {
                         var data = _pipeline.OnReceive(message);
-                        var processed = _serializationStrategy.Deserialize(data, _handlerManager.Default);
-                        var handler = _handlerManager.Get(processed.Body.GetType());
+                        var processed = _serializationStrategy.Deserialize(data, HandlerManager.Default);
+                        var handler = HandlerManager.Get(processed.Body.GetType());
                         response = (BaseResponse)handler(processed.Body);
                         response.DeliveryTag = deliveryTag;
                     }

@@ -15,35 +15,29 @@
 namespace StarMQ.Consume
 {
     using Core;
-    using log4net;
-    using Message;
-    using Model;
     using System;
 
-    public class ConsumerFactory    // TODO: refactor into DI
+    public interface IConsumerFactory
     {
-        public static IConsumer CreateConsumer(Queue queue, Action<IHandlerRegistrar> configure,
-            IConnectionConfiguration configuration, IConnection connection, IOutboundDispatcher dispatcher,
-            INamingStrategy namingStrategy, IPipeline pipeline, ISerializationStrategy serializationStrategy)
+        IConsumer CreateConsumer(bool exclusive);
+    }
+
+    public class ConsumerFactory : IConsumerFactory
+    {
+        private readonly Func<IConsumer> _getConsumer;
+        private readonly IConnection _connection;
+
+        public ConsumerFactory(Func<IConsumer> getConsumer, IConnection connection)
         {
-            if (queue == null)
-                throw new ArgumentNullException("queue");
-            if (configure == null)
-                throw new ArgumentNullException("configure");
+            _getConsumer = getConsumer;
+            _connection = connection;
+        }
 
-            var log = LogManager.GetLogger(typeof(HandlerManager));
-
-            var handlerManager = new HandlerManager(log);   // TODO: cleanup, DI-compatible?
-            configure(handlerManager);
-            handlerManager.Validate();
-
-            log = LogManager.GetLogger(typeof(BasicConsumer));
-            var consumer = new BasicConsumer(configuration, connection, dispatcher, handlerManager, log,
-                namingStrategy, pipeline, serializationStrategy);
-
-            return queue.Exclusive
-                ? (IConsumer)consumer
-                : new PersistentConsumerDecorator(consumer, connection);
+        public IConsumer CreateConsumer(bool exclusive)
+        {
+            return exclusive
+                ? _getConsumer()
+                : new PersistentConsumerDecorator(_getConsumer(), _connection); // TODO: inject via DI
         }
     }
 }

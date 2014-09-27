@@ -83,6 +83,24 @@ namespace StarMQ.Test.Consume
         }
 
         [Test]
+        public void ShouldApplyConfigure()
+        {
+            var configure = new Mock<Action<IHandlerRegistrar>>();
+
+            _sut.Consume(_queue, configure.Object);
+
+            configure.Verify(x => x(_handlerManager.Object), Times.Once());
+        }
+
+        [Test]
+        public void ShouldValidateHandlerManager()
+        {
+            _sut.Consume(_queue);
+
+            _handlerManager.Verify(x => x.Validate(), Times.Once);
+        }
+
+        [Test]
         public void ShouldHandleReconnectByDisposingAndCreatingNowModelIfModelIsClosed()
         {
             Action action = () => { };
@@ -127,7 +145,7 @@ namespace StarMQ.Test.Consume
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
 
-            _sut.Consume(_queue, decorator);
+            _sut.Consume(_queue, consumer: decorator);
 
             action();
 

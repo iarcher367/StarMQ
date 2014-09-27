@@ -19,6 +19,7 @@ namespace StarMQ.Test
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
+    using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Message;
     using StarMQ.Model;
@@ -32,12 +33,11 @@ namespace StarMQ.Test
     {
         private const string RoutingKey = "x.y";
 
-        private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
+        private Mock<IConsumerFactory> _consumerFactory;
         private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
-        private Mock<INamingStrategy> _namingStrategy;
         private Mock<IPipeline> _pipeline;
         private Mock<IPublisher> _publisher;
         private Mock<ISerializationStrategy> _serializationStrategy;
@@ -52,19 +52,17 @@ namespace StarMQ.Test
         [SetUp]
         public void Setup()
         {
-            _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
+            _consumerFactory = new Mock<IConsumerFactory>();
             _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
-            _namingStrategy = new Mock<INamingStrategy>();
             _pipeline = new Mock<IPipeline>();
             _publisher = new Mock<IPublisher>();
             _serializationStrategy = new Mock<ISerializationStrategy>();
 
-            _sut = new AdvancedBus(_configuration.Object, _connection.Object,
-                _dispatcher.Object, _log.Object, _namingStrategy.Object, _pipeline.Object,
-                _publisher.Object, _serializationStrategy.Object);
+            _sut = new AdvancedBus(_connection.Object, _consumerFactory.Object, _dispatcher.Object,
+                _log.Object, _pipeline.Object, _publisher.Object, _serializationStrategy.Object);
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0))
@@ -93,9 +91,26 @@ namespace StarMQ.Test
         [Test]
         public void ConsumeShouldConsume()
         {
-            _sut.ConsumeAsync(_queue, x => x.Add<string>(y => new AckResponse()));
+            Action<IHandlerRegistrar> configure = x => { };
 
-            Assert.Fail();  // TODO: implement once Consumer is mockable
+            var consumer = new Mock<IConsumer>();
+
+            _consumerFactory.Setup(x => x.CreateConsumer(false)).Returns(consumer.Object);
+
+            _sut.ConsumeAsync(_queue, configure);
+
+            _consumerFactory.Verify(x => x.CreateConsumer(false), Times.Once);
+            consumer.Verify(x => x.Consume(_queue, configure, null), Times.Once);
+        }
+
+        [Test]
+        public void ConsumeShouldReferenceExclusive()
+        {
+            _queue.WithExclusive(true).WithDurable(false);
+
+            _sut.ConsumeAsync(_queue, null);
+
+            _consumerFactory.Verify(x => x.CreateConsumer(_queue.Exclusive), Times.Once);
         }
 
         [Test]
@@ -103,13 +118,6 @@ namespace StarMQ.Test
         public async Task ConsumeShouldThrowExceptionIfQueueIsNull()
         {
             await _sut.ConsumeAsync(null, x => x.Add<string>(y => new AckResponse()));
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task ConsumeShouldThrowExceptionIfConfigureIsNull()
-        {
-            await _sut.ConsumeAsync(_queue, null);
         }
         #endregion
 

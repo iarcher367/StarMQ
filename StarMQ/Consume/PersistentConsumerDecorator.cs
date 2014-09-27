@@ -34,7 +34,7 @@ namespace StarMQ.Consume
         public PersistentConsumerDecorator(IConsumer consumer, IConnection connection)
         {
             _consumer = consumer;
-            connection.OnConnected += () => _consumer.Consume(_queue, this);
+            connection.OnConnected += () => _consumer.Consume(_queue, consumer: this);
 
             _consumer.ConsumerCancelled += (o, e) =>
             {
@@ -42,18 +42,18 @@ namespace StarMQ.Consume
                 if (consumerCancelled != null)
                     consumerCancelled(o, e);
 
-                _consumer.Consume(_queue, this);
+                _consumer.Consume(_queue, consumer: this);
             };
         }
 
-        public Task Consume(Queue queue, IBasicConsumer consumer = null)
+        public Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer consumer = null)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
             _queue = queue;
 
-            return _consumer.Consume(queue, this);
+            return _consumer.Consume(queue, configure, this);
         }
 
         #region Pass-through

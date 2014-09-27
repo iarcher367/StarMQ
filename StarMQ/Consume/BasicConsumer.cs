@@ -42,21 +42,21 @@ namespace StarMQ.Consume
             _dispatcher = dispatcher;
         }
 
-        public override async Task Consume(Queue queue, IBasicConsumer instance = null)
+        public override async Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer instance = null)
         {
             if (queue == null)
                 throw new ArgumentNullException("queue");
+
+            if (configure != null)
+                configure(HandlerManager);
+
+            HandlerManager.Validate();
 
             await _dispatcher.Invoke(() =>
             {
                 var args = new Dictionary<string, object>();
 
-                if (Model.IsClosed)
-                {
-                    Model.Dispose();
-                    Model = Connection.CreateModel();
-                    Log.Info("Channel opened.");
-                }
+                SynchronizeModel();
 
                 Model.BasicQos(0, _configuration.PrefetchCount, false);
 
@@ -69,6 +69,15 @@ namespace StarMQ.Consume
 
                 Log.Info(String.Format("Consumer '{0}' declared on queue '{1}'.", ConsumerTag, queue.Name));
             });
+        }
+
+        private void SynchronizeModel()
+        {
+            if (!Model.IsClosed) return;
+
+            Model.Dispose();
+            Model = Connection.CreateModel();
+            Log.Info("Channel opened.");
         }
     }
 }

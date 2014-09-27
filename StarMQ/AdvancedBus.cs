@@ -58,11 +58,10 @@ namespace StarMQ
     {
         private const string KeyFormat = "{0}:{1}:{2}";
 
-        private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;
+        private readonly IConsumerFactory _consumerFactory;
         private readonly IOutboundDispatcher _dispatcher;
         private readonly ILog _log;
-        private readonly INamingStrategy _namingStrategy;
         private readonly IPipeline _pipeline;
         private readonly IPublisher _publisher;
         private readonly ISerializationStrategy _serializationStrategy;
@@ -72,15 +71,14 @@ namespace StarMQ
 
         public event BasicReturnHandler BasicReturn;    // TODO: support confirms & basic publishers
 
-        public AdvancedBus(IConnectionConfiguration configuration, IConnection connection,
-            IOutboundDispatcher dispatcher, ILog log, INamingStrategy namingStrategy,
-            IPipeline pipeline, IPublisher publisher, ISerializationStrategy serializationStrategy)
+        public AdvancedBus(IConnection connection, IConsumerFactory consumerFactory,
+            IOutboundDispatcher dispatcher, ILog log, IPipeline pipeline, IPublisher publisher,
+            ISerializationStrategy serializationStrategy)
         {
-            _configuration = configuration;
             _connection = connection;
+            _consumerFactory = consumerFactory;
             _dispatcher = dispatcher;
             _log = log;
-            _namingStrategy = namingStrategy;
             _pipeline = pipeline;
             _publisher = publisher;
             _serializationStrategy = serializationStrategy;
@@ -95,15 +93,10 @@ namespace StarMQ
 
         public async Task ConsumeAsync(Queue queue, Action<IHandlerRegistrar> configure)
         {
-            if (configure == null)
-                throw new ArgumentNullException("configure");
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
-            var consumer = ConsumerFactory.CreateConsumer(queue, configure, _configuration, _connection,
-                _dispatcher, _namingStrategy, _pipeline, _serializationStrategy);
-
-            await consumer.Consume(queue);
+            await _consumerFactory.CreateConsumer(queue.Exclusive).Consume(queue, configure);
 
             _log.Info(String.Format("Consumption from queue '{0}' started.", queue.Name));
         }

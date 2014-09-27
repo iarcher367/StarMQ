@@ -14,6 +14,7 @@
 
 namespace StarMQ
 {
+    using Consume;
     using Core;
     using log4net;
     using Message;
@@ -42,14 +43,10 @@ namespace StarMQ
             Container.RegisterSingle<IPipeline, InterceptorPipeline>();
             Container.RegisterSingle<ISimpleBus, SimpleBus>();
 
-            Container.Register(() =>
+            Container.Register<IConsumerFactory>(() =>
             {
-                var config = Container.GetInstance<IConnectionConfiguration>();
                 var connection = Container.GetInstance<IConnection>();
-
-                return config.PublisherConfirms
-                    ? new ConfirmPublisher(config, connection, LogManager.GetLogger(typeof(ConfirmPublisher)))
-                    : (IPublisher)new BasicPublisher(connection, LogManager.GetLogger(typeof(BasicPublisher)));
+                return new ConsumerFactory(() => Container.GetInstance<IConsumer>(), connection);
             });
 
             Container.Register(() =>
@@ -80,7 +77,19 @@ namespace StarMQ
                 };
             });
 
+            Container.Register(() =>
+            {
+                var config = Container.GetInstance<IConnectionConfiguration>();
+                var connection = Container.GetInstance<IConnection>();
+
+                return config.PublisherConfirms
+                    ? new ConfirmPublisher(config, connection, LogManager.GetLogger(typeof(ConfirmPublisher)))
+                    : (IPublisher)new BasicPublisher(connection, LogManager.GetLogger(typeof(BasicPublisher)));
+            });
+
+            Container.Register<IConsumer, BasicConsumer>();
             Container.Register<ICorrelationStrategy, CorrelationStrategy>();
+            Container.Register<IHandlerManager, HandlerManager>();
             Container.Register<INamingStrategy, NamingStrategy>();
             Container.Register<ISerializationStrategy, SerializationStrategy>();
             Container.Register<ISerializer, JsonSerializer>();

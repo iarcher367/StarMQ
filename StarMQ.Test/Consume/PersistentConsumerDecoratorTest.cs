@@ -14,7 +14,6 @@
 
 namespace StarMQ.Test.Consume
 {
-    using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
@@ -30,7 +29,6 @@ namespace StarMQ.Test.Consume
 
         private Mock<IConnection> _connection;
         private Mock<IConsumer> _consumer;
-        private Mock<ILog> _log;
         private IConsumer _sut;
 
         private Queue _queue;
@@ -40,7 +38,6 @@ namespace StarMQ.Test.Consume
         {
             _connection = new Mock<IConnection>();
             _consumer = new Mock<IConsumer>();
-            _log = new Mock<ILog>();
 
             _sut = new PersistentConsumerDecorator(_consumer.Object, _connection.Object);
 
@@ -79,7 +76,7 @@ namespace StarMQ.Test.Consume
 
             Assert.That(flag, Is.True);
 
-            _consumer.Verify(x => x.Consume(_queue, It.IsAny<PersistentConsumerDecorator>()),
+            _consumer.Verify(x => x.Consume(_queue, null, It.IsAny<PersistentConsumerDecorator>()),
                 Times.Exactly(2));
         }
 
@@ -90,15 +87,18 @@ namespace StarMQ.Test.Consume
 
             _connection.Raise(x => x.OnConnected += null);
 
-            _consumer.Verify(x => x.Consume(_queue, It.IsAny<PersistentConsumerDecorator>()));
+            _consumer.Verify(x => x.Consume(_queue, null, It.IsAny<PersistentConsumerDecorator>()));
         }
 
         [Test]
         public void ShouldConsume()
         {
-            _sut.Consume(_queue);
+            Action<IHandlerRegistrar> configure = x => { };
 
-            _consumer.Verify(x => x.Consume(_queue, It.IsAny<PersistentConsumerDecorator>()), Times.Once);
+            _sut.Consume(_queue, configure);
+
+            _consumer.Verify(x => x.Consume(_queue, configure, It.IsAny<PersistentConsumerDecorator>()),
+                Times.Once);
         }
 
         [Test]
