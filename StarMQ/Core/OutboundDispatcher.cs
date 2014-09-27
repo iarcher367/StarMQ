@@ -30,6 +30,7 @@ namespace StarMQ.Core
     {
         Task Invoke(Action action);
         Task Invoke(Action<IModel> action);
+        Task Invoke(Func<Task> func);
     }
 
     public class OutboundDispatcher : IOutboundDispatcher
@@ -113,11 +114,15 @@ namespace StarMQ.Core
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            _queue.Add(() => InvokeAction(() => action(_model), DateTime.Now));
+            return Invoke(() => action(_model));
+        }
 
-            _log.Debug("Action added to queue.");
+        public Task Invoke(Func<Task> func)
+        {
+            if (func == null)
+                throw new ArgumentNullException("func");
 
-            return Task.FromResult<object>(null);
+            return Invoke((Action)(() => func()));
         }
 
         private void InvokeAction(Action action, DateTime startTime)

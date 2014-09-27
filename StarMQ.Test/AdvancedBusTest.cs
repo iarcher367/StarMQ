@@ -21,26 +21,21 @@ namespace StarMQ.Test
     using RabbitMQ.Client.Events;
     using StarMQ.Consume;
     using StarMQ.Core;
-    using StarMQ.Message;
     using StarMQ.Model;
     using StarMQ.Publish;
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
-    using IConnection = StarMQ.Core.IConnection;
 
     public class AdvancedBusTest
     {
         private const string RoutingKey = "x.y";
 
-        private Mock<IConnection> _connection;
         private Mock<IConsumerFactory> _consumerFactory;
         private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
-        private Mock<IPipeline> _pipeline;
         private Mock<IPublisher> _publisher;
-        private Mock<ISerializationStrategy> _serializationStrategy;
         private IAdvancedBus _sut;
 
         private Action<IModel> _action;
@@ -52,17 +47,14 @@ namespace StarMQ.Test
         [SetUp]
         public void Setup()
         {
-            _connection = new Mock<IConnection>();
             _consumerFactory = new Mock<IConsumerFactory>();
             _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
-            _pipeline = new Mock<IPipeline>();
             _publisher = new Mock<IPublisher>();
-            _serializationStrategy = new Mock<ISerializationStrategy>();
 
-            _sut = new AdvancedBus(_connection.Object, _consumerFactory.Object, _dispatcher.Object,
-                _log.Object, _pipeline.Object, _publisher.Object, _serializationStrategy.Object);
+            _sut = new AdvancedBus(_consumerFactory.Object, _dispatcher.Object, _log.Object,
+                _publisher.Object);
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
                 .Returns(Task.FromResult(0))
@@ -213,45 +205,37 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldPublishMessage()
         {
-            var properties = new Mock<IBasicProperties>();
-            Action<IModel> publishAction = x => { };
+            Action<IModel, IBasicProperties, byte[]> publishAction = (x, y, z) => { };
 
-            _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
-            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
-                .Returns(new Message<byte[]>(new byte[0]));
-            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
-                .Callback<Action<IModel>>(x => publishAction = x);
+            _publisher.Setup(x => x.Publish(_message, It.IsAny<Action<IModel, IBasicProperties, byte[]>>()))
+                .Callback<IMessage<string>, Action<IModel, IBasicProperties, byte[]>>(
+                    (a, x) => publishAction = x)
+                    .Returns(Task.FromResult(0));
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 
-            _action(_model.Object);
-            publishAction(_model.Object);
+            publishAction(_model.Object, null, null);
 
             _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, false, false,
                 It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
-            _pipeline.Verify(x => x.OnSend(It.IsAny<IMessage<byte[]>>()), Times.Once);
-            _publisher.Verify(x => x.Publish(It.IsAny<Action<IModel>>()), Times.Once);
-            _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
+            _publisher.Verify(x => x.Publish(_message,
+                It.IsAny<Action<IModel, IBasicProperties, byte[]>>()), Times.Once);
         }
 
         [Test]
         public async Task PublishAsyncShouldSetMandatory()
         {
             const bool mandatory = true;
-            var properties = new Mock<IBasicProperties>();
-            Action<IModel> publishAction = x => { };
+            Action<IModel, IBasicProperties, byte[]> publishAction = (x, y, z) => { };
 
-            _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
-            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
-                .Returns(new Message<byte[]>(new byte[0]));
-            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
-                .Callback<Action<IModel>>(x => publishAction = x);
+            _publisher.Setup(x => x.Publish(_message, It.IsAny<Action<IModel, IBasicProperties, byte[]>>()))
+                .Callback<IMessage<string>, Action<IModel, IBasicProperties, byte[]>>(
+                    (a, x) => publishAction = x)
+                    .Returns(Task.FromResult(0));
 
             await _sut.PublishAsync(_exchange, RoutingKey, mandatory, false, _message);
 
-            _action(_model.Object);
-            publishAction(_model.Object);
+            publishAction(_model.Object, null, null);
 
             _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, mandatory, false,
                 It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
@@ -262,19 +246,15 @@ namespace StarMQ.Test
         public async Task PublishAsyncShouldSetImmediate()
         {
             const bool immediate = true;
-            var properties = new Mock<IBasicProperties>();
-            Action<IModel> publishAction = x => { };
+            Action<IModel, IBasicProperties, byte[]> publishAction = (x, y, z) => { };
 
-            _model.Setup(x => x.CreateBasicProperties()).Returns(properties.Object);
-            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
-                .Returns(new Message<byte[]>(new byte[0]));
-            _publisher.Setup(x => x.Publish(It.IsAny<Action<IModel>>()))
-                .Callback<Action<IModel>>(x => publishAction = x);
+            _publisher.Setup(x => x.Publish(_message, It.IsAny<Action<IModel, IBasicProperties, byte[]>>()))
+                .Callback<IMessage<string>, Action<IModel, IBasicProperties, byte[]>>(
+                    (a, x) => publishAction = x);
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, immediate, _message);
 
-            _action(_model.Object);
-            publishAction(_model.Object);
+            publishAction(_model.Object, null, null);
 
             _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, false, immediate,
                 It.IsAny<IBasicProperties>(), It.IsAny<byte[]>()), Times.Once);
@@ -292,13 +272,6 @@ namespace StarMQ.Test
         public async Task PublishAsyncShouldThrowExceptionIfRoutingKeyIsNull()
         {
             await _sut.PublishAsync(_exchange, null, false, false, _message);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public async Task PublishAsyncShouldThrowExceptionIfMessageIsNull()
-        {
-            await _sut.PublishAsync<string>(_exchange, RoutingKey, false, false, null);
         }
         #endregion
 
@@ -357,7 +330,7 @@ namespace StarMQ.Test
 
             _action(_model.Object);
 
-            _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive, 
+            _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
             _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
@@ -508,7 +481,6 @@ namespace StarMQ.Test
         {
             _sut.Dispose();
 
-            _connection.Verify(x => x.Dispose(), Times.Once);
             _dispatcher.Verify(x => x.Dispose(), Times.Once);
         }
 
@@ -517,9 +489,7 @@ namespace StarMQ.Test
         {
             _sut.Dispose();
             _sut.Dispose();
-            _sut.Dispose();
 
-            _connection.Verify(x => x.Dispose(), Times.Once);
             _dispatcher.Verify(x => x.Dispose(), Times.Once);
         }
     }

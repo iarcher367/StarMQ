@@ -124,6 +124,37 @@ namespace StarMQ.Test.Core
         }
 
         [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldThrowExceptionIfActionUsingInternalModelIsNull()
+        {
+            _sut.Invoke((Action<IModel>)null);
+        }
+
+        [Test]
+        public async Task ShouldDispatchFunc()
+        {
+            var flag = false;
+
+            await _sut.Invoke(() =>
+            {
+                flag = true;
+                return Task.FromResult(0);
+            });
+
+            await Task.Delay(Delay);
+
+            Assert.That(flag, Is.True);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldThrowExceptionIfFuncIsNull()
+        {
+            _sut.Invoke((Func<Task>)null);
+        }
+
+
+        [Test]
         public async Task ShouldRetryUntilTimeoutIfChannelFails()
         {
             _configuration.Setup(x => x.Timeout).Returns(125);
@@ -131,21 +162,14 @@ namespace StarMQ.Test.Core
             var count = 0;
 
             await _sut.Invoke(x =>
-                {
-                    count += 2;
-                    throw new NotSupportedException();
-                });
+            {
+                count += 2;
+                throw new NotSupportedException();
+            });
 
             await Task.Delay(140);
 
             Assert.That(count, Is.EqualTo(4));
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfActionUsingInternalModelIsNull()
-        {
-            _sut.Invoke((Action<IModel>)null);
         }
 
         [Test]
@@ -159,7 +183,6 @@ namespace StarMQ.Test.Core
         [Test]
         public void ShouldNotDisposeMultipleTimes()
         {
-            _sut.Dispose();
             _sut.Dispose();
             _sut.Dispose();
 

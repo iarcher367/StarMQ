@@ -14,7 +14,10 @@
 
 namespace StarMQ.Publish
 {
+    using Core;
     using log4net;
+    using Message;
+    using Model;
     using RabbitMQ.Client;
     using System;
     using System.Threading.Tasks;
@@ -25,19 +28,36 @@ namespace StarMQ.Publish
     /// </summary>
     public sealed class BasicPublisher : BasePublisher
     {
-        public BasicPublisher(IConnection connection, ILog log) : base(connection, log)
+        private readonly IOutboundDispatcher _dispatcher;
+        private readonly IPipeline _pipeline;
+        private readonly ISerializationStrategy _serializationStrategy;
+
+        public BasicPublisher(IConnection connection, IOutboundDispatcher dispatcher, ILog log,
+            IPipeline pipeline, ISerializationStrategy serializationStrategy)
+            : base(connection, log)
         {
+            _dispatcher = dispatcher;
+            _pipeline = pipeline;
+            _serializationStrategy = serializationStrategy;
+
             OnConnected();
         }
 
-        public override Task Publish(Action<IModel> action)
+        public override async Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action)
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            action(Model);
+            await _dispatcher.Invoke(() =>
+            {
+                var serialized = _serializationStrategy.Serialize(message);
+                var data = _pipeline.OnSend(serialized);
 
-            return Task.FromResult<object>(null);
+                var properties = Model.CreateBasicProperties();
+                data.Properties.CopyTo(properties);
+
+                action(Model, properties, data.Body);
+            });
         }
     }
 }

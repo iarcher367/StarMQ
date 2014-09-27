@@ -21,7 +21,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 
 ## Publisher Confirms
 - StarMQ offers guaranteed publishing via RabbitMQ’s publisher confirms.
-- RabbitMQ declines a message by sending a basic.nack, which StarMQ passes along by throwing a PublishException. Declines are typically caused by internal broker errors.
+- RabbitMQ declines a message by sending a basic.nack, which are logged as errors. No further action is taken as declines are typically caused by internal broker errors.
 - StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
 
 ## High-Availability

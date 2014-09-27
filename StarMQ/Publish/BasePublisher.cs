@@ -15,6 +15,7 @@
 namespace StarMQ.Publish
 {
     using log4net;
+    using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using System;
@@ -25,7 +26,7 @@ namespace StarMQ.Publish
 
     public interface IPublisher : IDisposable
     {
-        Task Publish(Action<IModel> action);
+        Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action) where T : class;
 
         event BasicReturnHandler BasicReturn;
     }
@@ -77,7 +78,7 @@ namespace StarMQ.Publish
                 basicReturn(model, args);
         }
 
-        public abstract Task Publish(Action<IModel> action);
+        public abstract Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action) where T : class;
 
         public void Dispose()
         {

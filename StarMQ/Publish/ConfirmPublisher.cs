@@ -17,6 +17,8 @@ namespace StarMQ.Publish
     using Core;
     using Exception;
     using log4net;
+    using Message;
+    using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using System;
@@ -35,22 +37,30 @@ namespace StarMQ.Publish
         private readonly static Object LockObj = new Object();
 
         private readonly IConnectionConfiguration _configuration;
+        private readonly IOutboundDispatcher _dispatcher;
         private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();
+        private readonly IPipeline _pipeline;
+        private readonly ISerializationStrategy _serializationStrategy;
 
         private class PublishState
         {
             private readonly List<ulong> _sequenceIds = new List<ulong>();
 
             public List<ulong> SequenceIds { get { return _sequenceIds; } }
-            public Action<IModel> Action { get; set; }
+            public Action Action { get; set; }
             public TaskCompletionSource<object> Source { get; set; }
             public Timer Timer { get; set; }
         }
 
         public ConfirmPublisher(IConnectionConfiguration configuration, IConnection connection,
-            ILog log) : base(connection, log)
+            IOutboundDispatcher dispatcher, ILog log, IPipeline pipeline,
+            ISerializationStrategy serializationStrategy)
+            : base(connection, log)
         {
             _configuration = configuration;
+            _dispatcher = dispatcher;
+            _pipeline = pipeline;
+            _serializationStrategy = serializationStrategy;
 
             OnConnected();
         }
@@ -87,13 +97,11 @@ namespace StarMQ.Publish
 
             foreach (var key in requeued.Keys.OrderBy(x => x)
                                 .Where(x => x == requeued[x].SequenceIds.OrderBy(y => y).First()))
-            {
                 Publish(new PublishState
-                    {
-                        Action = requeued[key].Action,
-                        Source = requeued[key].Source
-                    });
-            }
+                {
+                    Action = requeued[key].Action,
+                    Source = requeued[key].Source
+                });
         }
 
         private void Publish(PublishState state)
@@ -106,7 +114,7 @@ namespace StarMQ.Publish
             lock (LockObj)
             {
                 sequenceId = Model.NextPublishSeqNo;
-                state.Action(Model);
+                state.Action();
             }
 
             _pendingMessages.TryAdd(sequenceId, state);
@@ -188,16 +196,32 @@ namespace StarMQ.Publish
                 _pendingMessages.TryRemove(key, out tmp);
         }
 
-        public override Task Publish(Action<IModel> action)
+        public override async Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action)
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            var tcs = new TaskCompletionSource<object>();
+            await _dispatcher.Invoke(() =>
+            {
+                var tcs = new TaskCompletionSource<object>();
 
-            Publish(new PublishState { Action = action, Source = tcs });
+                Publish(new PublishState
+                {
+                    Action = () =>
+                    {
+                        var serialized = _serializationStrategy.Serialize(message);
+                        var data = _pipeline.OnSend(serialized);
 
-            return tcs.Task;
+                        var properties = Model.CreateBasicProperties();
+                        data.Properties.CopyTo(properties);
+
+                        action(Model, properties, data.Body);
+                    },
+                    Source = tcs
+                });
+
+                return tcs.Task;
+            });
         }
     }
 }

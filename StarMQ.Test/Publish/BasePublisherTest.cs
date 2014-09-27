@@ -19,14 +19,19 @@ namespace StarMQ.Test.Publish
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
+    using StarMQ.Core;
+    using StarMQ.Message;
     using StarMQ.Publish;
     using IConnection = StarMQ.Core.IConnection;
 
     public class BasePublisherTest
     {
         private Mock<IConnection> _connection;
+        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
+        private Mock<IPipeline> _pipeline;
+        private Mock<ISerializationStrategy> _serializationStrategy;
         private BasePublisher _sut;
 
         private Mock<IBasicProperties> _properties;
@@ -35,12 +40,16 @@ namespace StarMQ.Test.Publish
         public void Setup()
         {
             _connection = new Mock<IConnection>();
+            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
+            _pipeline = new Mock<IPipeline>();
+            _serializationStrategy = new Mock<ISerializationStrategy>();
 
             _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
 
-            _sut = new BasicPublisher(_connection.Object, _log.Object);
+            _sut = new BasicPublisher(_connection.Object, _dispatcher.Object, _log.Object,
+                _pipeline.Object, _serializationStrategy.Object);
 
             _properties = new Mock<IBasicProperties>();
         }
@@ -53,11 +62,13 @@ namespace StarMQ.Test.Publish
             _sut.BasicReturn += (o, e) => { count += 2; };
 
             _model.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs
-                {
-                    BasicProperties = _properties.Object
-                });
+            {
+                BasicProperties = _properties.Object
+            });
 
             Assert.That(count, Is.EqualTo(2));
+
+            _connection.Verify(x => x.CreateModel(), Times.Once);
         }
 
         [Test]
@@ -70,9 +81,9 @@ namespace StarMQ.Test.Publish
             _connection.Raise(x => x.OnDisconnected += null);
 
             _model.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs
-                {
-                    BasicProperties = _properties.Object
-                });
+            {
+                BasicProperties = _properties.Object
+            });
 
             Assert.That(flag, Is.False);
         }
@@ -85,9 +96,9 @@ namespace StarMQ.Test.Publish
             _sut.BasicReturn += (o, e) => { flag = true; };
 
             _model.Raise(x => x.BasicReturn += null, new BasicReturnEventArgs
-                {
-                    BasicProperties = _properties.Object
-                });
+            {
+                BasicProperties = _properties.Object
+            });
 
             Assert.That(flag, Is.True);
         }

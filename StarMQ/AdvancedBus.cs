@@ -17,7 +17,6 @@ namespace StarMQ
     using Consume;
     using Core;
     using log4net;
-    using Message;
     using Model;
     using Publish;
     using System;
@@ -58,30 +57,23 @@ namespace StarMQ
     {
         private const string KeyFormat = "{0}:{1}:{2}";
 
-        private readonly IConnection _connection;
         private readonly IConsumerFactory _consumerFactory;
         private readonly IOutboundDispatcher _dispatcher;
         private readonly ILog _log;
-        private readonly IPipeline _pipeline;
         private readonly IPublisher _publisher;
-        private readonly ISerializationStrategy _serializationStrategy;
         private readonly ConcurrentDictionary<string, Task> _tasks = new ConcurrentDictionary<string, Task>();
 
         private bool _disposed;
 
         public event BasicReturnHandler BasicReturn;    // TODO: support confirms & basic publishers
 
-        public AdvancedBus(IConnection connection, IConsumerFactory consumerFactory,
-            IOutboundDispatcher dispatcher, ILog log, IPipeline pipeline, IPublisher publisher,
-            ISerializationStrategy serializationStrategy)
+        public AdvancedBus(IConsumerFactory consumerFactory, IOutboundDispatcher dispatcher, ILog log,
+            IPublisher publisher)
         {
-            _connection = connection;
             _consumerFactory = consumerFactory;
             _dispatcher = dispatcher;
             _log = log;
-            _pipeline = pipeline;
             _publisher = publisher;
-            _serializationStrategy = serializationStrategy;
 
             _publisher.BasicReturn += (o, args) =>
             {
@@ -145,20 +137,9 @@ namespace StarMQ
                 throw new ArgumentNullException("exchange");
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
-            if (message == null)
-                throw new ArgumentNullException("message");
 
-            var serialized = _serializationStrategy.Serialize(message);
-            var data = _pipeline.OnSend(serialized);
-
-            await _dispatcher.Invoke(x =>
-            {
-                var properties = x.CreateBasicProperties();
-                data.Properties.CopyTo(properties);
-
-                _publisher.Publish(a => a.BasicPublish(exchange.Name, routingKey,
-                    mandatory, false, properties, data.Body));
-            });
+            await _publisher.Publish(message,
+                (x, y, z) => x.BasicPublish(exchange.Name, routingKey, mandatory, false, y, z));
 
             _log.Info(String.Format("Message published to '{0}' with routing key '{1}'",
                 exchange.Name, routingKey));
@@ -250,7 +231,6 @@ namespace StarMQ
             _disposed = true;
 
             _dispatcher.Dispose();
-            _connection.Dispose();
 
             _log.Info("Dispose completed.");
         }

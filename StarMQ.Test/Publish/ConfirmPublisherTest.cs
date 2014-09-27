@@ -21,8 +21,11 @@ namespace StarMQ.Test.Publish
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
     using StarMQ.Core;
+    using StarMQ.Message;
+    using StarMQ.Model;
     using StarMQ.Publish;
     using System;
+    using System.Collections.Generic;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
@@ -33,20 +36,32 @@ namespace StarMQ.Test.Publish
         private readonly ulong[] _seqNos = { 13, 14, 15, 16, 42, 43, 44 };
 
         private Mock<IConnectionConfiguration> _configuration;
+        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<IConnection> _connection;
         private Mock<ILog> _log;
         private Mock<IModel> _modelOne;
         private Mock<IModel> _modelTwo;
+        private Mock<IPipeline> _pipeline;
+        private Mock<IBasicProperties> _properties;
+        private Mock<ISerializationStrategy> _serializationStrategy;
         private ConfirmPublisher _sut;
+
+        private byte[] _body;
+        private List<Func<Task>> _funcs;
+        private IMessage<string> _message;
 
         [SetUp]
         public void Setup()
         {
             _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
+            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _modelOne = new Mock<IModel>();
             _modelTwo = new Mock<IModel>();
+            _pipeline = new Mock<IPipeline>();
+            _properties = new Mock<IBasicProperties>();
+            _serializationStrategy = new Mock<ISerializationStrategy>();
 
             _configuration.Setup(x => x.Timeout).Returns(Timeout);
             _connection.SetupSequence(x => x.CreateModel())
@@ -62,7 +77,23 @@ namespace StarMQ.Test.Publish
                 .Returns(_seqNos[5])
                 .Returns(_seqNos[6]);
 
-            _sut = new ConfirmPublisher(_configuration.Object, _connection.Object, _log.Object);
+            _sut = new ConfirmPublisher(_configuration.Object, _connection.Object, _dispatcher.Object,
+                _log.Object, _pipeline.Object, _serializationStrategy.Object);
+
+            _body = new byte[0];
+            _funcs = new List<Func<Task>>();
+            _message = new Message<string>(String.Empty);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Func<Task>>()))
+                .Callback<Func<Task>>(x => _funcs.Add(x))
+                .Returns(Task.FromResult(0));
+            _modelOne.Setup(x => x.CreateBasicProperties()).Returns(_properties.Object);
+            _modelTwo.Setup(x => x.CreateBasicProperties()).Returns(_properties.Object);
+            _pipeline.Setup(x => x.OnSend(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(_body)
+                {
+                    Properties = new Properties { Priority = 7 }
+                });
         }
 
         [Test]
@@ -70,7 +101,9 @@ namespace StarMQ.Test.Publish
         {
             var flag = false;
 
-            var task = _sut.Publish(x => flag = true);
+            await _sut.Publish(_message, (x, y, z) => flag = true);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -85,7 +118,9 @@ namespace StarMQ.Test.Publish
         {
             var flag = false;
 
-            var task = _sut.Publish(x => flag = true);
+            await _sut.Publish(_message, (x, y, z) => flag = true);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -111,7 +146,9 @@ namespace StarMQ.Test.Publish
 
             _connection.Raise(x => x.OnDisconnected += null);
 
-            var task = _sut.Publish(x => count += 2);
+            await _sut.Publish(_message, (x, y, z) => count += 2);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -137,7 +174,9 @@ namespace StarMQ.Test.Publish
 
             _connection.Raise(x => x.OnDisconnected += null);
 
-            var task = _sut.Publish(x => count += 2);
+            await _sut.Publish(_message, (x, y, z) => count += 2);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -155,7 +194,9 @@ namespace StarMQ.Test.Publish
         {
             _connection.Setup(x => x.IsConnected).Returns(true);
 
-            var task = _sut.Publish(x => { });
+            await _sut.Publish(_message, (x, y, z) => { });
+
+            var task = _funcs[0]();
 
             _connection.Raise(x => x.OnDisconnected += null);
 
@@ -171,34 +212,32 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        public void ShouldRequeuePendingMessagesIfOnConnectedFires()
+        public async Task ShouldRequeuePendingMessagesIfOnConnectedFires()
         {
             _connection.Setup(x => x.IsConnected).Returns(true);
 
             const int a = 3, b = 5, c = 7;
-            var count = 0;
 
-            var tasks = new[]
-                {
-                    _sut.Publish(x => count += a),
-                    _sut.Publish(x => count += b)
-                };
+            var count = 0;
+            var tasks = new List<Task>();
+
+            await _sut.Publish(_message, (x, y, z) => count += a);
+            await _sut.Publish(_message, (x, y, z) => count += b);
+
+            _funcs.ForEach(x => tasks.Add(x()));
 
             _connection.Raise(x => x.OnDisconnected += null);
             _connection.Raise(x => x.OnConnected += null);
 
-            tasks = new[]
-                {
-                    tasks[0],
-                    tasks[1],
-                    _sut.Publish(x => count += c)
-                };
+            await _sut.Publish(_message, (x, y, z) => count += c);
+
+            tasks.Add(_funcs[2]());
 
             _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
             _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[5] });
             _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[6] });
 
-            Task.WaitAll(tasks);
+            Task.WaitAll(tasks.ToArray());
 
             Assert.That(count, Is.EqualTo(2 * a + 2 * b + c));
         }
@@ -212,22 +251,24 @@ namespace StarMQ.Test.Publish
 
             const int a = 3, b = 5;
             int order = 0, count = 0;
-            var tasks = new Task[2];
+            var tasks = new List<Task>();
 
-            tasks[0] = _sut.Publish(x =>
+            await _sut.Publish(_message, (x, y, z) =>
             {
                 x.BasicCancel("1");
                 count += a;
             });
 
+            tasks.Add(_funcs[0]());
             await Task.Delay(Offset);
 
-            tasks[1] = _sut.Publish(x =>
+            await _sut.Publish(_message, (x, y, z) =>
             {
                 x.BasicCancel("2");
                 count += b;
             });
 
+            tasks.Add(_funcs[1]());
             await Task.Delay(Timeout);
 
             _connection.Raise(x => x.OnDisconnected += null);
@@ -242,7 +283,7 @@ namespace StarMQ.Test.Publish
             _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
             _modelTwo.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[5] });
 
-            Task.WaitAll(tasks);
+            Task.WaitAll(tasks.ToArray());
 
             Assert.That(count, Is.EqualTo(3 * a + 2 * b));
         }
@@ -258,7 +299,9 @@ namespace StarMQ.Test.Publish
         {
             var flag = false;
 
-            var task = _sut.Publish(x => flag = true);
+            await _sut.Publish(_message, (x, y, z) => flag = true);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -268,30 +311,31 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        public void ShouldInvokeAndConfirmMultipleOnBasicAckWithMultipleSet()
+        public async Task ShouldInvokeAndConfirmMultipleOnBasicAckWithMultipleSet()
         {
             _connection.Setup(x => x.IsConnected).Returns(true);
 
             var count = 0;
-            var tasks = new[]
-                {
-                    _sut.Publish(x => count += 7),
-                    _sut.Publish(x => count += 9),
-                    _sut.Publish(x => count += 11),
-                    _sut.Publish(x => count += 13)
-                };
+            var tasks = new List<Task>();
+
+            await _sut.Publish(_message, (x, y, z) => count += 7);
+            await _sut.Publish(_message, (x, y, z) => count += 9);
+            await _sut.Publish(_message, (x, y, z) => count += 11);
+            await _sut.Publish(_message, (x, y, z) => count += 13);
+
+            _funcs.ForEach(x => tasks.Add(x()));
 
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[1] });
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs
-                {
-                    DeliveryTag = _seqNos[2],
-                    Multiple = true
-                });
+            {
+                DeliveryTag = _seqNos[2],
+                Multiple = true
+            });
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[3] });
 
             try
             {
-                Task.WaitAll(tasks);
+                Task.WaitAll(tasks.ToArray());
             }
             catch (AggregateException agg)
             {
@@ -305,7 +349,9 @@ namespace StarMQ.Test.Publish
         {
             var flag = false;
 
-            var task = _sut.Publish(x => flag = true);
+            await _sut.Publish(_message, (x, y, z) => flag = true);
+
+            var task = _funcs[0]();
 
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[0] });
 
@@ -315,30 +361,31 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        public void ShouldInvokeAndThrowMultipleExceptionsOnBasicNackWithMultipleSet()
+        public async Task ShouldInvokeAndThrowMultipleExceptionsOnBasicNackWithMultipleSet()
         {
             _connection.Setup(x => x.IsConnected).Returns(true);
 
             var count = 0;
-            var tasks = new[]
-                {
-                    _sut.Publish(x => count += 7),
-                    _sut.Publish(x => count += 9),
-                    _sut.Publish(x => count += 11),
-                    _sut.Publish(x => count += 13)
-                };
+            var tasks = new List<Task>();
+
+            await _sut.Publish(_message, (x, y, z) => count += 7);
+            await _sut.Publish(_message, (x, y, z) => count += 9);
+            await _sut.Publish(_message, (x, y, z) => count += 11);
+            await _sut.Publish(_message, (x, y, z) => count += 13);
+
+            _funcs.ForEach(x => tasks.Add(x()));
 
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[1] });
             _modelOne.Raise(x => x.BasicNacks += null, new BasicNackEventArgs
-                {
-                    DeliveryTag = _seqNos[2],
-                    Multiple = true
-                });
+            {
+                DeliveryTag = _seqNos[2],
+                Multiple = true
+            });
             _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[3] });
 
             try
             {
-                Task.WaitAll(tasks);
+                Task.WaitAll(tasks.ToArray());
             }
             catch (AggregateException agg)
             {
@@ -356,7 +403,9 @@ namespace StarMQ.Test.Publish
 
             var count = 0;
 
-            var task = _sut.Publish(x => count += 2);
+            await _sut.Publish(_message, (x, y, z) => count += 2);
+
+            var task = _funcs[0]();
 
             await Task.Delay(Timeout + Offset);
 
@@ -374,7 +423,9 @@ namespace StarMQ.Test.Publish
 
             var count = 0;
 
-            var task = _sut.Publish(x => count += 2);
+            await _sut.Publish<string>(null, (x, y, z) => count += 2);
+
+            var task = _funcs[0]();
 
             await Task.Delay(Timeout + Offset);
 
@@ -386,10 +437,48 @@ namespace StarMQ.Test.Publish
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfActionIsNull()
+        public async Task ShouldSetProperties()
         {
-            _sut.Publish(null);
+            var publishAction = new Mock<Action<IModel, IBasicProperties, byte[]>>();
+
+            await _sut.Publish(_message, publishAction.Object);
+
+            var task = _funcs[0]();
+
+            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
+
+            await task;
+
+            _properties.VerifySet(x => x.Priority = 7, Times.Once);
+            publishAction.Verify(x => x(_modelOne.Object, _properties.Object, _body));
+        }
+
+        [Test]
+        public async Task ShouldInvokeActionAndProcessMessage()
+        {
+            var publishAction = new Mock<Action<IModel, IBasicProperties, byte[]>>();
+            var serialized = new Mock<IMessage<byte[]>>();
+
+            _serializationStrategy.Setup(x => x.Serialize(_message)).Returns(serialized.Object);
+
+            await _sut.Publish(_message, publishAction.Object);
+
+            var task = _funcs[0]();
+
+            _modelOne.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
+
+            await task;
+
+            _serializationStrategy.Verify(x => x.Serialize(_message), Times.Once);
+            _pipeline.Verify(x => x.OnSend(serialized.Object), Times.Once);
+            publishAction.Verify(x => x(_modelOne.Object, _properties.Object, _body));
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public async Task ShouldThrowExceptionIfActionIsNull()
+        {
+            await _sut.Publish<string>(null, null);
         }
     }
 }

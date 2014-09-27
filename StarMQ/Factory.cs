@@ -81,10 +81,15 @@ namespace StarMQ
             {
                 var config = Container.GetInstance<IConnectionConfiguration>();
                 var connection = Container.GetInstance<IConnection>();
+                var dispatcher = Container.GetInstance<IOutboundDispatcher>();
+                var pipeline = Container.GetInstance<IPipeline>();
+                var serializationStrategy = Container.GetInstance<ISerializationStrategy>();
 
                 return config.PublisherConfirms
-                    ? new ConfirmPublisher(config, connection, LogManager.GetLogger(typeof(ConfirmPublisher)))
-                    : (IPublisher)new BasicPublisher(connection, LogManager.GetLogger(typeof(BasicPublisher)));
+                    ? new ConfirmPublisher(config, connection, dispatcher,
+                        LogManager.GetLogger(typeof(ConfirmPublisher)), pipeline, serializationStrategy)
+                    : (IPublisher)new BasicPublisher(connection, dispatcher,
+                        LogManager.GetLogger(typeof(BasicPublisher)), pipeline, serializationStrategy);
             });
 
             Container.Register<IConsumer, BasicConsumer>();
