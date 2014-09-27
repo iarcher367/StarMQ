@@ -2,6 +2,7 @@
 {
     using log4net;
     using Moq;
+    using Newtonsoft.Json;
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
@@ -233,6 +234,38 @@
             _model.Verify(x => x.BasicAck(DeliveryTag, false), Times.Once);
             _model.Verify(x => x.BasicCancel(ConsumerTag), Times.Once);
             _model.Verify(x => x.Dispose(), Times.Once);
+        }
+
+        [Test]
+        public void DeliverShouldBasicNackOnDeserializeException()
+        {
+            var signal = new ManualResetEventSlim(false);
+
+            var type = typeof(string);
+
+            var handlerManager = new HandlerManager(_log.Object);
+            handlerManager.Add<Factory>(y => { });
+
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
+                _serializationStrategy.Object);
+
+            _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0])
+                {
+                    Properties = new Properties { Type = type.FullName }
+                });
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
+                .Throws(new JsonReaderException());
+
+            _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
+                .Callback(signal.Set);
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
         }
 
         [Test]

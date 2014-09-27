@@ -50,7 +50,7 @@ namespace StarMQ.Consume
             _pipeline = pipeline;
             _serializationStrategy = serializationStrategy;
 
-            Connection.OnDisconnected += OnDisconnected;
+            Connection.OnDisconnected += ClearQueue;
             Dispatch();
             Model = Connection.CreateModel();
         }
@@ -58,13 +58,13 @@ namespace StarMQ.Consume
         private void Dispatch()
         {
             Task.Run(() =>
-                {
-                    foreach (var action in _queue.GetConsumingEnumerable())
-                        Task.Run(action).Wait();
-                });
+            {
+                foreach (var action in _queue.GetConsumingEnumerable())
+                    Task.Run(action).Wait();
+            });
         }
 
-        private void OnDisconnected()
+        private void ClearQueue()
         {
             Action action;
 
@@ -78,6 +78,8 @@ namespace StarMQ.Consume
         {
             if (ConsumerTag != consumerTag)
                 throw new StarMqException("Consumer tag mismatch.");    // TODO: remove if impossible
+
+            ClearQueue();
 
             var consumerCancelled = ConsumerCancelled;
             if (consumerCancelled != null)
@@ -115,44 +117,54 @@ namespace StarMQ.Consume
             try
             {
                 _queue.Add(() => // TODO: process redelivered?
+                {
+                    BaseResponse response;
+                    var message = new Message<byte[]>(body);
+                    message.Properties.CopyFrom(properties);
+
+                    if (_disposed) return;
+
+                    try
                     {
-                        var message = new Message<byte[]>(body);
-                        message.Properties.CopyFrom(properties);
-
-                        if (_disposed) return;
-
                         var data = _pipeline.OnReceive(message);
                         var processed = _serializationStrategy.Deserialize(data, _handlerManager.Default);
                         var handler = _handlerManager.Get(processed.Body.GetType());
-                        var response = (BaseResponse)handler(processed.Body);
+                        response = (BaseResponse)handler(processed.Body);
                         response.DeliveryTag = deliveryTag;
+                    }
+                    catch (Exception ex)
+                    {
+                        response = new NackResponse { DeliveryTag = deliveryTag };
+                        Log.Error(String.Format("Failed to process message #{0}", deliveryTag),
+                            ex);
+                    }
 
-                        try
-                        {
-                            response.Send(Model, Log);
+                    try
+                    {
+                        response.Send(Model, Log);
 
-                            if (response.Action == ResponseAction.Unsubscribe)
-                            {
-                                Model.BasicCancel(ConsumerTag);
-                                Dispose();
-                            }
-                        }
-                        catch (AlreadyClosedException ex)
+                        if (response.Action == ResponseAction.Unsubscribe)
                         {
-                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
-                                ex.GetType().Name));
+                            Model.BasicCancel(ConsumerTag);
+                            Dispose();
                         }
-                        catch (IOException ex)
-                        {
-                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
-                                ex.GetType().Name));
-                        }
-                        catch (NotSupportedException ex)
-                        {
-                            Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
-                                ex.GetType().Name));
-                        }
-                    });
+                    }
+                    catch (AlreadyClosedException ex)
+                    {
+                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                            ex.GetType().Name));
+                    }
+                    catch (IOException ex)
+                    {
+                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                            ex.GetType().Name));
+                    }
+                    catch (NotSupportedException ex)
+                    {
+                        Log.Info(String.Format("Unable to send response. Lost connection to broker - {0}.",
+                            ex.GetType().Name));
+                    }
+                });
             }
             catch (InvalidOperationException) { /* thrown if fired after dispose */}
         }
@@ -170,7 +182,7 @@ namespace StarMQ.Consume
             _disposed = true;
 
             _queue.CompleteAdding();
-            OnDisconnected();
+            ClearQueue();
 
             Model.Dispose();
 

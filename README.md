@@ -24,6 +24,9 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - RabbitMQ declines a message by sending a basic.nack, which StarMQ passes along by throwing a PublishException. Declines are typically caused by internal broker errors.
 - StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
 
+## High-Availability
+For HA clusters, set the connection string to point at the load balancer. StarMQ will detect the connection loss on failover and automatically recover the connection along with any non-exclusive consumers.
+
 ## Quick-Start
 The Factory class allows fluent configuration and access to the SimpleBus API.
 ```
@@ -34,8 +37,10 @@ var simpleBus = new Factory()
     .AddInterceptor(new MyCustomInterceptor())
     .GetBus(connectionString);
 ```
-The example shows the _optional_ intermediate steps to register custom implementations, enable built-in pre-processing steps, and insert custom steps (a.k.a. interceptors).
-
+The example shows the _optional_ intermediate steps to register custom implementations, enable built-in pre-processing steps, and insert custom steps (a.k.a. interceptors). The line below shows the connection string format and the default values used if the parameter is not supplied.
+```
+cancelonhafailover=false;heartbeat=10;host=localhost;password=guest;port=5672;publisherconfirms=false;reconnect=5000;timeout=10000;username=guest;virtualhost=/
+```
 With a SimpleBus, publishing and subscribing is as simple as:
 ```
 simpleBus.PublishAsync("hello world", "my.routing.key").Wait(); // Wait() forces a synchronous call
