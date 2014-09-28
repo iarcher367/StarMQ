@@ -30,7 +30,6 @@ namespace StarMQ.Core
     {
         Task Invoke(Action action);
         Task Invoke(Action<IModel> action);
-        Task Invoke(Func<Task> func);
     }
 
     public class OutboundDispatcher : IOutboundDispatcher
@@ -69,16 +68,16 @@ namespace StarMQ.Core
         private void Dispatch()
         {
             Task.Factory.StartNew(() =>
+            {
+                foreach (var action in _queue.GetConsumingEnumerable())
                 {
-                    foreach (var action in _queue.GetConsumingEnumerable())
-                    {
-                        _signal.WaitOne(-1);
+                    _signal.WaitOne(-1);
 
-                        action();
+                    action();
 
-                        _log.Debug("Action processed.");
-                    }
-                }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                    _log.Debug("Action processed.");
+                }
+            }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         private void OnConnected()
@@ -115,14 +114,6 @@ namespace StarMQ.Core
                 throw new ArgumentNullException("action");
 
             return Invoke(() => action(_model));
-        }
-
-        public Task Invoke(Func<Task> func)
-        {
-            if (func == null)
-                throw new ArgumentNullException("func");
-
-            return Invoke((Action)(() => func()));
         }
 
         private void InvokeAction(Action action, DateTime startTime)

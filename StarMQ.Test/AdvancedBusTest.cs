@@ -205,11 +205,11 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldPublishMessage()
         {
-            Func<Task> func = () => Task.FromResult(0);
+            Action action = () => { };
             Action<IModel, IBasicProperties, byte[]> publishAction = (x, y, z) => { };
 
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Func<Task>>()))
-                .Callback<Func<Task>>(x => func = x)
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => action = x)
                 .Returns(Task.FromResult(0));
             _publisher.Setup(x => x.Publish(_message, It.IsAny<Action<IModel, IBasicProperties, byte[]>>()))
                 .Callback<IMessage<string>, Action<IModel, IBasicProperties, byte[]>>(
@@ -218,7 +218,7 @@ namespace StarMQ.Test
 
             await _sut.PublishAsync(_exchange, RoutingKey, false, false, _message);
 
-            await func();
+            action();
             publishAction(_model.Object, null, null);
 
             _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, false, false,
@@ -231,11 +231,11 @@ namespace StarMQ.Test
         public async Task PublishAsyncShouldSetMandatory()
         {
             const bool mandatory = true;
-            Func<Task> func = () => Task.FromResult(0);
+            Action action = () => { };
             Action<IModel, IBasicProperties, byte[]> publishAction = (x, y, z) => { };
 
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Func<Task>>()))
-                .Callback<Func<Task>>(x => func = x)
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => action = x)
                 .Returns(Task.FromResult(0));
             _publisher.Setup(x => x.Publish(_message, It.IsAny<Action<IModel, IBasicProperties, byte[]>>()))
                 .Callback<IMessage<string>, Action<IModel, IBasicProperties, byte[]>>(
@@ -244,7 +244,7 @@ namespace StarMQ.Test
 
             await _sut.PublishAsync(_exchange, RoutingKey, mandatory, false, _message);
 
-            await func();
+            action();
             publishAction(_model.Object, null, null);
 
             _model.Verify(x => x.BasicPublish(_exchange.Name, RoutingKey, mandatory, false,

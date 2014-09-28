@@ -131,30 +131,6 @@ namespace StarMQ.Test.Core
         }
 
         [Test]
-        public async Task ShouldDispatchFunc()
-        {
-            var flag = false;
-
-            await _sut.Invoke(() =>
-            {
-                flag = true;
-                return Task.FromResult(0);
-            });
-
-            await Task.Delay(Delay);
-
-            Assert.That(flag, Is.True);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentNullException))]
-        public void ShouldThrowExceptionIfFuncIsNull()
-        {
-            _sut.Invoke((Func<Task>)null);
-        }
-
-
-        [Test]
         public async Task ShouldRetryUntilTimeoutIfChannelFails()
         {
             _configuration.Setup(x => x.Timeout).Returns(125);
