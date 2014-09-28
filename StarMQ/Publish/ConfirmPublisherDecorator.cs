@@ -82,8 +82,6 @@ namespace StarMQ.Publish
             Model.ConfirmSelect();
 
             RequeuePendingMessages();
-
-            _log.Info("Pending messages requeued.");
         }
 
         protected void OnDisconnected()
@@ -147,7 +145,16 @@ namespace StarMQ.Publish
                     sequenceId));
 
                 if (_connection.IsConnected)
-                    Publish(_pendingMessages[sequenceId]);
+                {
+                    try
+                    {
+                        Publish(_pendingMessages[sequenceId]);
+                    }
+                    catch (Exception ex)    // TODO: occurs if timeout < heartbeat; refactor pending
+                    {
+                        _log.Warn("Unable to publish timed out message.", ex);
+                    }
+                }
             }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
 

@@ -25,6 +25,7 @@ namespace StarMQ.Consume
     using System;
     using System.Collections.Concurrent;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
@@ -41,6 +42,7 @@ namespace StarMQ.Consume
 
         private readonly IPipeline _pipeline;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
+        private readonly ManualResetEvent _signal = new ManualResetEvent(true);
         private readonly ISerializationStrategy _serializationStrategy;
         private bool _disposed;
 
@@ -69,7 +71,11 @@ namespace StarMQ.Consume
             Task.Run(() =>
             {
                 foreach (var action in _queue.GetConsumingEnumerable())
+                {
                     Task.Run(action).Wait();
+
+                    _signal.WaitOne(-1);
+                }
             });
         }
 
@@ -77,8 +83,12 @@ namespace StarMQ.Consume
         {
             Action action;
 
+            _signal.Reset();
+
             while (_queue.TryTake(out action))
                 Log.Info("Message discarded.");
+
+            _signal.Set();
         }
 
         public abstract Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer consumer = null);

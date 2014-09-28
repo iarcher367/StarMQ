@@ -77,6 +77,7 @@ namespace StarMQ.Consume
 
             Model.Dispose();
             Model = Connection.CreateModel();
+
             Log.Info("Channel opened.");
         }
     }
