@@ -1,0 +1,24 @@
+<?xml version="1.0"?>
+<package >
+  <metadata>
+    <id>$id$</id>
+    <version>0.7.0-beta</version>
+    <title>$title$</title>
+    <authors>$author$</authors>
+    <owners>$author$</owners>
+    <licenseUrl>https://github.com/iarcher367/StarMQ/blob/master/license.txt</licenseUrl>
+    <projectUrl>https://github.com/iarcher367/StarMQ</projectUrl>
+    <requireLicenseAcceptance>false</requireLicenseAcceptance>
+    <description>$description$</description>
+    <releaseNotes>Pre-release package with publish/subscribe support.</releaseNotes>
+    <copyright>Copyright 2014</copyright>
+    <tags>RabbitMQ AMQP messaging</tags>
+    <dependencies>
+      <dependency id="log4net" version="2.0.3" />
+      <dependency id="Newtonsoft.Json" version="6.0.3" />
+      <dependency id="RabbitMQ.Client" version="3.3.2" />
+      <dependency id="SimpleInjector" version="2.5.2" />
+      <dependency id="SimpleInjector.Advanced" version="0.1.4.0" />
+    </dependencies>
+  </metadata>
+</package>
