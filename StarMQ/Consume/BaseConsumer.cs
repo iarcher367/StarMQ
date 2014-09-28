@@ -63,7 +63,6 @@ namespace StarMQ.Consume
 
             Connection.OnDisconnected += ClearQueue;
             Dispatch();
-            Model = Connection.CreateModel();
         }
 
         private void Dispatch()
@@ -203,7 +202,8 @@ namespace StarMQ.Consume
             _queue.CompleteAdding();
             ClearQueue();
 
-            Model.Dispose();
+            if (Model != null)
+                Model.Dispose();
 
             Log.Info("Dispose completed.");
         }

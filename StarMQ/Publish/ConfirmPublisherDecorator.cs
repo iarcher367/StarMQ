@@ -91,10 +91,10 @@ namespace StarMQ.Publish
 
             _pendingMessages.Values.ToList().ForEach(x =>
             {
-                if (x.Timer != null)
-                    x.Timer.Dispose();
+                if (x.Timer == null) return;
 
-                _log.Info("Timer disposed.");
+                x.Timer.Dispose();
+                _log.Info(String.Format("Message #{0} timer disposed.", x.SequenceIds[0]));
             });
         }
 
@@ -152,7 +152,8 @@ namespace StarMQ.Publish
                     }
                     catch (Exception ex)    // TODO: occurs if timeout < heartbeat; refactor pending
                     {
-                        _log.Warn("Unable to publish timed out message.", ex);
+                        _log.Warn(String.Format("Message #{0} failed to re-publish.", sequenceId),
+                            ex);
                     }
                 }
             }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);

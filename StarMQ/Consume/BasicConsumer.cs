@@ -56,7 +56,7 @@ namespace StarMQ.Consume
             {
                 var args = new Dictionary<string, object>();
 
-                SynchronizeModel();
+                OpenChannel();
 
                 Model.BasicQos(0, _configuration.PrefetchCount, false);
 
@@ -71,11 +71,10 @@ namespace StarMQ.Consume
             });
         }
 
-        private void SynchronizeModel()
+        private void OpenChannel()
         {
-            if (!Model.IsClosed) return;
+            if (Model != null && Model.IsOpen) return;
 
-            Model.Dispose();
             Model = Connection.CreateModel();
 
             Log.Info("Channel opened.");

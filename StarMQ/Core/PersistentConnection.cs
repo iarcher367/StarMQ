@@ -14,6 +14,7 @@
 
 namespace StarMQ.Core
 {
+    using Exception;
     using log4net;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
@@ -121,6 +122,9 @@ namespace StarMQ.Core
 
         public IModel CreateModel()
         {
+            if (!_connection.IsOpen)
+                throw new StarMqException("Not connected - unable to create model.");
+
             return _connection.CreateModel();
         }
 

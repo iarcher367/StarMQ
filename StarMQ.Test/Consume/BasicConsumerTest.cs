@@ -101,19 +101,33 @@ namespace StarMQ.Test.Consume
         }
 
         [Test]
-        public void ShouldHandleReconnectByDisposingAndCreatingNowModelIfModelIsClosed()
+        public void ShouldOpenChannelOnFirstUse()
         {
             Action action = () => { };
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
-            _modelOne.Setup(x => x.IsClosed).Returns(true);
 
             _sut.Consume(_queue);
 
             action();
 
-            _modelOne.Verify(x => x.Dispose(), Times.Once);
-            _connection.Verify(x => x.CreateModel(), Times.Exactly(2));
+            _connection.Verify(x => x.CreateModel(), Times.Once);
+        }
+
+        [Test]
+        public void ShouldNotOpenChannelIfAlreadyOpen()
+        {
+            Action action = () => { };
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+            _modelOne.Setup(x => x.IsOpen).Returns(true);
+
+            _sut.Consume(_queue);
+
+            action();
+            action();
+
+            _connection.Verify(x => x.CreateModel(), Times.Once);
         }
 
         [Test]
