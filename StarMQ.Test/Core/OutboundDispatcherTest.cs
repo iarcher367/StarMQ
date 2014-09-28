@@ -20,6 +20,7 @@ namespace StarMQ.Test.Core
     using RabbitMQ.Client;
     using StarMQ.Core;
     using System;
+    using System.IO;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
@@ -131,19 +132,19 @@ namespace StarMQ.Test.Core
         }
 
         [Test]
-        public async Task ShouldRetryUntilTimeoutIfChannelFails()
+        public async Task ShouldRetryIfChannelThrowsIoException()
         {
-            _configuration.Setup(x => x.Timeout).Returns(125);
+            _configuration.Setup(x => x.Reconnect).Returns(250);
 
             var count = 0;
 
             await _sut.Invoke(x =>
             {
                 count += 2;
-                throw new NotSupportedException();
+                throw new IOException();
             });
 
-            await Task.Delay(140);
+            await Task.Delay(120);
 
             Assert.That(count, Is.EqualTo(4));
         }

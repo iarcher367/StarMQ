@@ -6,8 +6,8 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 ## Highlights
 - The internal messaging architecture supports the addition of pre- and post-processing steps. Example pre-processing steps include message encryption, compression, and authentication. These may be enabled via configuration at startup. At present, the only supported post-processing is unsubscribing the current consumer.
 - StarMQ supports **dead-lettering** and **alternate exchanges** using default settings and auto-generated exchange names.
-- StarMQ comes wired for **logging** with log4net. _Warning_: setting the log level below WARN reduces throughput by over 50%.
-- StarMQ uses SimpleInjector for **dependency injection** and is configured for overriding registrations. This allows easy replacement of any component by using OverrideRegistration to register the custom implementation. For example, log4net could be replaced with another logger that implements the generic ILog interface found in log4net.
+- StarMQ comes wired for logging with log4net. _Warning_: setting the log level below WARN reduces throughput by over 50%.
+- StarMQ uses SimpleInjector for dependency injection and is configured for overriding registrations. This allows easy replacement of any component by using OverrideRegistration to register the custom implementation. For example, log4net could be replaced with another logger that implements the generic ILog interface found in log4net.
 
 ## Performance
 - StarMQ's asynchronous internal architecture allows it to sustain a publishing throughput of ~20,000 messages per second with no pre-processing steps.
@@ -15,14 +15,14 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - Publishes during a connection failure are non-blocking and buffered in memory until the connection is restored. _Warning_: high-throughput scenarios may cause memory issues during extended outages.
 - Message processing is independent among queues; a consumer with a fast handler will finish processing all messages even if its messages are interleaved with messages for a consumer with a slow handler.
 
+## Publisher Confirms
+- StarMQ supports guaranteed publishing via RabbitMQ’s publisher confirms.
+- RabbitMQ declines a message by sending a basic.nack, which are logged as errors. No further action is taken as declines are typically caused by internal broker errors.
+- StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
+
 ## Consumers
 - Consumers may control the client response to the broker by returning the appropriate Response object from the message handler. The Simple API exposes a basic method that takes care of the response by sending an _ack_ if the message handler successfully completes and a _nack_ if an exception bubbles out of the handler.
 - A consumer may also be fluently configured with multiple handlers. Only one handler may be registered per .Net type. Upon receiving a message, StarMQ examines it to determine the .Net type and then uses the type to select the appropriate handler. If no type is specified, the consumer defaults to the first handler registered.
-
-## Publisher Confirms
-- StarMQ offers guaranteed publishing via RabbitMQ’s publisher confirms.
-- RabbitMQ declines a message by sending a basic.nack, which are logged as errors. No further action is taken as declines are typically caused by internal broker errors.
-- StarMQ waits a configurable timeout interval for a broker response. If the interval elapses, the message is re-published.
 
 ## High-Availability
 For HA clusters, set the connection string to point at the load balancer. StarMQ will detect the connection loss on failover and automatically recover the connection along with any non-exclusive consumers.

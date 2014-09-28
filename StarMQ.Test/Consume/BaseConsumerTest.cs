@@ -133,6 +133,7 @@ namespace StarMQ.Test.Consume
 
         private void DeliverSetup(Action<IHandlerRegistrar> configure)
         {
+            Action action = () => { };
             var type = typeof(string);
 
             var handlerManager = new HandlerManager(_log.Object);
@@ -142,6 +143,7 @@ namespace StarMQ.Test.Consume
                 handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
                 _serializationStrategy.Object);
 
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
             _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0])
                 {
@@ -152,6 +154,10 @@ namespace StarMQ.Test.Consume
                 {
                     Properties = new Properties { Type = type.FullName }
                 });
+
+            _sut.Consume(new Queue());
+
+            action();
         }
 
         [Test]
@@ -253,8 +259,8 @@ namespace StarMQ.Test.Consume
         [Test]
         public void DeliverShouldBasicNackOnDeserializeException()
         {
+            Action action = () => { };
             var signal = new ManualResetEventSlim(false);
-
             var type = typeof(string);
 
             var handlerManager = new HandlerManager(_log.Object);
@@ -264,6 +270,7 @@ namespace StarMQ.Test.Consume
                 handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
                 _serializationStrategy.Object);
 
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
             _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0])
                 {
@@ -271,9 +278,12 @@ namespace StarMQ.Test.Consume
                 });
             _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
                 .Throws(new JsonReaderException());
-
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
+
+            _sut.Consume(new Queue());
+
+            action();
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -357,7 +367,15 @@ namespace StarMQ.Test.Consume
         [Test]
         public void ShouldDispose()
         {
+            Action action = () => { };
+
             GenericSetup();
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+
+            _sut.Consume(new Queue());
+
+            action();
 
             _sut.Dispose();
 

@@ -18,6 +18,7 @@ namespace StarMQ.Core
     using RabbitMQ.Client;
     using System;
     using System.Collections.Concurrent;
+    using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -71,8 +72,6 @@ namespace StarMQ.Core
             {
                 foreach (var action in _queue.GetConsumingEnumerable())
                 {
-                    _signal.WaitOne(-1);
-
                     action();
 
                     _log.Debug("Action processed.");
@@ -101,7 +100,7 @@ namespace StarMQ.Core
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            _queue.Add(() => InvokeAction(action, DateTime.Now));
+            _queue.Add(() => InvokeAction(action));
 
             _log.Debug("Action added to queue.");
 
@@ -116,35 +115,30 @@ namespace StarMQ.Core
             return Invoke(() => action(_model));
         }
 
-        private void InvokeAction(Action action, DateTime startTime)
+        private void InvokeAction(Action action)
         {
             var retryInterval = 100;
 
-            do
+            while (true)
             {
                 try
                 {
+                    _signal.WaitOne(-1);
+
                     action();
                     return;
                 }
-                //catch (NotSupportedException ex)
-                //catch (OperationInterruptedException ex)    // TODO: parse AMQP exception text, possible retry
-                catch (Exception ex) // TODO: limit scope to only channel exceptions
+                catch (IOException ex)
                 {
-                    _log.Warn(String.Format("Channel failed. Waiting {0} ms to retry.", retryInterval)
+                    _log.Warn(String.Format("Channel failed - retrying in {0} ms.", retryInterval)
                         , ex);
 
                     Thread.Sleep(retryInterval);
-                    retryInterval = Math.Min(retryInterval*2, 5000);
+                    retryInterval = Math.Min(retryInterval * 2, _configuration.Reconnect);
                 }
-            } while (!IsTimedOut(startTime));
-
-            _log.Error("Channel action has timed out.");
-        }
-
-        private bool IsTimedOut(DateTime startTime)
-        {
-            return DateTime.Now > startTime.AddMilliseconds(_configuration.Timeout);
+                //catch (NotSupportedException ex)
+                //catch (OperationInterruptedException ex)
+            }
         }
 
         public void Dispose()

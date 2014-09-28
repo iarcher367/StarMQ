@@ -52,7 +52,7 @@ namespace StarMQ.Publish
 
             action(Model, properties, data.Body);
 
-            return Task.FromResult(0);
+            return Task.FromResult<object>(null);
         }
     }
 }

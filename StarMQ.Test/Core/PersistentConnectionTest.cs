@@ -14,6 +14,7 @@
 
 namespace StarMQ.Test.Core
 {
+    using Exception;
     using log4net;
     using Moq;
     using NUnit.Framework;
@@ -132,9 +133,18 @@ namespace StarMQ.Test.Core
         [Test]
         public void ShouldCreateModel()
         {
+            _connection.Setup(x => x.IsOpen).Returns(true);
+
             _sut.CreateModel();
 
             _connection.Verify(x => x.CreateModel(), Times.Once);
+        }
+
+        [Test]
+        [ExpectedException(typeof(StarMqException))]
+        public void ShouldThrowExceptionIfNotConnected()
+        {
+            _sut.CreateModel();
         }
 
         [Test]
