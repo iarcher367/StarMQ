@@ -19,7 +19,6 @@ namespace StarMQ.Publish
     using Model;
     using RabbitMQ.Client;
     using System;
-    using System.IO;
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
