@@ -48,7 +48,7 @@ namespace StarMQ.Test.Message
         [Test]
         public void OnSendShouldCompressBody()
         {
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var compressedData = _sut.OnSend(message).Body;
@@ -60,7 +60,7 @@ namespace StarMQ.Test.Message
         public void OnSendShouldPreserveProperties()
         {
             var correlationId = Guid.NewGuid().ToString();
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data)
             {
                 Properties = { CorrelationId = correlationId }
@@ -84,7 +84,7 @@ namespace StarMQ.Test.Message
             var message = new Message<byte[]>(_compressedContent);
 
             var uncompressedData = _sut.OnReceive(message).Body;
-            var actual = new JsonSerializer().ToObject(uncompressedData, typeof(string));
+            var actual = Helper.ToObject(uncompressedData, typeof(string));
 
             Assert.That(actual, Is.EqualTo(Content));
         }

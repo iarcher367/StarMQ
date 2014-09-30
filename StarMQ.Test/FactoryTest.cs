@@ -14,6 +14,7 @@
 
 namespace StarMQ.Test
 {
+    using Exception;
     using NUnit.Framework;
     using RabbitMQ.Client;
     using StarMQ.Core;
@@ -101,7 +102,7 @@ namespace StarMQ.Test
         {
             _sut.AddInterceptor(new CompressionInterceptor());
 
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var body = _sut.Container.GetInstance<IPipeline>().OnSend(message).Body;
@@ -121,7 +122,7 @@ namespace StarMQ.Test
         {
             var pipeline = _sut.EnableCompression()
                 .Container.GetInstance<IPipeline>();
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var body = pipeline.OnSend(message).Body;
@@ -134,7 +135,7 @@ namespace StarMQ.Test
         {
             var pipeline = _sut.EnableEncryption("AdAstraAndBeyond")
                 .Container.GetInstance<IPipeline>();
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var body = pipeline.OnSend(message).Body;
@@ -156,10 +157,17 @@ namespace StarMQ.Test
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(InvalidValueException))]
         public void ShouldThrowExceptionIfSecretKeyIsTooShort()
         {
             _sut.EnableEncryption(new string('*', 15));
+        }
+
+        [Test]
+        [ExpectedException(typeof(InvalidValueException))]
+        public void ShouldThrowExceptionIfSecretKeyIsTooLong()
+        {
+            _sut.EnableEncryption(new string('*', 33));
         }
 
         [Test]

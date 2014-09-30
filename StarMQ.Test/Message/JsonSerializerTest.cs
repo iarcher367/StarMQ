@@ -33,12 +33,6 @@ namespace StarMQ.Test.Message
         }
 
         [Test]
-        public void ShouldUseTypeNameHandlingAuto()
-        {
-            Assert.Inconclusive();
-        }
-
-        [Test]
         public void ShouldSerializeObjectToByteArray()
         {
             var actual = _sut.ToBytes(Content);

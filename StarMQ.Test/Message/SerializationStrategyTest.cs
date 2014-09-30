@@ -48,7 +48,7 @@ namespace StarMQ.Test.Message
         public void ShouldDeserializeByteArrayMessageToMessage()
         {
             var body = new Properties { MessageId = "42" };
-            var data = new JsonSerializer().ToBytes(body);
+            var data = Helper.ToBytes(body);
 
             _serializer.Setup(x => x.ToObject(data, typeof(Properties))).Returns(body);
             _typeNameSerializer.Setup(x => x.Deserialize(It.IsAny<string>())).Returns(typeof(Properties));
@@ -70,7 +70,7 @@ namespace StarMQ.Test.Message
         public void ShouldDeserializeByteArrayMessageToDefaultMessageIfNoType()
         {
             var body = new Properties { MessageId = "42" };
-            var data = new JsonSerializer().ToBytes(body);
+            var data = Helper.ToBytes(body);
 
             _serializer.Setup(x => x.ToObject(data, typeof(Properties))).Returns(body);
 

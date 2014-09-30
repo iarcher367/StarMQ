@@ -16,6 +16,7 @@ namespace StarMQ
 {
     using Consume;
     using Core;
+    using Exception;
     using log4net;
     using Message;
     using Publish;
@@ -24,8 +25,8 @@ namespace StarMQ
     using SimpleInjector.Advanced.Extensions;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Reflection;
+    using System.Text;
     using IConnection = Core.IConnection;
 
     public class Factory : IDisposable
@@ -121,17 +122,16 @@ namespace StarMQ
             return this;
         }
 
-        /// <param name="secretKey">truncates to 128-bit key</param>
         public Factory EnableEncryption(string secretKey)
         {
             if (secretKey == null)
                 throw new ArgumentNullException();
-            if (secretKey.Length < 16)
-                throw new ArgumentException("Secret key must be 16 characters in length.");
+            if (secretKey.Length < 16 || secretKey.Length > 32)
+                throw new InvalidValueException("secretKey", secretKey);
 
-            var key = new JsonSerializer().ToBytes(secretKey.Substring(0, 16));
+            var key = Encoding.UTF8.GetBytes(secretKey);
 
-            Container.GetInstance<IPipeline>().Add(new AesInterceptor(key.Skip(1).Take(16).ToArray()));
+            Container.GetInstance<IPipeline>().Add(new AesInterceptor(key));
 
             return this;
         }

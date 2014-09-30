@@ -48,7 +48,7 @@ namespace StarMQ.Test.Message
         [Test]
         public void OnSendShouldCompressBody()
         {
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var encryptedData = _sut.OnSend(message).Body;
@@ -59,7 +59,7 @@ namespace StarMQ.Test.Message
         [Test]
         public void OnSendShouldPassIvInHeader()
         {
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
             var headers = _sut.OnSend(message).Properties.Headers;
@@ -72,11 +72,11 @@ namespace StarMQ.Test.Message
         public void OnSendShouldPreserveProperties()
         {
             var correlationId = Guid.NewGuid().ToString();
-            var data = new JsonSerializer().ToBytes(Content);
+            var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data)
-                          {
-                              Properties = { CorrelationId = correlationId }
-                          };
+            {
+                Properties = { CorrelationId = correlationId }
+            };
 
             var properties = _sut.OnSend(message).Properties;
 
@@ -97,7 +97,7 @@ namespace StarMQ.Test.Message
             message.Properties.Headers.Add("iv", _iv);
 
             var decryptedData = _sut.OnReceive(message).Body;
-            var actual = new JsonSerializer().ToObject(decryptedData, typeof(string));
+            var actual = Helper.ToObject(decryptedData, typeof(string));
 
             Assert.That(actual, Is.EqualTo(Content));
         }
@@ -107,9 +107,9 @@ namespace StarMQ.Test.Message
         {
             var correlationId = Guid.NewGuid().ToString();
             var message = new Message<byte[]>(_encryptedContent)
-                          {
-                              Properties = { CorrelationId = correlationId }
-                          };
+            {
+                Properties = { CorrelationId = correlationId }
+            };
             message.Properties.Headers.Add("iv", _iv);
 
             var properties = _sut.OnReceive(message).Properties;
