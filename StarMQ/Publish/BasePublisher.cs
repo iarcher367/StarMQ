@@ -14,7 +14,6 @@
 
 namespace StarMQ.Publish
 {
-    using log4net;
     using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;

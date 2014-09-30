@@ -16,7 +16,6 @@ namespace StarMQ
 {
     using Consume;
     using Core;
-    using log4net;
     using Model;
     using Publish;
     using System;

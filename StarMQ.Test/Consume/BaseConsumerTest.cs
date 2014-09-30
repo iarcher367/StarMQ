@@ -14,9 +14,7 @@
 
 namespace StarMQ.Test.Consume
 {
-    using log4net;
     using Moq;
-    using Newtonsoft.Json;
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
@@ -26,6 +24,7 @@ namespace StarMQ.Test.Consume
     using StarMQ.Model;
     using System;
     using System.IO;
+    using System.Runtime.Serialization;
     using System.Threading;
     using IConnection = StarMQ.Core.IConnection;
 
@@ -277,7 +276,7 @@ namespace StarMQ.Test.Consume
                     Properties = new Properties { Type = type.FullName }
                 });
             _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
-                .Throws(new JsonReaderException());
+                .Throws(new SerializationException());
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
 

@@ -30,10 +30,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="log4net, Version=1.2.13.0, Culture=neutral, PublicKeyToken=669e0ddf0bb1aa2a, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\packages\log4net.2.0.3\lib\net40-full\log4net.dll</HintPath>
-    </Reference>
     <Reference Include="Microsoft.CSharp" />
     <Reference Include="RabbitMQ.Client">
       <HintPath>..\packages\RabbitMQ.Client.3.3.2\lib\net30\RabbitMQ.Client.dll</HintPath>
@@ -60,6 +56,7 @@
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\PublishException.cs" />
     <Compile Include="Exception\InvalidValueException.cs" />
+    <Compile Include="ILog.cs" />
     <Compile Include="Message\AesInterceptor.cs" />
     <Compile Include="Message\CompressionInterceptor.cs" />
     <Compile Include="Message\IMessagingInterceptor.cs" />
@@ -87,6 +84,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <None Include="app.config" />
     <None Include="packages.config" />
     <None Include="StarMQ.nuspec" />
   </ItemGroup>

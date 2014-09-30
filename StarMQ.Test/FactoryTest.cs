@@ -181,6 +181,16 @@ namespace StarMQ.Test
         }
 
         [Test]
+        public void ShouldOverrideRegistrationWithContext()
+        {
+            _sut.OverrideRegistrationWithContext<ICorrelationStrategy>(x => new EmptyStrategy());
+
+            var actual = _sut.Container.GetInstance<ICorrelationStrategy>();
+
+            Assert.That(actual, Is.TypeOf<EmptyStrategy>());
+        }
+
+        [Test]
         public void ShouldGetBus()
         {
             var actual = _sut.GetBus();

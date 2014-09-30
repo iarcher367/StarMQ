@@ -14,7 +14,6 @@
 
 namespace StarMQ.Model
 {
-    using log4net;
     using RabbitMQ.Client;
     using System;
 

@@ -14,7 +14,6 @@
 
 namespace StarMQ.Test.Core
 {
-    using log4net;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
