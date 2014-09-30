@@ -14,7 +14,6 @@
 
 namespace StarMQ.Core
 {
-    using log4net;
     using RabbitMQ.Client;
     using System;
     using System.Collections.Concurrent;

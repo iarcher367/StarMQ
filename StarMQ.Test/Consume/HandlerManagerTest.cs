@@ -15,7 +15,6 @@
 namespace StarMQ.Test.Consume
 {
     using Exception;
-    using log4net;
     using Moq;
     using NUnit.Framework;
     using StarMQ.Consume;

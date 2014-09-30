@@ -17,12 +17,13 @@ namespace StarMQ
     using Consume;
     using Core;
     using Exception;
-    using log4net;
     using Message;
     using Publish;
     using RabbitMQ.Client;
     using SimpleInjector;
+    using SimpleInjector.Advanced.Core;
     using SimpleInjector.Advanced.Extensions;
+    using SimpleInjector.Extensions;
     using System;
     using System.Collections.Generic;
     using System.Reflection;
@@ -78,31 +79,18 @@ namespace StarMQ
                 };
             });
 
-            Container.Register(() =>
-            {
-                var config = Container.GetInstance<IConnectionConfiguration>();
-                var connection = Container.GetInstance<IConnection>();
-                var pipeline = Container.GetInstance<IPipeline>();
-                var serializationStrategy = Container.GetInstance<ISerializationStrategy>();
-
-                IPublisher publisher = new BasicPublisher(connection,
-                    LogManager.GetLogger(typeof(BasicPublisher)), pipeline, serializationStrategy);
-
-                return config.PublisherConfirms
-                    ? new ConfirmPublisherDecorator(publisher, config, connection,
-                        LogManager.GetLogger(typeof(ConfirmPublisherDecorator)))
-                    : publisher;
-            });
-
             Container.Register<IConsumer, BasicConsumer>();
             Container.Register<ICorrelationStrategy, CorrelationStrategy>();
             Container.Register<IHandlerManager, HandlerManager>();
             Container.Register<INamingStrategy, NamingStrategy>();
+            Container.Register<IPublisher, BasicPublisher>();
+            Container.RegisterDecorator(typeof(IPublisher), typeof(ConfirmPublisherDecorator),
+                x => Container.GetInstance<IConnectionConfiguration>().PublisherConfirms);
             Container.Register<ISerializationStrategy, SerializationStrategy>();
             Container.Register<ISerializer, JsonSerializer>();
             Container.Register<ITypeNameSerializer, TypeNameSerializer>();
 
-            Container.RegisterWithContext(context => LogManager.GetLogger(context.ImplementationType));
+            Container.RegisterWithContext<ILog>(context => new EmptyLog());
 
             Container.Options.AllowOverridingRegistrations = true;
         }
@@ -142,6 +130,11 @@ namespace StarMQ
             return this;
         }
 
+        public Factory OverrideRegistrationWithContext<T>(Func<DependencyContext, T> func) where T : class
+        {
+            Container.RegisterWithContext(func);
+            return this;
+        }
         /// <summary>
         /// Creates a SimpleBus instance with the default configuration.
         ///

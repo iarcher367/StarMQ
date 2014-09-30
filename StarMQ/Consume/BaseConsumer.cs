@@ -16,7 +16,6 @@ namespace StarMQ.Consume
 {
     using Core;
     using Exception;
-    using log4net;
     using Message;
     using Model;
     using RabbitMQ.Client;

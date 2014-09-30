@@ -15,7 +15,6 @@
 namespace StarMQ.Core
 {
     using Exception;
-    using log4net;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Exceptions;
     using System;
