@@ -20,6 +20,7 @@ namespace StarMQ.Test.Consume
     using StarMQ.Consume;
     using StarMQ.Model;
     using System;
+    using System.Collections.Generic;
 
     public class HandlerManagerTest
     {
@@ -139,6 +140,20 @@ namespace StarMQ.Test.Consume
         public void GetShouldThrowExceptionIfTypeIsNull()
         {
             _sut.Get(null);
+        }
+
+        [Test]
+        public void GetShouldReturnDefaultHandlerIfTypeNotRegistered()
+        {
+            var expected = new NackResponse();
+            Func<Factory, BaseResponse> handler = x => expected;
+
+            _sut.Add(handler);
+
+            var func = _sut.Get(typeof(Properties));
+            var actual = func(null);
+
+            Assert.That(actual, Is.SameAs(expected));
         }
 
         [Test]
