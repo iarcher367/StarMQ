@@ -20,7 +20,7 @@ namespace StarMQ
     using System.Linq;
     using System.Reflection;
 
-    public class Global
+    internal class Global
     {
         public static void ParseConfiguration(IConnectionConfiguration configuration, string connectionString)
         {

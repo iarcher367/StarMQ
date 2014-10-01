@@ -24,7 +24,7 @@ namespace StarMQ.Message
         dynamic ToObject(byte[] content, Type type);
     }
 
-    public class JsonSerializer : ISerializer
+    internal class JsonSerializer : ISerializer
     {
         public byte[] ToBytes<T>(T content) where T : class
         {

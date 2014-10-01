@@ -27,7 +27,7 @@ namespace StarMQ.Core
         string GetQueueName(Type messageType);
     }
 
-    public class NamingStrategy : INamingStrategy
+    internal class NamingStrategy : INamingStrategy
     {
         private readonly ITypeNameSerializer _typeNameSerializer;
 

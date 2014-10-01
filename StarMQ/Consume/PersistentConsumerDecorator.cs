@@ -21,7 +21,7 @@ namespace StarMQ.Consume
     using System.Threading.Tasks;
     using IConnection = Core.IConnection;
 
-    public class PersistentConsumerDecorator : IConsumer
+    internal class PersistentConsumerDecorator : IConsumer
     {
         private readonly IConsumer _consumer;
 

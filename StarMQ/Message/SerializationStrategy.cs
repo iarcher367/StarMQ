@@ -23,7 +23,7 @@ namespace StarMQ.Message
         IMessage<byte[]> Serialize<T>(IMessage<T> message) where T : class;
     }
 
-    public class SerializationStrategy : ISerializationStrategy
+    internal class SerializationStrategy : ISerializationStrategy
     {
         private readonly ICorrelationStrategy _correlationStrategy;
         private readonly ISerializer _serializer;

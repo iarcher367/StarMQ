@@ -23,7 +23,7 @@ namespace StarMQ.Message
         string Serialize(Type type);
     }
 
-    public class TypeNameSerializer : ITypeNameSerializer
+    internal class TypeNameSerializer : ITypeNameSerializer
     {
         public Type Deserialize(string name)
         {

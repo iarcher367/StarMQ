@@ -33,7 +33,7 @@ namespace StarMQ.Consume
         Task Consume(Queue queue, Action<IHandlerRegistrar> configure = null, IBasicConsumer consumer = null);
     }
 
-    public abstract class BaseConsumer : IConsumer
+    internal abstract class BaseConsumer : IConsumer
     {
         protected readonly IConnection Connection;
         protected readonly IHandlerManager HandlerManager;
