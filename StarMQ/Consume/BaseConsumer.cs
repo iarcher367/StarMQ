@@ -17,6 +17,7 @@ namespace StarMQ.Consume
     using Core;
     using Exception;
     using Message;
+    using Microsoft.CSharp.RuntimeBinder;
     using Model;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
@@ -146,14 +147,20 @@ namespace StarMQ.Consume
                         var data = _pipeline.OnReceive(message);
                         var processed = _serializationStrategy.Deserialize(data, HandlerManager.Default);
                         var handler = HandlerManager.Get(processed.Body.GetType());
+
                         response = (BaseResponse)handler(processed.Body);
                         response.DeliveryTag = deliveryTag;
+                    }
+                    catch (RuntimeBinderException ex)
+                    {
+                        response = new NackResponse { DeliveryTag = deliveryTag };
+                        Log.Error(String.Format("No matching handler found for message #{0} - default handler failed.",
+                            deliveryTag), ex);
                     }
                     catch (Exception ex)
                     {
                         response = new NackResponse { DeliveryTag = deliveryTag };
-                        Log.Error(String.Format("Failed to process message #{0}", deliveryTag),
-                            ex);
+                        Log.Error(String.Format("Failed to process message #{0}", deliveryTag), ex);
                     }
 
                     try

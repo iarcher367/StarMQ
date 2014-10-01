@@ -14,6 +14,7 @@
 
 namespace StarMQ.Test.Consume
 {
+    using Microsoft.CSharp.RuntimeBinder;
     using Moq;
     using NUnit.Framework;
     using RabbitMQ.Client;
@@ -194,6 +195,39 @@ namespace StarMQ.Test.Consume
             _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Never);
             _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)),
                 Times.Never);
+        }
+
+        [Test]
+        public void DeliverShouldBasicNackIfDefaultHandlerThrowsException()
+        {
+            Action action = () => { };
+            var signal = new ManualResetEventSlim(false);
+            Func<dynamic, BaseResponse> handler = x => { throw new RuntimeBinderException(); };
+
+            _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
+                _handlerManager.Object, _log.Object, _namingStrategy.Object, _pipeline.Object,
+                _serializationStrategy.Object);
+
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
+            _handlerManager.Setup(x => x.Get(typeof(Factory))).Returns(handler);
+            _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
+                .Callback(signal.Set);
+            _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
+                .Returns(new Message<byte[]>(new byte[0]) { Properties = new Properties() });
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), null))
+                .Returns(new Message<dynamic>(new Factory()) { Properties = new Properties() });
+
+            _sut.Consume(new Queue());
+
+            action();
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
+                _properties.Object, new byte[0]);
+
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
+
+            _model.Verify(x => x.BasicNack(DeliveryTag, false, false), Times.Once);
         }
 
         [Test]

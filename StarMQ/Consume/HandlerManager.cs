@@ -120,9 +120,12 @@ namespace StarMQ.Consume
         {
             if (type == null)
                 throw new ArgumentNullException("type");
+            if (!_handlerMap.ContainsKey(type))
+                type = Default;
 
             var method = GetType().GetMethod("GetFunc", BindingFlags.NonPublic | BindingFlags.Instance)
                 .MakeGenericMethod(type);
+
             return method.Invoke(this, null);
         }
 
