@@ -32,7 +32,7 @@ namespace StarMQ.Core
         Task Invoke(Action<IModel> action);
     }
 
-    public class OutboundDispatcher : IOutboundDispatcher
+    internal class OutboundDispatcher : IOutboundDispatcher
     {
         private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;

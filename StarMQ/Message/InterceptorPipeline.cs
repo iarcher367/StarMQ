@@ -24,7 +24,7 @@ namespace StarMQ.Message
         void Add(IMessagingInterceptor interceptor);
     }
 
-    public class InterceptorPipeline : IPipeline
+    internal class InterceptorPipeline : IPipeline
     {
         private readonly IList<IMessagingInterceptor> _pipeline = new List<IMessagingInterceptor>();
 

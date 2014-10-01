@@ -21,7 +21,7 @@ namespace StarMQ.Message
         string GenerateCorrelationId();
     }
 
-    public class CorrelationStrategy : ICorrelationStrategy
+    internal class CorrelationStrategy : ICorrelationStrategy
     {
         public string GenerateCorrelationId()
         {

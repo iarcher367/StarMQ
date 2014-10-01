@@ -30,7 +30,7 @@ namespace StarMQ.Publish
     /// <summary>
     /// Guarantees messaging via publisher confirms and ensures order of unconfirmed messages.
     /// </summary>
-    public class ConfirmPublisherDecorator : IPublisher
+    internal class ConfirmPublisherDecorator : IPublisher
     {
         private readonly static Object LockObj = new Object();
         private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();

@@ -24,7 +24,7 @@ namespace StarMQ.Publish
     /// <summary>
     /// Offers no advanced functionality or messaging guarantees.
     /// </summary>
-    public class BasicPublisher : BasePublisher
+    internal class BasicPublisher : BasePublisher
     {
         private readonly IPipeline _pipeline;
         private readonly ISerializationStrategy _serializationStrategy;

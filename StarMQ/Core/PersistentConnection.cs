@@ -33,7 +33,7 @@ namespace StarMQ.Core
     /// <summary>
     /// Opens a single connection to Rabbit and attempts to recover the connection if disconnected.
     /// </summary>
-    public class PersistentConnection : IConnection
+    internal class PersistentConnection : IConnection
     {
         private readonly IConnectionConfiguration _configuration;
         private readonly ConnectionFactory _factory;

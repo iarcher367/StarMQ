@@ -19,7 +19,7 @@ namespace StarMQ.Message
     using System.IO;
     using System.IO.Compression;
 
-    public class CompressionInterceptor : IMessagingInterceptor
+    internal class CompressionInterceptor : IMessagingInterceptor
     {
         public IMessage<byte[]> OnSend(IMessage<byte[]> seed)
         {

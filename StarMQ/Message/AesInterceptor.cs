@@ -19,7 +19,7 @@ namespace StarMQ.Message
     using System.IO;
     using System.Security.Cryptography;
 
-    public class AesInterceptor : IMessagingInterceptor
+    internal class AesInterceptor : IMessagingInterceptor
     {
         private const string Key = "iv";
 

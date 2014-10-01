@@ -40,7 +40,7 @@ namespace StarMQ.Consume
         IHandlerManager Validate();
     }
 
-    public class HandlerManager : IHandlerManager
+    internal class HandlerManager : IHandlerManager
     {
         private readonly Dictionary<Type, object> _handlerMap = new Dictionary<Type, object>();
 

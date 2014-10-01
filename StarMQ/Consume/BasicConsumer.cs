@@ -27,7 +27,7 @@ namespace StarMQ.Consume
     /// This consumer is designed for exclusive or self-destructing queues as it does not
     /// re-subscribe to the specified queue after the system recovers the connection to the broker.
     /// </summary>
-    public class BasicConsumer : BaseConsumer
+    internal class BasicConsumer : BaseConsumer
     {
         private readonly IConnectionConfiguration _configuration;
         private readonly IOutboundDispatcher _dispatcher;

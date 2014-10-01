@@ -47,7 +47,7 @@ namespace StarMQ.Core
         // TODO: SSL, AMQPConnectionString
     }
 
-    public class ConnectionConfiguration : IConnectionConfiguration
+    internal class ConnectionConfiguration : IConnectionConfiguration
     {
         public bool CancelOnHaFailover { get; set; }
         public ushort Heartbeat { get; set; }
