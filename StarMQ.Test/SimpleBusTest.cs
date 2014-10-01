@@ -598,6 +598,7 @@ namespace StarMQ.Test
         [Test]
         public async Task SubscribeAsyncShouldBindDeadLetterRoutingKeyToDeadLetterQueue()
         {
+            const string expected = "alpha.beta";
             var flag = false;
 
             _advancedBus.Setup(x => x.ConsumeAsync(It.IsAny<Queue>(), It.IsAny<Action<IHandlerRegistrar>>()))
@@ -610,11 +611,12 @@ namespace StarMQ.Test
                 .Returns(Task.FromResult(0))
                 .Callback<Exchange, Queue, string>((a, b, x) =>
                 {
-                    if (x == "#")
+                    if (x == expected)
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()),
+                x => x.WithDeadLetterRoutingKey(expected));
 
             Assert.That(flag, Is.True);
         }

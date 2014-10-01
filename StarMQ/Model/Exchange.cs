@@ -16,20 +16,20 @@ namespace StarMQ.Model
 {
     public class Exchange
     {
-        public string Name { get; private set; }
+        internal string Name { get; private set; }
 
-        public bool AutoDelete { get; set; }
-        public bool Durable { get; set; }
+        internal bool AutoDelete { get; set; }
+        internal bool Durable { get; set; }
 
         /// <summary>
         /// Set true to check if an exchange with the same name exists and throw an exception if not.
         /// </summary>
-        public bool Passive { get; set; }
+        internal bool Passive { get; set; }
 
-        public ExchangeType Type { get; set; }
+        internal ExchangeType Type { get; set; }
 
         #region Args
-        public string AlternateExchangeName { get; set; }
+        internal string AlternateExchangeName { get; set; }
         #endregion
 
         public Exchange()
