@@ -65,7 +65,7 @@ namespace StarMQ
 
         private bool _disposed;
 
-        public event BasicReturnHandler BasicReturn;    // TODO: support confirms & basic publishers
+        public event BasicReturnHandler BasicReturn;
 
         public AdvancedBus(IConsumerFactory consumerFactory, IOutboundDispatcher dispatcher, ILog log,
             IPublisher publisher)
