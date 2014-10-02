@@ -20,6 +20,7 @@ namespace StarMQ.Test.Core
     using StarMQ.Core;
     using System;
     using System.IO;
+    using System.Threading;
     using System.Threading.Tasks;
     using IConnection = StarMQ.Core.IConnection;
 
@@ -153,7 +154,21 @@ namespace StarMQ.Test.Core
         {
             _sut.Dispose();
 
+            _connection.Verify(x => x.Dispose(), Times.Once);
             _model.Verify(x => x.Dispose(), Times.Once);
+        }
+
+        [Test]
+        public void ShouldProcessAllMessagesBeforeDisposing()
+        {
+            var count = 0;
+
+            _sut.Invoke(() => { Thread.Sleep(10); count += 5; });
+            _sut.Invoke(() => { Thread.Sleep(10); count += 5; });
+
+            _sut.Dispose();
+
+            Assert.That(count, Is.EqualTo(10));
         }
 
         [Test]
@@ -162,6 +177,7 @@ namespace StarMQ.Test.Core
             _sut.Dispose();
             _sut.Dispose();
 
+            _connection.Verify(x => x.Dispose(), Times.Once);
             _model.Verify(x => x.Dispose(), Times.Once);
         }
     }

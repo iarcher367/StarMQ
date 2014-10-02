@@ -38,8 +38,8 @@ namespace StarMQ.Core
         private readonly IConnection _connection;
         private readonly ILog _log;
         private readonly BlockingCollection<Action> _queue = new BlockingCollection<Action>();
-        private readonly ManualResetEvent _signal = new ManualResetEvent(true);
-        private readonly CancellationTokenSource _tokenSource = new CancellationTokenSource();
+        private readonly ManualResetEvent _dispatchSignal = new ManualResetEvent(true);
+        private readonly ManualResetEvent _disposeSignal = new ManualResetEvent(false);
 
         private bool _disposed;
         private IModel _model;
@@ -75,21 +75,23 @@ namespace StarMQ.Core
 
                     _log.Debug("Action processed.");
                 }
-            }, _tokenSource.Token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+
+                _disposeSignal.Set();
+            }, TaskCreationOptions.LongRunning);
         }
 
         private void OnConnected()
         {
             OpenChannel();
 
-            _signal.Set();
+            _dispatchSignal.Set();
 
             _log.Info("Dispatch unblocked.");
         }
 
         private void OnDisconnected()
         {
-            _signal.Reset();
+            _dispatchSignal.Reset();
 
             _log.Info("Dispatch blocked.");
         }
@@ -122,7 +124,7 @@ namespace StarMQ.Core
             {
                 try
                 {
-                    _signal.WaitOne(-1);
+                    _dispatchSignal.WaitOne(-1);
 
                     action();
                     return;
@@ -147,8 +149,9 @@ namespace StarMQ.Core
             _disposed = true;
 
             _queue.CompleteAdding();
-            _tokenSource.Cancel();
+            _disposeSignal.WaitOne();
             _model.Dispose();
+            _connection.Dispose();
 
             _log.Info("Dispose completed.");
         }
