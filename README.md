@@ -13,6 +13,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - StarMQ's asynchronous internal architecture allows it to sustain a publishing throughput of ~20,000 messages per second with no pre-processing steps.
 - StarMQ automatically attempts to recover lost connections to the broker. It will also recover non-exclusive consumers.
 - Publishes during a connection failure are non-blocking and buffered in memory until the connection is restored. _Warning_: high-throughput scenarios may cause memory issues during extended outages.
+- A call to dispose the bus instance will not complete until all buffered messages are published. _Note_: this is not yet compatible with publisher confirms.
 - Message processing is independent among queues; a consumer with a fast handler will finish processing all messages even if its messages are interleaved with messages for a consumer with a slow handler.
 
 ## Publisher Confirms

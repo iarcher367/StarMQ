@@ -198,8 +198,8 @@ namespace StarMQ.Consume
 
             _disposed = true;
 
-            _queue.CompleteAdding();
             ClearQueue();
+            _queue.CompleteAdding();
 
             if (Model != null)
                 Model.Dispose();
