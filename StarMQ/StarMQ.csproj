@@ -35,12 +35,6 @@
     <Reference Include="RabbitMQ.Client">
       <HintPath>..\packages\RabbitMQ.Client.3.3.2\lib\net30\RabbitMQ.Client.dll</HintPath>
     </Reference>
-    <Reference Include="SimpleInjector">
-      <HintPath>..\packages\SimpleInjector.2.5.2\lib\net45\SimpleInjector.dll</HintPath>
-    </Reference>
-    <Reference Include="SimpleInjector.Advanced">
-      <HintPath>..\packages\SimpleInjector.Advanced.0.1.4.0\lib\net45\SimpleInjector.Advanced.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="System.Runtime.Serialization" />
@@ -53,6 +47,7 @@
     <Compile Include="Consume\BasicConsumer.cs" />
     <Compile Include="Consume\HandlerManager.cs" />
     <Compile Include="Consume\PersistentConsumerDecorator.cs" />
+    <Compile Include="Container.cs" />
     <Compile Include="Core\OutboundDispatcher.cs" />
     <Compile Include="Core\ConnectionConfiguration.cs" />
     <Compile Include="Exception\PublishException.cs" />

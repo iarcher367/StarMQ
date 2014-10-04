@@ -24,8 +24,8 @@ namespace StarMQ.Consume
 
     internal class ConsumerFactory : IConsumerFactory
     {
-        private readonly Func<IConsumer> _getConsumer;
         private readonly IConnection _connection;
+        private readonly Func<IConsumer> _getConsumer;
 
         public ConsumerFactory(Func<IConsumer> getConsumer, IConnection connection)
         {

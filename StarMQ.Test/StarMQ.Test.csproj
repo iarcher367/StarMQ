@@ -56,6 +56,7 @@
     <Compile Include="AdvancedBusTest.cs" />
     <Compile Include="Consume\BaseConsumerTest.cs" />
     <Compile Include="Consume\HandlerManagerTest.cs" />
+    <Compile Include="ContainerTest.cs" />
     <Compile Include="Helper.cs" />
     <Compile Include="GlobalTest.cs" />
     <Compile Include="Message\AesInterceptorTest.cs" />

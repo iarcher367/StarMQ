@@ -53,7 +53,7 @@ namespace StarMQ.Test
         [Test]
         public void ShouldConfigureConnectionFactoryFromConnectionConfiguration()
         {
-            var factory = new Factory().Container.GetInstance<ConnectionFactory>();
+            var factory = new Factory().Container.Resolve<ConnectionFactory>();
 
             Assert.That(factory.Port, Is.Not.EqualTo(-1));
             Assert.That(factory.RequestedHeartbeat, Is.Not.EqualTo(0));
@@ -62,7 +62,7 @@ namespace StarMQ.Test
         [Test]
         public void ShouldSetClientPropertiesInConnectionFactory()
         {
-            var factory = new Factory().Container.GetInstance<ConnectionFactory>();
+            var factory = new Factory().Container.Resolve<ConnectionFactory>();
 
             Assert.That(factory.ClientProperties.Count, Is.GreaterThan(5));
         }
@@ -70,7 +70,7 @@ namespace StarMQ.Test
         [Test]
         public void ShouldReturnBasicPublisherIfConfirmsDisabled()
         {
-            var actual = _sut.Container.GetInstance<IPublisher>();
+            var actual = _sut.Container.Resolve<IPublisher>();
 
             Assert.That(actual, Is.TypeOf<BasicPublisher>());
         }
@@ -78,23 +78,13 @@ namespace StarMQ.Test
         [Test]
         public void ShouldReturnConfirmsPublisherIfConfirmsEnabled()
         {
-            var configuration = _sut.Container.GetInstance<IConnectionConfiguration>();
+            var configuration = _sut.Container.Resolve<IConnectionConfiguration>();
 
             Global.ParseConfiguration(configuration, "publisherconfirms=true");
 
-            var actual = _sut.Container.GetInstance<IPublisher>();
+            var actual = _sut.Container.Resolve<IPublisher>();
 
             Assert.That(actual, Is.TypeOf<ConfirmPublisherDecorator>());
-        }
-
-        [Test]
-        public void ShouldAllowOverridingRegistrations()
-        {
-            _sut.Container.RegisterSingle<ICorrelationStrategy, EmptyStrategy>();
-
-            var actual = _sut.Container.GetInstance<ICorrelationStrategy>();
-
-            Assert.That(actual, Is.TypeOf<EmptyStrategy>());
         }
 
         [Test]
@@ -105,7 +95,7 @@ namespace StarMQ.Test
             var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
-            var body = _sut.Container.GetInstance<IPipeline>().OnSend(message).Body;
+            var body = _sut.Container.Resolve<IPipeline>().OnSend(message).Body;
 
             Assert.That(body.Length, Is.LessThan(message.Body.Length * CompressionRatio));
         }
@@ -121,7 +111,7 @@ namespace StarMQ.Test
         public void ShouldEnableCompression()
         {
             var pipeline = _sut.EnableCompression()
-                .Container.GetInstance<IPipeline>();
+                .Container.Resolve<IPipeline>();
             var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
@@ -134,7 +124,7 @@ namespace StarMQ.Test
         public void ShouldEnableEncryption()
         {
             var pipeline = _sut.EnableEncryption("AdAstraAndBeyond")
-                .Container.GetInstance<IPipeline>();
+                .Container.Resolve<IPipeline>();
             var data = Helper.ToBytes(Content);
             var message = new Message<byte[]>(data);
 
@@ -175,7 +165,7 @@ namespace StarMQ.Test
         {
             _sut.OverrideRegistration<ICorrelationStrategy, EmptyStrategy>();
 
-            var actual = _sut.Container.GetInstance<ICorrelationStrategy>();
+            var actual = _sut.Container.Resolve<ICorrelationStrategy>();
 
             Assert.That(actual, Is.TypeOf<EmptyStrategy>());
         }
@@ -183,9 +173,9 @@ namespace StarMQ.Test
         [Test]
         public void ShouldOverrideRegistrationWithContext()
         {
-            _sut.OverrideRegistrationWithContext<ICorrelationStrategy>(x => new EmptyStrategy());
+            _sut.OverrideRegistration<ICorrelationStrategy>(x => new EmptyStrategy());
 
-            var actual = _sut.Container.GetInstance<ICorrelationStrategy>();
+            var actual = _sut.Container.Resolve<ICorrelationStrategy>();
 
             Assert.That(actual, Is.TypeOf<EmptyStrategy>());
         }
@@ -212,7 +202,7 @@ namespace StarMQ.Test
 
             Assert.That(actual, Is.Not.Null);
 
-            var config = _sut.Container.GetInstance<IConnectionConfiguration>();
+            var config = _sut.Container.Resolve<IConnectionConfiguration>();
 
             Assert.That(config.Username, Is.EqualTo(username));
             Assert.That(config.Password, Is.EqualTo(password));

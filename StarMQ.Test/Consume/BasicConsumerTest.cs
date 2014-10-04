@@ -254,16 +254,16 @@ namespace StarMQ.Test.Consume
             _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0])
                 {
-                    Properties = new Properties { Type = typeof(Factory).FullName }
+                    Properties = new Properties { Type = typeof(Helper).FullName }
                 });
-            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
-                .Returns(new Message<dynamic>(new Factory())
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Helper)))
+                .Returns(new Message<dynamic>(new Helper())
                 {
-                    Properties = new Properties { Type = typeof(Factory).FullName }
+                    Properties = new Properties { Type = typeof(Helper).FullName }
                 });
 
             IHandlerManager handlerOne = new HandlerManager(_log.Object);
-            handlerOne.Add<Factory>(x =>
+            handlerOne.Add<Helper>(x =>
             {
                 Task.Delay(delay * 2).Wait();
                 return new AckResponse();
@@ -272,7 +272,7 @@ namespace StarMQ.Test.Consume
                 _dispatcher.Object, handlerOne, _log.Object, _namingStrategy.Object,
                 _pipeline.Object, _serializationStrategy.Object);
             var handlerTwo = new HandlerManager(_log.Object);
-            handlerTwo.Add<Factory>(x =>
+            handlerTwo.Add<Helper>(x =>
             {
                 Task.Delay(delay).Wait();
                 return new AckResponse();
