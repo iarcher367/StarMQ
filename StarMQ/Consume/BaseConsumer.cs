@@ -190,7 +190,7 @@ namespace StarMQ.Consume
                     }
                 });
             }
-            catch (InvalidOperationException) { /* thrown if fired after dispose */}
+            catch (InvalidOperationException) { /* thrown if fired after dispose */ }
         }
 
         public void HandleModelShutdown(IModel model, ShutdownEventArgs args)

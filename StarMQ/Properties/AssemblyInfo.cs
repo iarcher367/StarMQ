@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("StarMQ")]
-[assembly: AssemblyDescription("An opinionated, highly-configurable .NET library for the popular RabbitMQ messaging broker.")]
+[assembly: AssemblyDescription("A highly-configurable, opinionated .NET library for the popular RabbitMQ messaging broker.")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("Stephen Yu")]
 [assembly: AssemblyProduct("StarMQ")]
