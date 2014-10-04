@@ -17,7 +17,6 @@ namespace StarMQ.Core
     using RabbitMQ.Client;
     using System;
     using System.Collections.Concurrent;
-    using System.IO;
     using System.Threading;
     using System.Threading.Tasks;
 
@@ -67,7 +66,7 @@ namespace StarMQ.Core
 
         private void Dispatch()
         {
-            Task.Factory.StartNew(() =>
+            Task.Run(() =>
             {
                 foreach (var action in _queue.GetConsumingEnumerable())
                 {
@@ -77,7 +76,7 @@ namespace StarMQ.Core
                 }
 
                 _disposeSignal.Set();
-            }, TaskCreationOptions.LongRunning);
+            });
         }
 
         private void OnConnected()
@@ -92,7 +91,6 @@ namespace StarMQ.Core
         private void OnDisconnected()
         {
             _dispatchSignal.Reset();
-
             _log.Info("Dispatch blocked.");
         }
 
@@ -129,7 +127,7 @@ namespace StarMQ.Core
                     action();
                     return;
                 }
-                catch (IOException ex)
+                catch (Exception ex)
                 {
                     _log.Warn(String.Format("Channel failed - retrying in {0} ms.", retryInterval)
                         , ex);
@@ -137,8 +135,9 @@ namespace StarMQ.Core
                     Thread.Sleep(retryInterval);
                     retryInterval = Math.Min(retryInterval * 2, _configuration.Reconnect);
                 }
+                //catch (IOException ex)
                 //catch (NotSupportedException ex)
-                //catch (OperationInterruptedException ex)
+                //catch (OperationInterruptedException ex) ?
             }
         }
 

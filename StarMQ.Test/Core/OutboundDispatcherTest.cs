@@ -137,16 +137,21 @@ namespace StarMQ.Test.Core
             _configuration.Setup(x => x.Reconnect).Returns(250);
 
             var count = 0;
+            var signal = new ManualResetEventSlim(false);
 
             await _sut.Invoke(x =>
             {
-                count += 2;
-                throw new IOException();
+                count++;
+                if (count == 2)
+                    signal.Set();
+                else
+                    throw new IOException();
             });
 
-            await Task.Delay(120);
+            if (!signal.Wait(150))
+                Assert.Fail();
 
-            Assert.That(count, Is.EqualTo(4));
+            Assert.That(count, Is.EqualTo(2));
         }
 
         [Test]

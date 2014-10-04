@@ -33,22 +33,22 @@ namespace StarMQ.Publish
     internal class ConfirmPublisherDecorator : IPublisher
     {
         private readonly static Object LockObj = new Object();
-        private readonly ConcurrentDictionary<ulong, PublishState> _pendingMessages = new ConcurrentDictionary<ulong, PublishState>();
+        private readonly IConnectionConfiguration _configuration;
         private readonly IConnection _connection;
         private readonly ILog _log;
         private readonly IPublisher _publisher;
-        private readonly IConnectionConfiguration _configuration;
+        private readonly ConcurrentDictionary<ulong, Context> _unconfirmedMessages = new ConcurrentDictionary<ulong, Context>();
 
         public IModel Model { get { return _publisher.Model; } }
 
         public event BasicReturnHandler BasicReturn;
 
-        private class PublishState
+        private class Context
         {
             private readonly List<ulong> _sequenceIds = new List<ulong>();
 
-            public List<ulong> SequenceIds { get { return _sequenceIds; } }
             public Action Action { get; set; }
+            public List<ulong> SequenceIds { get { return _sequenceIds; } }
             public TaskCompletionSource<object> Source { get; set; }
             public Timer Timer { get; set; }
         }
@@ -56,10 +56,10 @@ namespace StarMQ.Publish
         public ConfirmPublisherDecorator(IPublisher publisher, IConnectionConfiguration configuration,
             IConnection connection, ILog log)
         {
+            _configuration = configuration;
             _connection = connection;
             _log = log;
             _publisher = publisher;
-            _configuration = configuration;
 
             OnConnected();
 
@@ -80,7 +80,7 @@ namespace StarMQ.Publish
             Model.BasicNacks += ModelOnBasicNacks;
             Model.ConfirmSelect();
 
-            RequeuePendingMessages();
+            RequeueUnconfirmedMessages();
         }
 
         protected void OnDisconnected()
@@ -88,7 +88,7 @@ namespace StarMQ.Publish
             Model.BasicAcks -= ModelOnBasicAcks;
             Model.BasicNacks -= ModelOnBasicNacks;
 
-            _pendingMessages.Values.ToList().ForEach(x =>
+            _unconfirmedMessages.Values.ToList().ForEach(x =>
             {
                 if (x.Timer == null) return;
 
@@ -97,43 +97,42 @@ namespace StarMQ.Publish
             });
         }
 
-        private void RequeuePendingMessages()
+        private void RequeueUnconfirmedMessages()
         {
-            var requeued = new ConcurrentDictionary<ulong, PublishState>(_pendingMessages);
-            _pendingMessages.Clear();
+            var requeued = new ConcurrentDictionary<ulong, Context>(_unconfirmedMessages);
+            _unconfirmedMessages.Clear();
 
             foreach (var key in requeued.Keys.OrderBy(x => x)
                                 .Where(x => x == requeued[x].SequenceIds.OrderBy(y => y).First()))
-                Publish(new PublishState
+                Publish(new Context
                 {
                     Action = requeued[key].Action,
                     Source = requeued[key].Source
                 });
         }
 
-        private void Publish(PublishState state)
+        private void Publish(Context context)
         {
-            if (state.Timer != null)
-                state.Timer.Dispose();
+            DisposeTimer(context.Timer);
 
             ulong sequenceId;
 
             lock (LockObj)
             {
                 sequenceId = Model.NextPublishSeqNo;
-                state.Action();
+                context.Action();
             }
 
-            _pendingMessages.TryAdd(sequenceId, state);
+            _unconfirmedMessages.TryAdd(sequenceId, context);
 
-            state.SequenceIds.Add(sequenceId);
-            state.Timer = CreateTimer(sequenceId);
+            context.SequenceIds.Add(sequenceId);
+            context.Timer = CreateTimer(sequenceId);
 
-            if (state.SequenceIds.Count == 1)
+            if (context.SequenceIds.Count == 1)
                 _log.Info(String.Format("Message #{0} published.", sequenceId));
             else
                 _log.Info(String.Format("Message #{0} republished as #{1}.",
-                    state.SequenceIds.OrderBy(x => x).First(), sequenceId));
+                    context.SequenceIds.OrderBy(x => x).First(), sequenceId));
         }
 
         private Timer CreateTimer(ulong sequenceId)
@@ -147,7 +146,7 @@ namespace StarMQ.Publish
                 {
                     try
                     {
-                        Publish(_pendingMessages[sequenceId]);
+                        Publish(_unconfirmedMessages[sequenceId]);
                     }
                     catch (Exception ex)    // TODO: occurs if timeout < heartbeat; refactor pending
                     {
@@ -158,6 +157,12 @@ namespace StarMQ.Publish
             }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
 
+        private static void DisposeTimer(Timer timer)
+        {
+            if (timer != null)
+                timer.Dispose();
+        }
+
         private void ModelOnBasicAcks(IModel model, BasicAckEventArgs args)
         {
             ProcessResponse(args.DeliveryTag, args.Multiple, x =>
@@ -165,7 +170,7 @@ namespace StarMQ.Publish
                 _log.Info(String.Format("Message #{0} confirmed. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
-                x.Timer.Dispose();
+                DisposeTimer(x.Timer);
                 x.Source.TrySetResult(null);
             });
         }
@@ -180,37 +185,33 @@ namespace StarMQ.Publish
                 _log.Error(String.Format("Internal broker error for message #{0}. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
-                x.Timer.Dispose();
+                DisposeTimer(x.Timer);
                 x.Source.TrySetException(new PublishException());
             });
         }
 
-        private void ProcessResponse(ulong sequenceId, bool multiple, Action<PublishState> action)
+        private void ProcessResponse(ulong sequenceId, bool multiple, Action<Context> action)
         {
-            if (multiple)
+            var func = multiple
+                ? (Func<ulong, bool>)(key => key <= sequenceId)
+                : key => key == sequenceId;
+
+            foreach (var id in _unconfirmedMessages.Keys.Where(func))
             {
-                foreach (var id in _pendingMessages.Keys.Where(key => key <= sequenceId))
+                Context context;
+                if (_unconfirmedMessages.TryRemove(id, out context))
                 {
-                    action(_pendingMessages[id]);
-                    RemoveAllRelatedKeys(id);
-                }
-            }
-            else
-            {
-                if (_pendingMessages.ContainsKey(sequenceId))
-                {
-                    action(_pendingMessages[sequenceId]);
-                    RemoveAllRelatedKeys(sequenceId);
+                    action(context);
+                    RemoveKeys(context.SequenceIds.Skip(1));
                 }
             }
         }
 
-        private void RemoveAllRelatedKeys(ulong sequenceId)
+        private void RemoveKeys(IEnumerable<ulong> keys)
         {
-            PublishState tmp;
-
-            foreach (var key in _pendingMessages[sequenceId].SequenceIds)
-                _pendingMessages.TryRemove(key, out tmp);
+            Context tmp;
+            foreach (var key in keys)
+                _unconfirmedMessages.TryRemove(key, out tmp);
         }
 
         public Task Publish<T>(IMessage<T> message, Action<IModel, IBasicProperties, byte[]> action) where T : class
@@ -220,7 +221,7 @@ namespace StarMQ.Publish
 
             var tcs = new TaskCompletionSource<object>();
 
-            Publish(new PublishState
+            Publish(new Context
             {
                 Action = () => _publisher.Publish(message, action),
                 Source = tcs
