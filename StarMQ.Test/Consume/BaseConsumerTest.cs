@@ -149,8 +149,8 @@ namespace StarMQ.Test.Consume
                 {
                     Properties = new Properties { Type = type.FullName }
                 });
-            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
-                .Returns(new Message<dynamic>(new Factory())
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Helper)))
+                .Returns(new Message<dynamic>(new Helper())
                 {
                     Properties = new Properties { Type = type.FullName }
                 });
@@ -165,7 +165,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Factory>(y => signal.Set()));
+            DeliverSetup(x => x.Add<Helper>(y => signal.Set()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -174,7 +174,7 @@ namespace StarMQ.Test.Consume
                 Assert.Fail();
 
             _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Once);
-            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)),
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Helper)),
                 Times.Once);
         }
 
@@ -183,7 +183,7 @@ namespace StarMQ.Test.Consume
         {
             var count = 0;
 
-            DeliverSetup(x => x.Add<Factory>(y => count++));
+            DeliverSetup(x => x.Add<Helper>(y => count++));
 
             _sut.Dispose();
 
@@ -193,7 +193,7 @@ namespace StarMQ.Test.Consume
             Assert.That(count, Is.EqualTo(0));
 
             _pipeline.Verify(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()), Times.Never);
-            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)),
+            _serializationStrategy.Verify(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Helper)),
                 Times.Never);
         }
 
@@ -209,13 +209,13 @@ namespace StarMQ.Test.Consume
                 _serializationStrategy.Object);
 
             _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>())).Callback<Action>(x => action = x);
-            _handlerManager.Setup(x => x.Get(typeof(Factory))).Returns(handler);
+            _handlerManager.Setup(x => x.Get(typeof(Helper))).Returns(handler);
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
             _pipeline.Setup(x => x.OnReceive(It.IsAny<IMessage<byte[]>>()))
                 .Returns(new Message<byte[]>(new byte[0]) { Properties = new Properties() });
             _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), null))
-                .Returns(new Message<dynamic>(new Factory()) { Properties = new Properties() });
+                .Returns(new Message<dynamic>(new Helper()) { Properties = new Properties() });
 
             _sut.Consume(new Queue());
 
@@ -235,7 +235,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Factory>(y => { }));
+            DeliverSetup(x => x.Add<Helper>(y => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(signal.Set);
@@ -257,7 +257,7 @@ namespace StarMQ.Test.Consume
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
 
-            DeliverSetup(x => x.Add<Factory>(y => new NackResponse()));
+            DeliverSetup(x => x.Add<Helper>(y => new NackResponse()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -276,7 +276,7 @@ namespace StarMQ.Test.Consume
             _model.Setup(x => x.BasicCancel(ConsumerTag))
                 .Callback(signal.Set);
 
-            DeliverSetup(x => x.Add<Factory>(y => new AckResponse { Action = ResponseAction.Unsubscribe }));
+            DeliverSetup(x => x.Add<Helper>(y => new AckResponse { Action = ResponseAction.Unsubscribe }));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -297,7 +297,7 @@ namespace StarMQ.Test.Consume
             var type = typeof(string);
 
             var handlerManager = new HandlerManager(_log.Object);
-            handlerManager.Add<Factory>(y => { });
+            handlerManager.Add<Helper>(y => { });
 
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
@@ -309,7 +309,7 @@ namespace StarMQ.Test.Consume
                 {
                     Properties = new Properties { Type = type.FullName }
                 });
-            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Factory)))
+            _serializationStrategy.Setup(x => x.Deserialize(It.IsAny<IMessage<byte[]>>(), typeof(Helper)))
                 .Throws(new SerializationException());
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
@@ -330,7 +330,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Factory>(y => { }));
+            DeliverSetup(x => x.Add<Helper>(y => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>
@@ -351,7 +351,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Factory>(y => { }));
+            DeliverSetup(x => x.Add<Helper>(y => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>
@@ -372,7 +372,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Factory>(y => { }));
+            DeliverSetup(x => x.Add<Helper>(y => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>

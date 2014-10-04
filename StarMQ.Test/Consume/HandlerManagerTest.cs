@@ -20,7 +20,6 @@ namespace StarMQ.Test.Consume
     using StarMQ.Consume;
     using StarMQ.Model;
     using System;
-    using System.Collections.Generic;
 
     public class HandlerManagerTest
     {
@@ -37,10 +36,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldReturnAckResponseIfNoException()
         {
-            _sut.Add<Factory>(x => { });
+            _sut.Add<Helper>(x => { });
 
-            var handler = _sut.Get(typeof(Factory));
-            var response = handler(new Factory());
+            var handler = _sut.Get(typeof(Helper));
+            var response = handler(new Helper());
 
             Assert.That(response, Is.TypeOf<AckResponse>());
         }
@@ -48,10 +47,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldReturnNackResponseIfHandlerThrowsException()
         {
-            _sut.Add((Action<Factory>)(x => { throw new Exception(); }));
+            _sut.Add((Action<Helper>)(x => { throw new Exception(); }));
 
-            var handler = _sut.Get(typeof(Factory));
-            var response = handler(new Factory());
+            var handler = _sut.Get(typeof(Helper));
+            var response = handler(new Helper());
 
             Assert.That(response, Is.TypeOf<NackResponse>());
         }
@@ -59,10 +58,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldSetFirstRegistrationAsDefaultType()
         {
-            _sut.Add<Factory>(x => { });
+            _sut.Add<Helper>(x => { });
             _sut.Add<Properties>(x => { });
 
-            Assert.That(_sut.Default, Is.EqualTo(typeof(Factory)));
+            Assert.That(_sut.Default, Is.EqualTo(typeof(Helper)));
         }
 
         [Test]
@@ -83,10 +82,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddFuncShouldReturnNackResponseIfHandlerThrowsException()
         {
-            _sut.Add<Factory>(x => { throw new Exception(); });
+            _sut.Add<Helper>(x => { throw new Exception(); });
 
-            var handler = _sut.Get(typeof(Factory));
-            var response = handler(new Factory());
+            var handler = _sut.Get(typeof(Helper));
+            var response = handler(new Helper());
 
             Assert.That(response, Is.TypeOf<NackResponse>());
         }
@@ -94,10 +93,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddFuncShouldSetFirstRegistrationAsDefaultType()
         {
-            _sut.Add<Factory>(x => new AckResponse());
+            _sut.Add<Helper>(x => new AckResponse());
             _sut.Add<Properties>(x => new AckResponse());
 
-            Assert.That(_sut.Default, Is.EqualTo(typeof(Factory)));
+            Assert.That(_sut.Default, Is.EqualTo(typeof(Helper)));
         }
 
         [Test]
@@ -118,21 +117,21 @@ namespace StarMQ.Test.Consume
         [Test]
         public void GetShouldReturnFuncFromAction()
         {
-            _sut.Add<Factory>(x => { });
+            _sut.Add<Helper>(x => { });
 
-            var actual = _sut.Get(typeof(Factory));
+            var actual = _sut.Get(typeof(Helper));
 
-            Assert.That(actual, Is.TypeOf<Func<Factory, BaseResponse>>());
+            Assert.That(actual, Is.TypeOf<Func<Helper, BaseResponse>>());
         }
 
         [Test]
         public void GetShouldReturnFunc()
         {
-            _sut.Add<Factory>(x => new AckResponse());
+            _sut.Add<Helper>(x => new AckResponse());
 
-            var actual = _sut.Get(typeof(Factory));
+            var actual = _sut.Get(typeof(Helper));
 
-            Assert.That(actual, Is.TypeOf<Func<Factory, BaseResponse>>());
+            Assert.That(actual, Is.TypeOf<Func<Helper, BaseResponse>>());
         }
 
         [Test]
@@ -146,7 +145,7 @@ namespace StarMQ.Test.Consume
         public void GetShouldReturnDefaultHandlerIfTypeNotRegistered()
         {
             var expected = new NackResponse();
-            Func<Factory, BaseResponse> handler = x => expected;
+            Func<Helper, BaseResponse> handler = x => expected;
 
             _sut.Add(handler);
 
@@ -159,7 +158,7 @@ namespace StarMQ.Test.Consume
         [Test]
         public void ShouldValidate()
         {
-            _sut.Add<Factory>(x => { });
+            _sut.Add<Helper>(x => { });
             _sut.Validate();
         }
 

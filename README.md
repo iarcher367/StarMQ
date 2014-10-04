@@ -7,7 +7,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 - The internal messaging architecture supports the addition of pre- and post-processing steps. Example pre-processing steps include message encryption, compression, and authentication. These may be enabled via configuration at startup. At present, the only supported post-processing is unsubscribing the current consumer.
 - StarMQ supports **dead-lettering** and **alternate exchanges** using default settings and auto-generated exchange names.
 - StarMQ comes wired for logging via the ILog interface. See ILog.cs for a sample log4net logger. _Warning_: setting the log level below WARN reduces throughput by over 50%.
-- StarMQ uses SimpleInjector for dependency injection and is configured for overriding registrations. This allows easy replacement of any component by using OverrideRegistration to register the custom implementation. For example, log4net could be replaced with another logger that implements the generic ILog interface found in log4net.
+- StarMQ uses an internal IoC container that supports overriding registrations. This allows easy replacement of any component by using OverrideRegistration to register the custom implementation.
 
 ## Performance
 - StarMQ's asynchronous internal architecture allows it to sustain a publishing throughput of ~20,000 messages per second with no pre-processing steps.
@@ -23,7 +23,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 
 ## Consumers
 - Consumers may control the client response to the broker by returning the appropriate Response object from the message handler. The Simple API exposes a basic method that takes care of the response by sending an _ack_ if the message handler successfully completes and a _nack_ if an exception bubbles out of the handler.
-- A consumer may also be fluently configured with multiple handlers. Only one handler may be registered per .Net type. Upon receiving a message, StarMQ examines it to determine the .Net type and then uses the type to select the appropriate handler. If no type is specified, the consumer defaults to the first handler registered.
+- A consumer may also be fluently configured with multiple handlers. Only one handler may be registered per .Net type. Upon receiving a message, StarMQ examines it to determine the .Net type and then uses the type to select the appropriate handler. If no type is specified or no matching handler is found, the consumer defaults to the first handler registered.
 
 ## High-Availability
 For HA clusters, set the connection string to point at the load balancer. StarMQ will detect the connection loss on failover and automatically recover the connection along with any non-exclusive consumers.
@@ -32,7 +32,7 @@ For HA clusters, set the connection string to point at the load balancer. StarMQ
 The Factory class allows fluent configuration and access to the SimpleBus API.
 ```
 var simpleBus = new Factory()
-    .OverrideRegistrationWithContext<ILog>(x => new Log4NetLogger(x.ImplementationType))
+    .OverrideRegistration<ILog>(x => new Log4NetLogger(x.ConcreteType))
     .OverrideRegistration<ISerializationStrategy, MySerializationStrategy>()
     .EnableCompression()
     .EnableEncryption("MySuperSecretKey")

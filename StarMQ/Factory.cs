@@ -20,10 +20,6 @@ namespace StarMQ
     using Message;
     using Publish;
     using RabbitMQ.Client;
-    using SimpleInjector;
-    using SimpleInjector.Advanced.Core;
-    using SimpleInjector.Advanced.Extensions;
-    using SimpleInjector.Extensions;
     using System;
     using System.Collections.Generic;
     using System.Reflection;
@@ -38,61 +34,55 @@ namespace StarMQ
         {
             Container = new Container();
 
-            Container.RegisterSingle<IAdvancedBus, AdvancedBus>();
-            Container.RegisterSingle<IConnection, PersistentConnection>();
-            Container.RegisterSingle<IConnectionConfiguration, ConnectionConfiguration>();
-            Container.RegisterSingle<IOutboundDispatcher, OutboundDispatcher>();
-            Container.RegisterSingle<IPipeline, InterceptorPipeline>();
-            Container.RegisterSingle<ISimpleBus, SimpleBus>();
+            Container.Register<IAdvancedBus, AdvancedBus>(true)
+                .Register<IConnection, PersistentConnection>(true)
+                .Register<IConnectionConfiguration, ConnectionConfiguration>(true)
+                .Register<IOutboundDispatcher, OutboundDispatcher>(true)
+                .Register<IPipeline, InterceptorPipeline>(true)
+                .Register<ISimpleBus, SimpleBus>(true);
 
-            Container.Register<IConsumerFactory>(() =>
-            {
-                var connection = Container.GetInstance<IConnection>();
-                return new ConsumerFactory(() => Container.GetInstance<IConsumer>(), connection);
-            });
+            Container.Register<IConsumer, BasicConsumer>()
+                .Register<ICorrelationStrategy, CorrelationStrategy>()
+                .Register<IHandlerManager, HandlerManager>()
+                .Register<INamingStrategy, NamingStrategy>()
+                .Register<IPublisher, BasicPublisher>()
+                .Register<ISerializer, JsonSerializer>()
+                .Register<ISerializationStrategy, SerializationStrategy>()
+                .Register<ITypeNameSerializer, TypeNameSerializer>();
 
-            Container.Register(() =>
-            {
-                var apiAssembly = Assembly.GetExecutingAssembly().GetName();
-                var config = Container.GetInstance<IConnectionConfiguration>();
-                var sourceAssembly = (Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly())
-                    .GetName();
+            Container.RegisterDecorator<IPublisher, ConfirmPublisherDecorator>(
+                () => Container.Resolve<IConnectionConfiguration>().PublisherConfirms);
 
-                return new ConnectionFactory
+            Container.Register<IConsumerFactory>(x =>
+                new ConsumerFactory(Container.Resolve<IConsumer>, Container.Resolve<IConnection>()))
+                .Register<ILog>(x => new EmptyLog())
+                .Register(x =>
                 {
-                    HostName = config.Host,
-                    Password = config.Password,
-                    Port = config.Port,
-                    UserName = config.Username,
-                    VirtualHost = config.VirtualHost,
-                    RequestedHeartbeat = config.Heartbeat,
-                    RequestedConnectionTimeout = config.Timeout,
-                    ClientProperties = new Dictionary<string, object>
+                    var apiAssembly = Assembly.GetExecutingAssembly().GetName();
+                    var config = Container.Resolve<IConnectionConfiguration>();
+                    var sourceAssembly = (Assembly.GetEntryAssembly() ?? Assembly.GetCallingAssembly())
+                        .GetName();
+
+                    return new ConnectionFactory
                     {
-                        { "clientApi", apiAssembly.Name },
-                        { "clientApiVersion", apiAssembly.Version.ToString() },
-                        { "machineName", Environment.MachineName },
-                        { "platform", ".NET" },
-                        { "product", sourceAssembly.Name },
-                        { "version", sourceAssembly.Version.ToString() },
-                    }
-                };
-            });
-
-            Container.Register<IConsumer, BasicConsumer>();
-            Container.Register<ICorrelationStrategy, CorrelationStrategy>();
-            Container.Register<IHandlerManager, HandlerManager>();
-            Container.Register<INamingStrategy, NamingStrategy>();
-            Container.Register<IPublisher, BasicPublisher>();
-            Container.RegisterDecorator(typeof(IPublisher), typeof(ConfirmPublisherDecorator),
-                x => Container.GetInstance<IConnectionConfiguration>().PublisherConfirms);
-            Container.Register<ISerializationStrategy, SerializationStrategy>();
-            Container.Register<ISerializer, JsonSerializer>();
-            Container.Register<ITypeNameSerializer, TypeNameSerializer>();
-
-            Container.RegisterWithContext<ILog>(context => new EmptyLog());
-
-            Container.Options.AllowOverridingRegistrations = true;
+                        HostName = config.Host,
+                        Password = config.Password,
+                        Port = config.Port,
+                        UserName = config.Username,
+                        VirtualHost = config.VirtualHost,
+                        RequestedHeartbeat = config.Heartbeat,
+                        RequestedConnectionTimeout = config.Timeout,
+                        ClientProperties = new Dictionary<string, object>
+                        {
+                            { "clientApi", apiAssembly.Name },
+                            { "clientApiVersion", apiAssembly.Version.ToString() },
+                            { "machineName", Environment.MachineName },
+                            { "platform", ".NET" },
+                            { "product", sourceAssembly.Name },
+                            { "version", sourceAssembly.Version.ToString() },
+                        }
+                    };
+                });
         }
 
         public Factory AddInterceptor(IMessagingInterceptor interceptor)
@@ -100,13 +90,13 @@ namespace StarMQ
             if (interceptor == null)
                 throw new ArgumentNullException("interceptor");
 
-            Container.GetInstance<IPipeline>().Add(interceptor);
+            Container.Resolve<IPipeline>().Add(interceptor);
             return this;
         }
 
         public Factory EnableCompression()
         {
-            Container.GetInstance<IPipeline>().Add(new CompressionInterceptor());
+            Container.Resolve<IPipeline>().Add(new CompressionInterceptor());
             return this;
         }
 
@@ -119,7 +109,7 @@ namespace StarMQ
 
             var key = Encoding.UTF8.GetBytes(secretKey);
 
-            Container.GetInstance<IPipeline>().Add(new AesInterceptor(key));
+            Container.Resolve<IPipeline>().Add(new AesInterceptor(key));
 
             return this;
         }
@@ -130,9 +120,9 @@ namespace StarMQ
             return this;
         }
 
-        public Factory OverrideRegistrationWithContext<T>(Func<DependencyContext, T> func) where T : class
+        public Factory OverrideRegistration<T>(Func<Context, T> func) where T : class
         {
-            Container.RegisterWithContext(func);
+            Container.Register(func);
             return this;
         }
         /// <summary>
@@ -143,7 +133,7 @@ namespace StarMQ
         /// </summary>
         public ISimpleBus GetBus()
         {
-            return Container.GetInstance<ISimpleBus>();
+            return Container.Resolve<ISimpleBus>();
         }
 
         /// <summary>
@@ -151,16 +141,16 @@ namespace StarMQ
         /// </summary>
         public ISimpleBus GetBus(string connectionString)
         {
-            var configuration = Container.GetInstance<IConnectionConfiguration>();
+            var configuration = Container.Resolve<IConnectionConfiguration>();
 
             Global.ParseConfiguration(configuration, connectionString);
 
-            return Container.GetInstance<ISimpleBus>();
+            return Container.Resolve<ISimpleBus>();
         }
 
         public void Dispose()
         {
-            Container.GetInstance<IConnection>().Dispose();
+            Container.Resolve<IConnection>().Dispose();
         }
     }
 }
