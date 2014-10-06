@@ -263,7 +263,7 @@ namespace StarMQ.Test.Consume
                 });
 
             IHandlerManager handlerOne = new HandlerManager(_log.Object);
-            handlerOne.Add<Helper>(x =>
+            handlerOne.Add<Helper>((x, y) =>
             {
                 Task.Delay(delay * 2).Wait();
                 return new AckResponse();
@@ -272,7 +272,7 @@ namespace StarMQ.Test.Consume
                 _dispatcher.Object, handlerOne, _log.Object, _namingStrategy.Object,
                 _pipeline.Object, _serializationStrategy.Object);
             var handlerTwo = new HandlerManager(_log.Object);
-            handlerTwo.Add<Helper>(x =>
+            handlerTwo.Add<Helper>((x, y) =>
             {
                 Task.Delay(delay).Wait();
                 return new AckResponse();

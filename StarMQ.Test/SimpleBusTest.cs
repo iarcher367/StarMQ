@@ -238,7 +238,7 @@ namespace StarMQ.Test
         {
             RunSubscribeSetup();
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             RunSubscribeVerify();
         }
@@ -299,7 +299,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()), null,
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()), null,
                 x => x.WithAutoDelete(true));
 
             Assert.That(flag, Is.True);
@@ -319,7 +319,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()), null,
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()), null,
                 x => x.WithName(expected));
 
             Assert.That(flag, Is.True);
@@ -339,7 +339,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Once);
         }
@@ -358,7 +358,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()), null,
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()), null,
                 x => x.WithAlternateExchangeName(expected));
 
             Assert.That(flag, Is.True);
@@ -378,7 +378,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Once);
         }
@@ -396,7 +396,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => { }),
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => { }),
                 x => x.WithCancelOnHaFailover(true)
                         .WithExclusive(true));
 
@@ -431,7 +431,7 @@ namespace StarMQ.Test
                         bindFlag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()),
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()),
                 x => x.WithName(expected).WithBindingKey("StarMQ.#"));
 
             Assert.That(declareFlag, Is.True);
@@ -468,7 +468,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             _namingStrategy.Verify(x => x.GetQueueName(It.IsAny<Type>()), Times.Once);
         }
@@ -492,7 +492,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             Assert.That(flag, Is.True);
         }
@@ -517,7 +517,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()),
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()),
                 x => x.WithDeadLetterExchangeName(expected));
 
             Assert.That(flag, Is.True);
@@ -542,7 +542,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             _namingStrategy.Verify(x => x.GetDeadLetterName(It.IsAny<string>()), Times.Exactly(2));
         }
@@ -564,7 +564,7 @@ namespace StarMQ.Test
                             Assert.Fail();
                     });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()));
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()));
 
             _namingStrategy.Verify(x => x.GetDeadLetterName(It.IsAny<string>()), Times.Exactly(2));
         }
@@ -589,7 +589,7 @@ namespace StarMQ.Test
                             count++;
                     });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()),
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()),
                 x => x.WithBindingKey(expected));
 
             Assert.That(count, Is.EqualTo(2));
@@ -615,7 +615,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.SubscribeAsync(x => x.Add<string>(y => new AckResponse()),
+            await _sut.SubscribeAsync(x => x.Add<string>((y, z) => new AckResponse()),
                 x => x.WithDeadLetterRoutingKey(expected));
 
             Assert.That(flag, Is.True);

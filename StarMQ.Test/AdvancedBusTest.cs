@@ -108,7 +108,7 @@ namespace StarMQ.Test
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task ConsumeShouldThrowExceptionIfQueueIsNull()
         {
-            await _sut.ConsumeAsync(null, x => x.Add<string>(y => new AckResponse()));
+            await _sut.ConsumeAsync(null, x => x.Add<string>((y, z) => new AckResponse()));
         }
         #endregion
 

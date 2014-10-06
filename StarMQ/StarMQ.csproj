@@ -58,6 +58,7 @@
     <Compile Include="Message\IMessagingInterceptor.cs" />
     <Compile Include="Message\InterceptorPipeline.cs" />
     <Compile Include="Model\BaseResponse.cs" />
+    <Compile Include="Model\DeliveryContext.cs" />
     <Compile Include="Model\ExchangeType.cs" />
     <Compile Include="Core\NamingStrategy.cs" />
     <Compile Include="Model\Exchange.cs" />

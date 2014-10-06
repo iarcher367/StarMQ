@@ -20,17 +20,22 @@ namespace StarMQ.Consume
     using System.Collections.Generic;
     using System.Reflection;
 
+    /// <summary>
+    /// Allows fluent configuration of handlers for consumers.
+    /// </summary>
     public interface IHandlerRegistrar
     {
         /// <summary>
         /// Handler sends a nack to the broker for unhandled exceptions and an ack otherwise.
+        /// Context allows access to the message's redelivery status, routing key, and properties.
         /// </summary>
-        IHandlerRegistrar Add<T>(Action<T> handler);
+        IHandlerRegistrar Add<T>(Action<T, DeliveryContext> handler);
 
         /// <summary>
         /// Allows custom responses to be sent to the broker.
+        /// Context allows access to the message's redelivery status, routing key, and properties.
         /// </summary>
-        IHandlerRegistrar Add<T>(Func<T, BaseResponse> handler);
+        IHandlerRegistrar Add<T>(Func<T, DeliveryContext, BaseResponse> handler);
     }
 
     public interface IHandlerManager : IHandlerRegistrar
@@ -53,16 +58,16 @@ namespace StarMQ.Consume
             _log = log;
         }
 
-        public IHandlerRegistrar Add<T>(Action<T> handler)
+        public IHandlerRegistrar Add<T>(Action<T, DeliveryContext> handler)
         {
             if (handler == null)
                 throw new ArgumentNullException("handler");
 
-            Func<T, BaseResponse> func = x =>
+            Func<T, DeliveryContext, BaseResponse> func = (x, y) =>
             {
                 try
                 {
-                    handler(x);
+                    handler(x, y);
 
                     return new AckResponse();
                 }
@@ -76,16 +81,16 @@ namespace StarMQ.Consume
             return this;
         }
 
-        public IHandlerRegistrar Add<T>(Func<T, BaseResponse> handler)
+        public IHandlerRegistrar Add<T>(Func<T, DeliveryContext, BaseResponse> handler)
         {
             if (handler == null)
                 throw new ArgumentNullException("handler");
 
-            Func<T, BaseResponse> func = x =>
+            Func<T, DeliveryContext, BaseResponse> func = (x, y) =>
             {
                 try
                 {
-                    return handler(x);
+                    return handler(x, y);
                 }
                 catch (Exception ex)
                 {
@@ -98,7 +103,7 @@ namespace StarMQ.Consume
             return this;
         }
 
-        private void AddToMap<T>(Func<T, BaseResponse> handler)
+        private void AddToMap<T>(Func<T, DeliveryContext, BaseResponse> handler)
         {
             var type = typeof(T);
 
@@ -132,9 +137,9 @@ namespace StarMQ.Consume
         /// <summary>
         /// Called via reflection by HandlerManager.Get(type);
         /// </summary>
-        private Func<T, BaseResponse> GetFunc<T>() where T : class
+        private Func<T, DeliveryContext, BaseResponse> GetFunc<T>() where T : class
         {
-            return (Func<T, BaseResponse>)_handlerMap[typeof(T)];
+            return (Func<T, DeliveryContext, BaseResponse>)_handlerMap[typeof(T)];
         }
 
         public IHandlerManager Validate()
