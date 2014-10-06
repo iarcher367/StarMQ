@@ -134,11 +134,17 @@ namespace StarMQ.Consume
 
             try
             {
-                _queue.Add(() => // TODO: process redelivered?
+                _queue.Add(() =>
                 {
                     BaseResponse response;
                     var message = new Message<byte[]>(body);
                     message.Properties.CopyFrom(properties);
+                    var context = new DeliveryContext
+                    {
+                        Redelivered = redelivered,
+                        RoutingKey = routingKey,
+                        Properties = message.Properties
+                    };
 
                     if (_disposed) return;
 
@@ -148,7 +154,7 @@ namespace StarMQ.Consume
                         var processed = _serializationStrategy.Deserialize(data, HandlerManager.Default);
                         var handler = HandlerManager.Get(processed.Body.GetType());
 
-                        response = (BaseResponse)handler(processed.Body);
+                        response = (BaseResponse)handler(processed.Body, context);
                         response.DeliveryTag = deliveryTag;
                     }
                     catch (RuntimeBinderException ex)

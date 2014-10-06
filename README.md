@@ -46,7 +46,7 @@ cancelonhafailover=false;heartbeat=10;host=localhost;password=guest;port=5672;pu
 With a SimpleBus, publishing and subscribing is as simple as:
 ```
 simpleBus.PublishAsync("hello world", "my.routing.key").Wait(); // Wait() forces a synchronous call
-simpleBus.SubscribeAsync<string>(x => x.Add<string>(y => MyMessageHandler(y)));
+simpleBus.SubscribeAsync<string>(x => x.Add<string>((y, context) => MyMessageHandler(y)));
 ```
 The above makes use of all the defaults. Alternatively, to customize:
 ```
@@ -57,8 +57,8 @@ simpleBus.PublishAsync("hello world", "my.routing.key", true, false,
         .WithName("primary exchange"));
 
 simpleBus.SubscribeAsync<string>(
-    x => x.Add<string>(y => MyMessageHandler(y))
-        .Add<MyClass>(y => MySecondHandler(y)),
+    x => x.Add<string>((y, context) => MyMessageHandler(y))
+        .Add<MyClass>((y, context) => MySecondHandler(y)),
     queue => queue.WithAutoDelete(true)
         .WithBindingKey("*.b")
         .WithBindingKey("a.*")
@@ -76,3 +76,4 @@ simpleBus.SubscribeAsync<string>(
         .WithDurable(false)
         .WithName("my exchange"));
 ```
+Each message handler also accepts a DeliveryContext argument. This allows consumers access to the message's redelivery status, routing key, and properties.

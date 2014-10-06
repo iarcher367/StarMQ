@@ -161,11 +161,40 @@ namespace StarMQ.Test.Consume
         }
 
         [Test]
+        public void DeliverShouldSetDeliveryContext()
+        {
+            const bool redelivered = true;
+            const string routingKey = "alpha.omega";
+            const string correlationId = "dcaea692-54f5-406a-be82-f95ad6e1453c";
+
+            var context = new DeliveryContext();
+            var signal = new ManualResetEventSlim(false);
+
+            _properties.Setup(x => x.IsCorrelationIdPresent()).Returns(true);
+            _properties.Setup(x => x.CorrelationId).Returns(correlationId);
+            DeliverSetup(x => x.Add<Helper>((y, z) =>
+            {
+                context = z;
+                signal.Set();
+            }));
+
+            _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, redelivered, String.Empty, routingKey,
+                _properties.Object, new byte[0]);
+
+            if (!signal.Wait(Timeout))
+                Assert.Fail();
+
+            Assert.That(context.Redelivered, Is.EqualTo(redelivered));
+            Assert.That(context.RoutingKey, Is.EqualTo(routingKey));
+            Assert.That(context.Properties.CorrelationId, Is.EqualTo(correlationId));
+        }
+
+        [Test]
         public void DeliverShouldProcessMessage()
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Helper>(y => signal.Set()));
+            DeliverSetup(x => x.Add<Helper>((y, z) => signal.Set()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -183,7 +212,7 @@ namespace StarMQ.Test.Consume
         {
             var count = 0;
 
-            DeliverSetup(x => x.Add<Helper>(y => count++));
+            DeliverSetup(x => x.Add<Helper>((y, z) => count++));
 
             _sut.Dispose();
 
@@ -235,7 +264,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Helper>(y => { }));
+            DeliverSetup(x => x.Add<Helper>((y, z) => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(signal.Set);
@@ -257,7 +286,7 @@ namespace StarMQ.Test.Consume
             _model.Setup(x => x.BasicNack(DeliveryTag, false, false))
                 .Callback(signal.Set);
 
-            DeliverSetup(x => x.Add<Helper>(y => new NackResponse()));
+            DeliverSetup(x => x.Add<Helper>((y, z) => new NackResponse()));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -276,7 +305,7 @@ namespace StarMQ.Test.Consume
             _model.Setup(x => x.BasicCancel(ConsumerTag))
                 .Callback(signal.Set);
 
-            DeliverSetup(x => x.Add<Helper>(y => new AckResponse { Action = ResponseAction.Unsubscribe }));
+            DeliverSetup(x => x.Add<Helper>((y, z) => new AckResponse { Action = ResponseAction.Unsubscribe }));
 
             _sut.HandleBasicDeliver(ConsumerTag, DeliveryTag, false, String.Empty, String.Empty,
                 _properties.Object, new byte[0]);
@@ -297,7 +326,7 @@ namespace StarMQ.Test.Consume
             var type = typeof(string);
 
             var handlerManager = new HandlerManager(_log.Object);
-            handlerManager.Add<Helper>(y => { });
+            handlerManager.Add<Helper>((y, z) => { });
 
             _sut = new BasicConsumer(_configuration.Object, _connection.Object, _dispatcher.Object,
                 handlerManager, _log.Object, _namingStrategy.Object, _pipeline.Object,
@@ -330,7 +359,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Helper>(y => { }));
+            DeliverSetup(x => x.Add<Helper>((y, z) => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>
@@ -351,7 +380,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Helper>(y => { }));
+            DeliverSetup(x => x.Add<Helper>((y, z) => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>
@@ -372,7 +401,7 @@ namespace StarMQ.Test.Consume
         {
             var signal = new ManualResetEventSlim(false);
 
-            DeliverSetup(x => x.Add<Helper>(y => { }));
+            DeliverSetup(x => x.Add<Helper>((y, z) => { }));
 
             _model.Setup(x => x.BasicAck(DeliveryTag, false))
                 .Callback(() =>

@@ -26,9 +26,12 @@ namespace StarMQ.Test.Consume
         private Mock<ILog> _log;
         private IHandlerManager _sut;
 
+        private DeliveryContext _context;
+
         [SetUp]
         public void Setup()
         {
+            _context = new DeliveryContext();
             _log = new Mock<ILog>();
             _sut = new HandlerManager(_log.Object);
         }
@@ -36,10 +39,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldReturnAckResponseIfNoException()
         {
-            _sut.Add<Helper>(x => { });
+            _sut.Add<Helper>((x, y) => { });
 
             var handler = _sut.Get(typeof(Helper));
-            var response = handler(new Helper());
+            var response = handler(new Helper(), _context);
 
             Assert.That(response, Is.TypeOf<AckResponse>());
         }
@@ -47,10 +50,10 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldReturnNackResponseIfHandlerThrowsException()
         {
-            _sut.Add((Action<Helper>)(x => { throw new Exception(); }));
+            _sut.Add((Action<Helper, DeliveryContext>)((x, y) => { throw new Exception(); }));
 
             var handler = _sut.Get(typeof(Helper));
-            var response = handler(new Helper());
+            var response = handler(new Helper(), _context);
 
             Assert.That(response, Is.TypeOf<NackResponse>());
         }
@@ -58,8 +61,8 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddActionShouldSetFirstRegistrationAsDefaultType()
         {
-            _sut.Add<Helper>(x => { });
-            _sut.Add<Properties>(x => { });
+            _sut.Add<Helper>((x, y) => { });
+            _sut.Add<Properties>((x, y) => { });
 
             Assert.That(_sut.Default, Is.EqualTo(typeof(Helper)));
         }
@@ -68,24 +71,24 @@ namespace StarMQ.Test.Consume
         [ExpectedException(typeof(ArgumentNullException))]
         public void AddActionShouldThrowExceptionIfHandlerIsNull()
         {
-            _sut.Add((Action<string>)null);
+            _sut.Add((Action<string, DeliveryContext>)null);
         }
 
         [Test]
         [ExpectedException(typeof(StarMqException))]
         public void AddActionShouldThrowExceptionIfTypeAlreadyRegistered()
         {
-            _sut.Add<string>(x => { });
-            _sut.Add<string>(x => { });
+            _sut.Add<string>((x, y) => { });
+            _sut.Add<string>((x, y) => { });
         }
 
         [Test]
         public void AddFuncShouldReturnNackResponseIfHandlerThrowsException()
         {
-            _sut.Add<Helper>(x => { throw new Exception(); });
+            _sut.Add<Helper>((x, y) => { throw new Exception(); });
 
             var handler = _sut.Get(typeof(Helper));
-            var response = handler(new Helper());
+            var response = handler(new Helper(), _context);
 
             Assert.That(response, Is.TypeOf<NackResponse>());
         }
@@ -93,8 +96,8 @@ namespace StarMQ.Test.Consume
         [Test]
         public void AddFuncShouldSetFirstRegistrationAsDefaultType()
         {
-            _sut.Add<Helper>(x => new AckResponse());
-            _sut.Add<Properties>(x => new AckResponse());
+            _sut.Add<Helper>((x, y) => new AckResponse());
+            _sut.Add<Properties>((x, y) => new AckResponse());
 
             Assert.That(_sut.Default, Is.EqualTo(typeof(Helper)));
         }
@@ -103,35 +106,35 @@ namespace StarMQ.Test.Consume
         [ExpectedException(typeof(ArgumentNullException))]
         public void AddFuncShouldThrowExceptionIfHandlerIsNull()
         {
-            _sut.Add((Func<string, BaseResponse>)null);
+            _sut.Add((Func<string, DeliveryContext, BaseResponse>)null);
         }
 
         [Test]
         [ExpectedException(typeof(StarMqException))]
         public void AddFuncShouldThrowExceptionIfTypeAlreadyRegistered()
         {
-            _sut.Add<string>(x => new AckResponse());
-            _sut.Add<string>(x => new AckResponse());
+            _sut.Add<string>((x, y) => new AckResponse());
+            _sut.Add<string>((x, y) => new AckResponse());
         }
 
         [Test]
         public void GetShouldReturnFuncFromAction()
         {
-            _sut.Add<Helper>(x => { });
+            _sut.Add<Helper>((x, y) => { });
 
             var actual = _sut.Get(typeof(Helper));
 
-            Assert.That(actual, Is.TypeOf<Func<Helper, BaseResponse>>());
+            Assert.That(actual, Is.TypeOf<Func<Helper, DeliveryContext, BaseResponse>>());
         }
 
         [Test]
         public void GetShouldReturnFunc()
         {
-            _sut.Add<Helper>(x => new AckResponse());
+            _sut.Add<Helper>((x, y) => new AckResponse());
 
             var actual = _sut.Get(typeof(Helper));
 
-            Assert.That(actual, Is.TypeOf<Func<Helper, BaseResponse>>());
+            Assert.That(actual, Is.TypeOf<Func<Helper, DeliveryContext, BaseResponse>>());
         }
 
         [Test]
@@ -145,12 +148,12 @@ namespace StarMQ.Test.Consume
         public void GetShouldReturnDefaultHandlerIfTypeNotRegistered()
         {
             var expected = new NackResponse();
-            Func<Helper, BaseResponse> handler = x => expected;
+            Func<Helper, DeliveryContext, BaseResponse> handler = (x, y) => expected;
 
             _sut.Add(handler);
 
             var func = _sut.Get(typeof(Properties));
-            var actual = func(null);
+            var actual = func(null, _context);
 
             Assert.That(actual, Is.SameAs(expected));
         }
@@ -158,7 +161,7 @@ namespace StarMQ.Test.Consume
         [Test]
         public void ShouldValidate()
         {
-            _sut.Add<Helper>(x => { });
+            _sut.Add<Helper>((x, y) => { });
             _sut.Validate();
         }
 
