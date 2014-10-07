@@ -30,16 +30,17 @@ namespace StarMQ.Test.Publish
     public class ConfirmPublisherDecoratorTest
     {
         private const int Timeout = 40;
-        private const int Offset = 10;
         private readonly ulong[] _seqNos = { 13, 14, 15, 16, 17, 18 };
 
         private Mock<IConnectionConfiguration> _configuration;
         private Mock<IConnection> _connection;
+        private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
         private Mock<IModel> _model;
         private Mock<IPublisher> _publisher;
         private ConfirmPublisherDecorator _sut;
 
+        private List<Action> _actions;
         private IMessage<string> _message;
 
         [SetUp]
@@ -47,11 +48,12 @@ namespace StarMQ.Test.Publish
         {
             _configuration = new Mock<IConnectionConfiguration>();
             _connection = new Mock<IConnection>();
+            _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
             _model = new Mock<IModel>();
             _publisher = new Mock<IPublisher>();
 
-            _configuration.Setup(x => x.Timeout).Returns(Timeout);
+            _configuration.Setup(x => x.Timeout).Returns(Timeout - 10);
             _model.SetupSequence(x => x.NextPublishSeqNo)
                 .Returns(_seqNos[0])
                 .Returns(_seqNos[1])
@@ -62,8 +64,9 @@ namespace StarMQ.Test.Publish
             _publisher.Setup(x => x.Model).Returns(_model.Object);
 
             _sut = new ConfirmPublisherDecorator(_publisher.Object, _configuration.Object,
-                _connection.Object, _log.Object);
+                _connection.Object, _dispatcher.Object, _log.Object);
 
+            _actions = new List<Action>();
             _message = new Message<string>(String.Empty);
         }
 
@@ -109,9 +112,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public async Task ShouldUnbindBasicAcksIfOnDisconnectedFires()
         {
-            _connection.SetupSequence(x => x.IsConnected)
-                .Returns(false)
-                .Returns(true);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             _connection.Raise(x => x.OnDisconnected += null);
 
@@ -124,6 +126,9 @@ namespace StarMQ.Test.Publish
 
             _connection.Raise(x => x.OnConnected += null);
 
+            foreach (var action in _actions)
+                action();
+
             _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[1] });
 
             await task;
@@ -135,9 +140,8 @@ namespace StarMQ.Test.Publish
         [ExpectedException(typeof(PublishException))]
         public async Task ShouldUnbindBasicNacksIfOnDisconnectedFires()
         {
-            _connection.SetupSequence(x => x.IsConnected)
-                .Returns(false)
-                .Returns(true);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             _connection.Raise(x => x.OnDisconnected += null);
 
@@ -150,6 +154,9 @@ namespace StarMQ.Test.Publish
 
             _connection.Raise(x => x.OnConnected += null);
 
+            foreach (var action in _actions)
+                action();
+
             _model.Raise(x => x.BasicNacks += null, new BasicNackEventArgs { DeliveryTag = _seqNos[1] });
 
             await task;
@@ -160,7 +167,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public async Task ShouldDisposeTimersIfOnDisconnectedFires()
         {
-            _connection.Setup(x => x.IsConnected).Returns(true);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             var task = _sut.Publish(_message, (x, y, z) => { });
 
@@ -169,6 +177,9 @@ namespace StarMQ.Test.Publish
             await Task.Delay(Timeout * 3);
 
             _connection.Raise(x => x.OnConnected += null);
+
+            foreach (var action in _actions)
+                action();
 
             _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[1] });
 
@@ -181,7 +192,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public void ShouldRequeuePendingMessagesIfOnConnectedFires()
         {
-            _connection.Setup(x => x.IsConnected).Returns(true);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             var tasks = new List<Task>
             {
@@ -191,6 +203,9 @@ namespace StarMQ.Test.Publish
 
             _connection.Raise(x => x.OnDisconnected += null);
             _connection.Raise(x => x.OnConnected += null);
+
+            foreach (var action in _actions)
+                action();
 
             tasks.Add(_sut.Publish(_message, (x, y, z) => { }));
 
@@ -206,9 +221,8 @@ namespace StarMQ.Test.Publish
         [Test]
         public async Task ShouldRequeuePendingMessagesInSequenceOrderWithoutDuplicates()
         {
-            _connection.SetupSequence(x => x.IsConnected)
-                .Returns(true)
-                .Returns(false);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             var order = 0;
             var tasks = new List<Task>
@@ -216,11 +230,13 @@ namespace StarMQ.Test.Publish
                 _sut.Publish(_message, (x, y, z) => x.BasicCancel("1"))
             };
 
-            await Task.Delay(Offset);
+            await Task.Delay(Timeout);
 
             tasks.Add(_sut.Publish(_message, (x, y, z) => x.BasicCancel("2")));
 
-            await Task.Delay(Timeout);
+            foreach (var action in _actions)
+                action();
+            _actions.Clear();
 
             _connection.Raise(x => x.OnDisconnected += null);
 
@@ -230,6 +246,9 @@ namespace StarMQ.Test.Publish
                 .Callback(() => Assert.That(order++, Is.EqualTo(1)));
 
             _connection.Raise(x => x.OnConnected += null);
+
+            foreach (var action in _actions)
+                action();
 
             _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[3] });
             _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[4] });
@@ -268,8 +287,6 @@ namespace StarMQ.Test.Publish
         [Test]
         public void ShouldInvokeAndConfirmMultipleOnBasicAckWithMultipleSet()
         {
-            _connection.Setup(x => x.IsConnected).Returns(true);
-
             var tasks = new List<Task>
             {
                 _sut.Publish(_message, (x, y, z) => { }),
@@ -310,8 +327,6 @@ namespace StarMQ.Test.Publish
         [Test]
         public void ShouldInvokeAndThrowMultipleExceptionsOnBasicNackWithMultipleSet()
         {
-            _connection.Setup(x => x.IsConnected).Returns(true);
-
             var tasks = new List<Task>
             {
                 _sut.Publish(_message, (x, y, z) => { }),
@@ -344,33 +359,21 @@ namespace StarMQ.Test.Publish
         [Test]
         public async Task ShouldInvokeAndRepublishOnTimeout()
         {
-            _connection.Setup(x => x.IsConnected).Returns(true);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action>()))
+                .Callback<Action>(x => _actions.Add(x));
 
             var task = _sut.Publish(_message, (x, y, z) => { });
 
-            await Task.Delay(Timeout + Offset);
+            await Task.Delay(Timeout);
+
+            foreach (var action in _actions)
+                action();
 
             _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[1] });
 
             await task;
 
             _model.Verify(x => x.NextPublishSeqNo, Times.Exactly(2));
-        }
-
-        [Test]
-        public async Task ShouldNotRepublishOnTimeoutIfDisconnected()
-        {
-            _connection.Setup(x => x.IsConnected).Returns(false);
-
-            var task = _sut.Publish<string>(null, (x, y, z) => { });
-
-            await Task.Delay(Timeout + Offset);
-
-            _model.Raise(x => x.BasicAcks += null, new BasicAckEventArgs { DeliveryTag = _seqNos[0] });
-
-            await task;
-
-            _model.Verify(x => x.NextPublishSeqNo, Times.Once);
         }
 
         [Test]
