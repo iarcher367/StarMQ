@@ -34,7 +34,7 @@ namespace StarMQ.Publish
     {
         private readonly static Object LockObj = new Object();
         private readonly IConnectionConfiguration _configuration;
-        private readonly IConnection _connection;
+        private readonly IOutboundDispatcher _dispatcher;
         private readonly ILog _log;
         private readonly IPublisher _publisher;
         private readonly ConcurrentDictionary<ulong, Context> _unconfirmedMessages = new ConcurrentDictionary<ulong, Context>();
@@ -54,10 +54,10 @@ namespace StarMQ.Publish
         }
 
         public ConfirmPublisherDecorator(IPublisher publisher, IConnectionConfiguration configuration,
-            IConnection connection, ILog log)
+            IConnection connection, IOutboundDispatcher dispatcher, ILog log)
         {
             _configuration = configuration;
-            _connection = connection;
+            _dispatcher = dispatcher;
             _log = log;
             _publisher = publisher;
 
@@ -99,16 +99,18 @@ namespace StarMQ.Publish
 
         private void RequeueUnconfirmedMessages()
         {
-            var requeued = new ConcurrentDictionary<ulong, Context>(_unconfirmedMessages);
+            var cached = new ConcurrentDictionary<ulong, Context>(_unconfirmedMessages);
             _unconfirmedMessages.Clear();
 
-            foreach (var key in requeued.Keys.OrderBy(x => x)
-                                .Where(x => x == requeued[x].SequenceIds.OrderBy(y => y).First()))
-                Publish(new Context
+            foreach (var key in cached.Keys.OrderBy(x => x).Where(x => x == cached[x].SequenceIds.First()))
+            {
+                var context = new Context
                 {
-                    Action = requeued[key].Action,
-                    Source = requeued[key].Source
-                });
+                    Action = cached[key].Action,
+                    Source = cached[key].Source,
+                };
+                _dispatcher.Invoke(() => Publish(context));
+            }
         }
 
         private void Publish(Context context)
@@ -123,7 +125,8 @@ namespace StarMQ.Publish
                 context.Action();
             }
 
-            _unconfirmedMessages.TryAdd(sequenceId, context);
+            if (!_unconfirmedMessages.TryAdd(sequenceId, context))
+                _log.Warn(String.Format("Duplicate sequenceId - failed to add #{0} to dictionary.", sequenceId));
 
             context.SequenceIds.Add(sequenceId);
             context.Timer = CreateTimer(sequenceId);
@@ -142,18 +145,12 @@ namespace StarMQ.Publish
                 _log.Warn(String.Format("Message #{0} timed out waiting for broker response.",
                     sequenceId));
 
-                if (_connection.IsConnected)
+                _dispatcher.Invoke(() =>
                 {
-                    try
-                    {
-                        Publish(_unconfirmedMessages[sequenceId]);
-                    }
-                    catch (Exception ex)    // TODO: occurs if timeout < heartbeat; refactor pending
-                    {
-                        _log.Warn(String.Format("Message #{0} failed to re-publish.", sequenceId),
-                            ex);
-                    }
-                }
+                    Context context;
+                    if (_unconfirmedMessages.TryGetValue(sequenceId, out context))
+                        Publish(context);
+                });
             }, null, new TimeSpan(0, 0, 0, 0, _configuration.Timeout), Timeout.InfiniteTimeSpan);
         }
 
@@ -170,7 +167,6 @@ namespace StarMQ.Publish
                 _log.Info(String.Format("Message #{0} confirmed. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
-                DisposeTimer(x.Timer);
                 x.Source.TrySetResult(null);
             });
         }
@@ -185,7 +181,6 @@ namespace StarMQ.Publish
                 _log.Error(String.Format("Internal broker error for message #{0}. Multiple: {1}",
                     args.DeliveryTag, args.Multiple));
 
-                DisposeTimer(x.Timer);
                 x.Source.TrySetException(new PublishException());
             });
         }
@@ -201,6 +196,7 @@ namespace StarMQ.Publish
                 Context context;
                 if (_unconfirmedMessages.TryRemove(id, out context))
                 {
+                    DisposeTimer(context.Timer);
                     action(context);
                     RemoveKeys(context.SequenceIds.Skip(1));
                 }
