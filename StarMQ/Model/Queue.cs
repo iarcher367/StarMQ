@@ -155,10 +155,7 @@ namespace StarMQ.Model
         /// </summary>
         public Queue WithBindingKey(string key)
         {
-            if (String.IsNullOrEmpty(key))
-                throw new ArgumentException("key");
-
-            BindingKeys.Add(key);
+            BindingKeys.Add(Global.Validate("key", key));
             return this;
         }
         #endregion

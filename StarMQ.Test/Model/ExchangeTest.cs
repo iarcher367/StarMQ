@@ -70,6 +70,14 @@ namespace StarMQ.Test.Model
         }
 
         [Test]
+        public void ShouldSetType()
+        {
+            var actual = new Exchange().WithType(ExchangeType.Headers).Type;
+
+            Assert.That(actual, Is.EqualTo(ExchangeType.Headers));
+        }
+
+        [Test]
         public void ShouldSetAlternateExchangeName()
         {
             var actual = new Exchange().WithAlternateExchangeName(Expected).AlternateExchangeName;

@@ -64,7 +64,16 @@ namespace StarMQ.Model
             return this;
         }
 
-        // TODO: support configurable Type
+        /// <summary>
+        /// Set the exchange type.
+        ///
+        /// Default direct.
+        /// </summary>
+        public Exchange WithType(ExchangeType type)
+        {
+            Type = type;
+            return this;
+        }
 
         /// <summary>
         /// Set to have unroutable messages forwarded to an alternate exchange.

@@ -74,6 +74,7 @@ simpleBus.SubscribeAsync<string>(
     exchange => exchange.WithAlternateExchangeName("my alternate exchange")
         .WithAutoDelete(true)
         .WithDurable(false)
-        .WithName("my exchange"));
+        .WithName("my exchange")
+        .WithType(ExchangeType.Fanout));
 ```
 Each message handler also accepts a DeliveryContext argument. This allows consumers access to the message's redelivery status, routing key, and properties.

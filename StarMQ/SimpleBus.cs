@@ -22,11 +22,13 @@ namespace StarMQ
     using System.Linq;
     using System.Threading.Tasks;
 
+    /// <summary>
+    /// Publish and subscribe default to Topic exchanges.
+    /// </summary>
     public interface ISimpleBus : IDisposable
     {
         ///  <summary>
         ///  Publishes a message with given routing key and contents.
-        ///  If publisher acknowledgements are enabled, task only completes once publish is confirmed.
         ///
         ///  To call synchronously and ensure order, use Wait() to block before publishing again.
         ///  </summary>

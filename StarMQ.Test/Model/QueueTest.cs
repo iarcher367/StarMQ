@@ -179,17 +179,10 @@ namespace StarMQ.Test.Model
         }
 
         [Test]
-        [ExpectedException(typeof(ArgumentException))]
+        [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfBindingKeyIsNull()
         {
             new Queue().WithBindingKey(null);
-        }
-
-        [Test]
-        [ExpectedException(typeof(ArgumentException))]
-        public void ShouldThrowExceptionIfBindingKeyIsEmpty()
-        {
-            new Queue().WithBindingKey(String.Empty);
         }
         #endregion
     }
