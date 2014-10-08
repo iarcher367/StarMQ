@@ -34,7 +34,7 @@ namespace StarMQ
         ///  </summary>
         /// <param name="mandatory">If true, published messages must be routed at least one queue. Otherwise, returned via basic.return.</param>
         /// <param name="immediate">Not supported by RabbitMQ - use TTL=0. If true, message is only delivered to matching queues with a consumer currently able to accept the message. If no deliveries occur, it is returned via basic.return.</param>
-        Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class;
+        Task PublishAsync<T>(T content, Action<DeliveryContext> configureContext, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class;
 
         /// <summary>
         /// Subscribes to messages matching at least one binding key.
@@ -67,16 +67,21 @@ namespace StarMQ
             };
         }
 
-        public async Task PublishAsync<T>(T content, string routingKey, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class
+        public async Task PublishAsync<T>(T content, Action<DeliveryContext> configureContext, bool mandatory = false, bool immediate = false, Action<Exchange> configure = null) where T : class
         {
             if (content == null)
                 throw new ArgumentNullException("content");
-            if (routingKey == null)
-                throw new ArgumentNullException("routingKey");
+            if (configureContext == null)
+                throw new ArgumentNullException("configureContext");
+
+            var context = new DeliveryContext();
+            configureContext(context);
 
             var exchange = await SetExchanges(configure, typeof(T));
 
-            await _advancedBus.PublishAsync(exchange, routingKey, mandatory, immediate, new Message<T>(content));
+            var message = new Message<T>(content) { Properties = context.Properties };
+
+            await _advancedBus.PublishAsync(exchange, context.RoutingKey, mandatory, immediate, message);
         }
 
         private async Task<Exchange> SetExchanges(Action<Exchange> configure, Type type)

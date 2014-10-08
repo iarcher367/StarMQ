@@ -22,6 +22,8 @@ namespace StarMQ.Test
     using StarMQ.Core;
     using StarMQ.Model;
     using System;
+    using System.Collections.Generic;
+    using System.Linq;
     using System.Threading.Tasks;
 
     public class SimpleBusTest
@@ -34,6 +36,8 @@ namespace StarMQ.Test
         private Mock<INamingStrategy> _namingStrategy;
         private ISimpleBus _sut;
 
+        private Action<DeliveryContext> _configureContext;
+
         [SetUp]
         public void Setup()
         {
@@ -42,6 +46,8 @@ namespace StarMQ.Test
             _namingStrategy = new Mock<INamingStrategy>();
 
             _sut = new SimpleBus(_advancedBus.Object, _namingStrategy.Object);
+
+            _configureContext = x => x.WithRoutingKey(RoutingKey);
 
             _namingStrategy.Setup(x => x.GetExchangeName(typeof(string)))
                 .Returns("StarMQ.Master");
@@ -78,7 +84,7 @@ namespace StarMQ.Test
             _advancedBus.Setup(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false, It.IsAny<Message<string>>()))
                 .Returns(Task.FromResult(0));
 
-            await _sut.PublishAsync(Content, RoutingKey);
+            await _sut.PublishAsync(Content, _configureContext);
 
             _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Once);
             _namingStrategy.Verify(x => x.GetExchangeName(It.Is<Type>(y => y == typeof(string))), Times.Once);
@@ -86,14 +92,38 @@ namespace StarMQ.Test
             _advancedBus.Verify(x => x.QueueDeclareAsync(It.IsAny<Queue>()), Times.Once);
             _advancedBus.Verify(x => x.QueueBindAsync(It.IsAny<Exchange>(), It.IsAny<Queue>(),
                 String.Empty), Times.Once);
-            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false,
+            _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), RoutingKey, false, false,
                 It.IsAny<Message<string>>()), Times.Once);
+        }
+
+        [Test]
+        public async Task PublishAsyncShouldApplyConfigureContext()
+        {
+            string actualKey = String.Empty;
+            IMessage<string> actualMessage = new Message<string>(String.Empty);
+            var item = new KeyValuePair<string, object>("signature", "082ae94ac8cc020632b52d0a61eb8f1a");
+            Action<DeliveryContext> configure = x => x.WithRoutingKey(RoutingKey).WithHeader(item);
+
+            _advancedBus.Setup(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false, It.IsAny<Message<string>>()))
+                .Callback<Exchange, string, bool, bool, IMessage<string>>(
+                (a, x, c, d, y) =>
+                {
+                    actualKey = x;
+                    actualMessage = y;
+                })
+                .Returns(Task.FromResult(0));
+
+            await _sut.PublishAsync(Content, configure);
+
+            Assert.That(actualKey, Is.EqualTo(RoutingKey));
+            Assert.That(actualMessage.Properties.Headers.Count, Is.EqualTo(1));
+            Assert.That(actualMessage.Properties.Headers.First(), Is.EqualTo(item));
         }
 
         [Test]
         public async Task PublishAsyncShouldSetMandatory()
         {
-            await _sut.PublishAsync(Content, RoutingKey, mandatory: true);
+            await _sut.PublishAsync(Content, _configureContext, mandatory: true);
 
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
                 true, It.IsAny<bool>(), It.IsAny<Message<string>>()), Times.Once);
@@ -102,7 +132,7 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldDefaultMandatoryToFalse()
         {
-            await _sut.PublishAsync(Content, RoutingKey);
+            await _sut.PublishAsync(Content, _configureContext);
 
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
                 false, It.IsAny<bool>(), It.IsAny<Message<string>>()), Times.Once);
@@ -111,7 +141,7 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldSetImmediate()
         {
-            await _sut.PublishAsync(Content, RoutingKey, immediate: true);
+            await _sut.PublishAsync(Content, _configureContext, immediate: true);
 
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
                 It.IsAny<bool>(), true, It.IsAny<Message<string>>()), Times.Once);
@@ -120,7 +150,7 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldDefaultImmediateToFalse()
         {
-            await _sut.PublishAsync(Content, RoutingKey);
+            await _sut.PublishAsync(Content, _configureContext);
 
             _advancedBus.Verify(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(),
                 It.IsAny<bool>(), false, It.IsAny<Message<string>>()), Times.Once);
@@ -135,7 +165,7 @@ namespace StarMQ.Test
                 .Returns(Task.FromResult(0))
                 .Callback<Exchange>(x => exchange = x);
 
-            await _sut.PublishAsync(Content, RoutingKey, configure: x => x.WithAutoDelete(true));
+            await _sut.PublishAsync(Content, _configureContext, configure: x => x.WithAutoDelete(true));
 
             Assert.That(exchange.AutoDelete, Is.True);
         }
@@ -154,7 +184,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.PublishAsync(Content, RoutingKey, configure: x => x.WithName(expected));
+            await _sut.PublishAsync(Content, _configureContext, configure: x => x.WithName(expected));
 
             Assert.That(flag, Is.True);
 
@@ -173,7 +203,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.PublishAsync(Content, RoutingKey);
+            await _sut.PublishAsync(Content, _configureContext);
 
             _namingStrategy.Verify(x => x.GetExchangeName(typeof(string)), Times.Once);
         }
@@ -192,7 +222,7 @@ namespace StarMQ.Test
                         flag = true;
                 });
 
-            await _sut.PublishAsync(Content, RoutingKey,
+            await _sut.PublishAsync(Content, _configureContext,
                 configure: x => x.WithAlternateExchangeName(expected));
 
             Assert.That(flag, Is.True);
@@ -212,7 +242,7 @@ namespace StarMQ.Test
                         Assert.Fail();
                 });
 
-            await _sut.PublishAsync(Content, RoutingKey);
+            await _sut.PublishAsync(Content, _configureContext);
 
             _namingStrategy.Verify(x => x.GetAlternateName(It.IsAny<Exchange>()), Times.Once);
         }
@@ -221,12 +251,12 @@ namespace StarMQ.Test
         [ExpectedException(typeof(ArgumentNullException))]
         public async Task PublishAsyncShouldThrowExceptionIfContentIsNull()
         {
-            await _sut.PublishAsync<string>(null, RoutingKey);
+            await _sut.PublishAsync<string>(null, _configureContext);
         }
 
         [Test]
         [ExpectedException(typeof(ArgumentNullException))]
-        public async Task PublishAsyncShouldThrowExceptionIfRoutingKeyIsNull()
+        public async Task PublishAsyncShouldThrowExceptionIfConfigureContextIsNull()
         {
             await _sut.PublishAsync(Content, null);
         }

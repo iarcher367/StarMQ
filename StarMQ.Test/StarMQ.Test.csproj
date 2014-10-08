@@ -63,6 +63,7 @@
     <Compile Include="Message\CompressionInterceptorTest.cs" />
     <Compile Include="Message\InterceptorPipelineTest.cs" />
     <Compile Include="Model\AckResponseTest.cs" />
+    <Compile Include="Model\DeliveryContextTest.cs" />
     <Compile Include="Model\NackResponseTest.cs" />
     <Compile Include="Publish\BasePublisherTest.cs" />
     <Compile Include="Publish\BasicPublisherTest.cs" />
