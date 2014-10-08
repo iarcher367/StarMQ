@@ -14,10 +14,35 @@
 
 namespace StarMQ.Model
 {
+    using System.Collections.Generic;
+
     public class DeliveryContext
     {
-        public bool Redelivered { get; set; }
-        public string RoutingKey { get; set; }
-        public Properties Properties { get; set; }
+        public bool Redelivered { get; internal set; }
+        public string RoutingKey { get; internal set; }
+        public Properties Properties { get; internal set; }
+
+        public DeliveryContext()
+        {
+            Properties = new Properties();
+        }
+
+        /// <summary>
+        /// Set the message's routing key.
+        /// </summary>
+        public DeliveryContext WithRoutingKey(string key)
+        {
+            RoutingKey = Global.Validate("key", key);
+            return this;
+        }
+
+        /// <summary>
+        /// Adds a key-value pair to the message header.
+        /// </summary>
+        public DeliveryContext WithHeader(KeyValuePair<string, object> item)
+        {
+            Properties.Headers[item.Key] = item.Value;
+            return this;
+        }
     }
 }

@@ -14,7 +14,6 @@
 
 namespace StarMQ.Model
 {
-    using System;
     using System.Collections.Generic;
 
     public class Queue
