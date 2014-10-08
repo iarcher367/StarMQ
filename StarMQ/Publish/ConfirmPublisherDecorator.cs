@@ -126,7 +126,7 @@ namespace StarMQ.Publish
             }
 
             if (!_unconfirmedMessages.TryAdd(sequenceId, context))
-                _log.Warn(String.Format("Duplicate sequenceId - failed to add #{0} to dictionary.", sequenceId));
+                _log.Warn(String.Format("Duplicate sequenceId #{0} - this should be impossible.", sequenceId));
 
             context.SequenceIds.Add(sequenceId);
             context.Timer = CreateTimer(sequenceId);
