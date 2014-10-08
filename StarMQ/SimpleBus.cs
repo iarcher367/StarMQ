@@ -77,14 +77,16 @@ namespace StarMQ
             var context = new DeliveryContext();
             configureContext(context);
 
-            var exchange = await SetExchanges(configure, typeof(T));
+            var exchange = await SetExchange(configure, typeof(T));
+
+            await SetAlternateExchange(exchange);
 
             var message = new Message<T>(content) { Properties = context.Properties };
 
             await _advancedBus.PublishAsync(exchange, context.RoutingKey, mandatory, immediate, message);
         }
 
-        private async Task<Exchange> SetExchanges(Action<Exchange> configure, Type type)
+        private async Task<Exchange> SetExchange(Action<Exchange> configure, Type type)
         {
             var exchange = new Exchange { Type = ExchangeType.Topic };
 
@@ -96,7 +98,6 @@ namespace StarMQ
             if (String.IsNullOrEmpty(exchange.AlternateExchangeName))
                 exchange.WithAlternateExchangeName(_namingStrategy.GetAlternateName(exchange));
 
-            await SetAlternateExchange(exchange);
             await _advancedBus.ExchangeDeclareAsync(exchange);
 
             return exchange;
@@ -122,7 +123,7 @@ namespace StarMQ
             configureHandler(transient);
             var type = transient.Validate().Default;    // TODO: optimization?
 
-            var exchange = await SetExchanges(configureExchange, type);
+            var exchange = await SetExchange(configureExchange, type);
 
             var queue = new Queue();
 
