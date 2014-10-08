@@ -6,7 +6,7 @@ StarMQ exposes two primary APIs for messaging via **SimpleBus** and **AdvancedBu
 ## Highlights
 - The internal messaging architecture supports the addition of pre- and post-processing steps. Example pre-processing steps include message encryption, compression, and authentication. These may be enabled via configuration at startup. At present, the only supported post-processing is unsubscribing the current consumer.
 - StarMQ supports **dead-lettering** and **alternate exchanges** using default settings and auto-generated exchange names.
-- StarMQ comes wired for logging via the ILog interface. See ILog.cs for a sample log4net logger. _Warning_: setting the log level below WARN reduces throughput by over 50%.
+- StarMQ comes wired for logging via the ILog interface. See ILog.cs for a sample log4net logger. _Warning_: setting the log level below WARN may drastically reduce throughput.
 - StarMQ uses an internal IoC container that supports overriding registrations. This allows easy replacement of any component by using OverrideRegistration to register the custom implementation.
 
 ## Performance
@@ -43,22 +43,27 @@ The example shows the _optional_ intermediate steps to register custom implement
 ```
 cancelonhafailover=false;heartbeat=10;host=localhost;password=guest;port=5672;publisherconfirms=false;reconnect=5000;timeout=10000;username=guest;virtualhost=/
 ```
-With a SimpleBus, publishing and subscribing is as simple as:
+With a SimpleBus, publishing and subscribing may be minimally accomplished using:
 ```
-simpleBus.PublishAsync("hello world", "my.routing.key").Wait(); // Wait() forces a synchronous call
-simpleBus.SubscribeAsync<string>(x => x.Add<string>((y, context) => MyMessageHandler(y)));
+simpleBus.PublishAsync("hello world",
+    context => context.WithRoutingKey("my.routing.key")).Wait(); // Wait() forces a synchronous call, if desired
+simpleBus.SubscribeAsync(
+    handlers => handlers.Add<string>((data, context) => MyMessageHandler(data)));
 ```
 The above makes use of all the defaults. Alternatively, to customize:
 ```
-simpleBus.PublishAsync("hello world", "my.routing.key", true, false,
+simpleBus.PublishAsync("hello world",
+    context => context.WithRoutingKey("my.routing.key")
+        .WithHeader(new KeyValuePair<string, object>("myHeader","myValue")),
+        true, false,
     exchange => exchange.WithAlternateExchangeName("my alternate exchange")
         .WithAutoDelete(true)
         .WithDurable(false)
         .WithName("primary exchange"));
 
-simpleBus.SubscribeAsync<string>(
-    x => x.Add<string>((y, context) => MyMessageHandler(y))
-        .Add<MyClass>((y, context) => MySecondHandler(y)),
+simpleBus.SubscribeAsync(
+    handlers => handlers.Add<string>((data, context) => MyMessageHandler(data, context))
+        .Add<MyClass>((data, context) => MySecondHandler(data, context)),
     queue => queue.WithAutoDelete(true)
         .WithBindingKey("*.b")
         .WithBindingKey("a.*")
@@ -77,4 +82,4 @@ simpleBus.SubscribeAsync<string>(
         .WithName("my exchange")
         .WithType(ExchangeType.Fanout));
 ```
-Each message handler also accepts a DeliveryContext argument. This allows consumers access to the message's redelivery status, routing key, and properties.
+Both publishers and consumers have access to a DeliveryContext object. This allows publishers to set the required routing key and other desired message properties, like a custom header. The delivery context allows consumers to access the message's redelivery status, routing key, and properties within a handler.
