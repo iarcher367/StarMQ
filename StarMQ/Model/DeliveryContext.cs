@@ -14,7 +14,7 @@
 
 namespace StarMQ.Model
 {
-    using System.Collections.Generic;
+    using System;
 
     public class DeliveryContext
     {
@@ -39,9 +39,12 @@ namespace StarMQ.Model
         /// <summary>
         /// Adds a key-value pair to the message header.
         /// </summary>
-        public DeliveryContext WithHeader(KeyValuePair<string, object> item)
+        public DeliveryContext WithHeader(string key, object value)
         {
-            Properties.Headers[item.Key] = item.Value;
+            if (value == null)
+                throw new ArgumentNullException("value");
+
+            Properties.Headers[Global.Validate("key", key)] = value;
             return this;
         }
     }

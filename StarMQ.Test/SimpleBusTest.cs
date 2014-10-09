@@ -23,7 +23,6 @@ namespace StarMQ.Test
     using StarMQ.Model;
     using System;
     using System.Collections.Generic;
-    using System.Linq;
     using System.Threading.Tasks;
 
     public class SimpleBusTest
@@ -99,25 +98,27 @@ namespace StarMQ.Test
         [Test]
         public async Task PublishAsyncShouldApplyConfigureContext()
         {
-            string actualKey = String.Empty;
-            IMessage<string> actualMessage = new Message<string>(String.Empty);
-            var item = new KeyValuePair<string, object>("signature", "082ae94ac8cc020632b52d0a61eb8f1a");
-            Action<DeliveryContext> configure = x => x.WithRoutingKey(RoutingKey).WithHeader(item);
+            const string key = "signature";
+            const string value = "082ae94ac8cc020632b52d0a61eb8f1a";
+            var actualKey = String.Empty;
+            var actualHeaders = new Dictionary<string, object>();
+            Action<DeliveryContext> configure = x => x.WithRoutingKey(RoutingKey).WithHeader(key, value);
 
             _advancedBus.Setup(x => x.PublishAsync(It.IsAny<Exchange>(), It.IsAny<string>(), false, false, It.IsAny<Message<string>>()))
                 .Callback<Exchange, string, bool, bool, IMessage<string>>(
                 (a, x, c, d, y) =>
                 {
                     actualKey = x;
-                    actualMessage = y;
+                    actualHeaders = (Dictionary<string, object>)y.Properties.Headers;
                 })
                 .Returns(Task.FromResult(0));
 
             await _sut.PublishAsync(Content, configure);
 
             Assert.That(actualKey, Is.EqualTo(RoutingKey));
-            Assert.That(actualMessage.Properties.Headers.Count, Is.EqualTo(1));
-            Assert.That(actualMessage.Properties.Headers.First(), Is.EqualTo(item));
+            Assert.That(actualHeaders.Count, Is.EqualTo(1));
+            Assert.That(actualHeaders.ContainsKey(key), Is.True);
+            Assert.That(actualHeaders[key], Is.EqualTo(value));
         }
 
         [Test]

@@ -54,7 +54,7 @@ The above makes use of all the defaults. Alternatively, to customize:
 ```
 simpleBus.PublishAsync("hello world",
     context => context.WithRoutingKey("my.routing.key")
-        .WithHeader(new KeyValuePair<string, object>("myHeader","myValue")),
+        .WithHeader("myHeader","myValue"),
         true, false,
     exchange => exchange.WithAlternateExchangeName("my alternate exchange")
         .WithAutoDelete(true)

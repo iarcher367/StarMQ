@@ -14,9 +14,10 @@
 
 namespace StarMQ.Test.Model
 {
+    using Exception;
     using NUnit.Framework;
     using StarMQ.Model;
-    using System.Collections.Generic;
+    using System;
 
     public class DeliveryContextTest
     {
@@ -40,11 +41,33 @@ namespace StarMQ.Test.Model
         [Test]
         public void ShouldSetHeader()
         {
-            var item = new KeyValuePair<string, object>("signature", "er2eECZ3is4ag6od");
-            var actual = _sut.WithHeader(item).Properties.Headers;
+            const string key = "signature";
+            const string value = "er2eECZ3is4ag6od";
+            var actual = _sut.WithHeader(key, value).Properties.Headers;
 
-            Assert.That(actual.ContainsKey(item.Key), Is.True);
-            Assert.That(actual[item.Key], Is.EqualTo(item.Value));
+            Assert.That(actual.ContainsKey(key), Is.True);
+            Assert.That(actual[key], Is.EqualTo(value));
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldThrowExceptionIfKeyIsNull()
+        {
+            _sut.WithHeader(null, String.Empty);
+        }
+
+        [Test]
+        [ExpectedException(typeof (MaxLengthException))]
+        public void ShouldThrowExceptionIfKeyIsTooLong()
+        {
+            _sut.WithHeader(new string('*', 256), String.Empty);
+        }
+
+        [Test]
+        [ExpectedException(typeof(ArgumentNullException))]
+        public void ShouldThrowExceptionIfValueIsNull()
+        {
+            _sut.WithHeader(String.Empty, null);
         }
     }
 }
