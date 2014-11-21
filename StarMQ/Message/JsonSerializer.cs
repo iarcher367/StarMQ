@@ -14,9 +14,9 @@
 
 namespace StarMQ.Message
 {
+    using Newtonsoft.Json;
     using System;
-    using System.IO;
-    using System.Runtime.Serialization.Json;
+    using System.Text;
 
     public interface ISerializer
     {
@@ -26,16 +26,18 @@ namespace StarMQ.Message
 
     internal class JsonSerializer : ISerializer
     {
+        private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
+        {
+            TypeNameHandling = TypeNameHandling.Auto
+        };
+
         public byte[] ToBytes<T>(T content) where T : class
         {
             if (content == null)
                 throw new ArgumentNullException("content");
 
-            using (var stream = new MemoryStream())
-            {
-                new DataContractJsonSerializer(typeof(T)).WriteObject(stream, content);
-                return stream.ToArray();
-            }
+            var json = JsonConvert.SerializeObject(content, _settings);
+            return Encoding.UTF8.GetBytes(json);
         }
 
         public dynamic ToObject(byte[] content, Type type)
@@ -43,42 +45,8 @@ namespace StarMQ.Message
             if (content == null || content.Length == 0)
                 throw new ArgumentNullException("content");
 
-            using (var stream = new MemoryStream())
-            {
-                stream.Write(content, 0, content.Length);
-                stream.Seek(0, SeekOrigin.Begin);
-
-                var obj = new DataContractJsonSerializer(type).ReadObject(stream);
-                return Convert.ChangeType(obj, type);
-            }
+            var json = Encoding.UTF8.GetString(content);
+            return JsonConvert.DeserializeObject(json, type, _settings);
         }
     }
-
-    //using Newtonsoft.Json;
-
-    //public class JsonSerializer : ISerializer
-    //{
-    //    private readonly JsonSerializerSettings _settings = new JsonSerializerSettings
-    //    {
-    //        TypeNameHandling = TypeNameHandling.Auto
-    //    };
-
-    //    public byte[] ToBytes<T>(T content) where T : class
-    //    {
-    //        if (content == null)
-    //            throw new ArgumentNullException("content");
-
-    //        var json = JsonConvert.SerializeObject(content, _settings);
-    //        return Encoding.UTF8.GetBytes(json);
-    //    }
-
-    //    public dynamic ToObject(byte[] content, Type type)
-    //    {
-    //        if (content == null || content.Length == 0)
-    //            throw new ArgumentNullException("content");
-
-    //        var json = Encoding.UTF8.GetString(content);
-    //        return JsonConvert.DeserializeObject(json, type, _settings);
-    //    }
-    //}
 }
