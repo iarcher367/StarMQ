@@ -18,6 +18,7 @@ namespace StarMQ
     using Core;
     using Model;
     using Publish;
+    using RabbitMQ.Client.Exceptions;
     using System;
     using System.Collections.Concurrent;
     using System.Collections.Generic;
@@ -54,7 +55,7 @@ namespace StarMQ
 
     public class AdvancedBus : IAdvancedBus
     {
-        private const string KeyFormat = "{0}:{1}:{2}";
+        private const string KeyFormat = "{0}:{1}:{2}";     // exchange:queue:routingKey
 
         private readonly IConsumerFactory _consumerFactory;
         private readonly IOutboundDispatcher _dispatcher;
@@ -107,12 +108,23 @@ namespace StarMQ
             if (exchange == null)
                 throw new ArgumentNullException("exchange");
 
-            if (exchange.Passive)
+            await _dispatcher.Invoke(x =>
             {
-                await _dispatcher.Invoke(x => x.ExchangeDeclarePassive(exchange.Name));
-            }
-            else
-            {
+                try
+                {
+                    using (var model = x.CreateModel())
+                        model.ExchangeDeclarePassive(exchange.Name);
+
+                    _log.Info(String.Format("Exchange '{0}' already exists.", exchange.Name));
+
+                    return;
+                }
+                catch (OperationInterruptedException ex)
+                {
+                    if (!IsAmqpNotFoundError(ex)) throw;
+                    if (exchange.Passive) return;
+                }
+
                 var args = new Dictionary<string, object>();
                 var config = new StringBuilder();
 
@@ -122,12 +134,17 @@ namespace StarMQ
                     config.Append(" [AE]=").Append(exchange.AlternateExchangeName);
                 }
 
-                await _dispatcher.Invoke(x =>
-                    x.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
-                        exchange.Durable, exchange.AutoDelete, args));
+                using (var model = x.CreateModel())
+                    model.ExchangeDeclare(exchange.Name, exchange.Type.ToString().ToLower(),
+                        exchange.Durable, exchange.AutoDelete, args);
 
                 _log.Info(String.Format("Exchange '{0}' declared.{1}", exchange.Name, config));
-            }
+            });
+        }
+
+        private static bool IsAmqpNotFoundError(OperationInterruptedException ex)
+        {
+            return ex.Message.Contains("AMQP operation") && ex.Message.Contains("code=404");
         }
 
         public async Task PublishAsync<T>(Exchange exchange, string routingKey, bool mandatory, bool immediate, IMessage<T> message) where T : class
@@ -167,10 +184,14 @@ namespace StarMQ
             if (routingKey == null)
                 throw new ArgumentNullException("routingKey");
 
-            await _dispatcher.Invoke(x => x.QueueBind(queue.Name, exchange.Name, routingKey));
+            await _dispatcher.Invoke(x =>
+            {
+                using (var model = x.CreateModel())
+                    model.QueueBind(queue.Name, exchange.Name, routingKey);
 
-            _log.Info(String.Format("Queue '{0}' bound to exchange '{1}' with routing key '{2}'.",
+                _log.Info(String.Format("Queue '{0}' bound to exchange '{1}' with routing key '{2}'.",
                 queue.Name, exchange.Name, routingKey));
+            });
         }
 
         public async Task QueueDeclareAsync(Queue queue)
@@ -188,12 +209,23 @@ namespace StarMQ
             if (queue == null)
                 throw new ArgumentNullException("queue");
 
-            if (queue.Passive)
+            await _dispatcher.Invoke(x =>
             {
-                await _dispatcher.Invoke(x => x.QueueDeclarePassive(queue.Name));
-            }
-            else
-            {
+                try
+                {
+                    using (var model = x.CreateModel())
+                        model.QueueDeclarePassive(queue.Name);
+
+                    _log.Info(String.Format("Queue '{0}' already exists.", queue.Name));
+
+                    return;
+                }
+                catch (OperationInterruptedException ex)
+                {
+                    if (!IsAmqpNotFoundError(ex)) throw;
+                    if (queue.Passive) return;
+                }
+
                 var args = new Dictionary<string, object>();
                 var config = new StringBuilder();
 
@@ -215,12 +247,11 @@ namespace StarMQ
                     config.Append(" [TTL]=").Append(queue.MessageTimeToLive);
                 }
 
-                await _dispatcher.Invoke(x =>
-                    x.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete,
-                        args));
+                using (var model = x.CreateModel())
+                    model.QueueDeclare(queue.Name, queue.Durable, queue.Exclusive, queue.AutoDelete, args);
 
                 _log.Info(String.Format("Queue '{0}' declared.{1}", queue.Name, config));
-            }
+            });
         }
 
         public void Dispose()

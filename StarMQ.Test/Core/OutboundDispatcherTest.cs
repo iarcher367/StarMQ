@@ -48,13 +48,7 @@ namespace StarMQ.Test.Core
         }
 
         [Test]
-        public void ShouldOpenChannel()
-        {
-            _connection.Verify(x => x.CreateModel(), Times.Once);
-        }
-
-        [Test]
-        public async Task ShouldOpenChannelAndUnblockWhenOnConnectFires()
+        public async Task ShouldUnblockWhenOnConnectFires()
         {
             var count = 0;
 
@@ -71,8 +65,6 @@ namespace StarMQ.Test.Core
             await Task.Delay(Delay);
 
             Assert.That(count, Is.EqualTo(5));
-
-            _connection.Verify(x => x.CreateModel(), Times.Exactly(2));
         }
 
         [Test]
@@ -128,7 +120,7 @@ namespace StarMQ.Test.Core
         [ExpectedException(typeof(ArgumentNullException))]
         public void ShouldThrowExceptionIfActionUsingInternalModelIsNull()
         {
-            _sut.Invoke((Action<IModel>)null);
+            _sut.Invoke((Action<IConnection>)null);
         }
 
         [Test]
@@ -160,7 +152,6 @@ namespace StarMQ.Test.Core
             _sut.Dispose();
 
             _connection.Verify(x => x.Dispose(), Times.Once);
-            _model.Verify(x => x.Dispose(), Times.Once);
         }
 
         [Test]
@@ -183,7 +174,6 @@ namespace StarMQ.Test.Core
             _sut.Dispose();
 
             _connection.Verify(x => x.Dispose(), Times.Once);
-            _model.Verify(x => x.Dispose(), Times.Once);
         }
     }
 }

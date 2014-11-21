@@ -18,6 +18,7 @@ namespace StarMQ.Test
     using NUnit.Framework;
     using RabbitMQ.Client;
     using RabbitMQ.Client.Events;
+    using RabbitMQ.Client.Exceptions;
     using StarMQ.Consume;
     using StarMQ.Core;
     using StarMQ.Model;
@@ -25,11 +26,13 @@ namespace StarMQ.Test
     using System;
     using System.Collections.Generic;
     using System.Threading.Tasks;
+    using IConnection = StarMQ.Core.IConnection;
 
     public class AdvancedBusTest
     {
         private const string RoutingKey = "x.y";
 
+        private Mock<IConnection> _connection;
         private Mock<IConsumerFactory> _consumerFactory;
         private Mock<IOutboundDispatcher> _dispatcher;
         private Mock<ILog> _log;
@@ -37,7 +40,7 @@ namespace StarMQ.Test
         private Mock<IPublisher> _publisher;
         private IAdvancedBus _sut;
 
-        private Action<IModel> _action;
+        private Action<IConnection> _action;
         private IDictionary<string, object> _args;
         private Exchange _exchange;
         private IMessage<string> _message;
@@ -46,6 +49,7 @@ namespace StarMQ.Test
         [SetUp]
         public void Setup()
         {
+            _connection = new Mock<IConnection>();
             _consumerFactory = new Mock<IConsumerFactory>();
             _dispatcher = new Mock<IOutboundDispatcher>();
             _log = new Mock<ILog>();
@@ -55,8 +59,9 @@ namespace StarMQ.Test
             _sut = new AdvancedBus(_consumerFactory.Object, _dispatcher.Object, _log.Object,
                 _publisher.Object);
 
-            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action<IModel>>()))
-                .Callback<Action<IModel>>(x => _action = x)
+            _connection.Setup(x => x.CreateModel()).Returns(_model.Object);
+            _dispatcher.Setup(x => x.Invoke(It.IsAny<Action<IConnection>>()))
+                .Callback<Action<IConnection>>(x => _action = x)
                 .Returns(Task.FromResult(0));
 
             _action = x => { };
@@ -114,16 +119,44 @@ namespace StarMQ.Test
 
         #region ExchangeDeclareAsync
         [Test]
-        public async Task ExchangeDeclareAsyncShouldDeclareExchange()
+        public async Task ExchangeDeclareAsyncShouldNotDeclareExistingExchange()
         {
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
+            _model.Verify(x => x.ExchangeDeclarePassive(_exchange.Name), Times.Once);
+            _model.Verify(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
+                _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()),
+                Times.Never);
+        }
+
+        [Test]
+        public async Task ExchangeDeclareAsyncShouldDeclareExchangeIfNotExists()
+        {
+            ExchangeDeclareSetup();
+
+            await _sut.ExchangeDeclareAsync(_exchange);
+
+            _action(_connection.Object);
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
+            _model.Verify(x => x.ExchangeDeclarePassive(_exchange.Name), Times.Once);
             _model.Verify(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
                 _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()),
                 Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+        }
+
+        private void ExchangeDeclareSetup()
+        {
+            _model.Setup(x => x.ExchangeDeclarePassive(_exchange.Name))
+                .Throws(new OperationInterruptedException(
+                    new ShutdownEventArgs(ShutdownInitiator.Library, 404, "")));
+            _model.Setup(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
+                _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()))
+                .Callback<string, string, bool, bool, IDictionary<string, object>>(
+                    (a, b, c, d, x) => _args = x);
         }
 
         [Test]
@@ -131,32 +164,34 @@ namespace StarMQ.Test
         {
             _exchange.Passive = true;
 
+            ExchangeDeclareSetup();
+
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             _model.Verify(x => x.ExchangeDeclarePassive(_exchange.Name), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _model.Verify(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
+                _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()),
+                Times.Never);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
         public async Task ExchangeDeclareAsyncShouldNotSetArgsByDefault()
         {
-            _model.Setup(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
-                _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, string, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            ExchangeDeclareSetup();
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.Count, Is.EqualTo(0));
 
             _model.Verify(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
                 _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()),
                 Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -165,14 +200,11 @@ namespace StarMQ.Test
             const string key = "alternate-exchange";
             _exchange.AlternateExchangeName = "StarMQ";
 
-            _model.Setup(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
-                _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, string, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            ExchangeDeclareSetup();
 
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
             Assert.That(_args[key], Is.EqualTo(_exchange.AlternateExchangeName));
@@ -180,7 +212,7 @@ namespace StarMQ.Test
             _model.Verify(x => x.ExchangeDeclare(_exchange.Name, _exchange.Type.ToString().ToLower(),
                 _exchange.Durable, _exchange.AutoDelete, It.IsAny<Dictionary<string, object>>()),
                 Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -189,7 +221,7 @@ namespace StarMQ.Test
             await _sut.ExchangeDeclareAsync(_exchange);
             await _sut.ExchangeDeclareAsync(_exchange);
 
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -197,6 +229,19 @@ namespace StarMQ.Test
         public async void ExchangeDeclareAsyncShouldThrowExceptionIfExchangeIsNull()
         {
             await _sut.ExchangeDeclareAsync(null);
+        }
+
+        [Test]
+        [ExpectedException(typeof(OperationInterruptedException))]
+        public async Task ExchangeDeclareAsyncShouldNotHandleExceptionsOtherThanNotFoundExceptions()
+        {
+            _model.Setup(x => x.ExchangeDeclarePassive(_exchange.Name))
+                .Throws(new OperationInterruptedException(
+                    new ShutdownEventArgs(ShutdownInitiator.Library, 0, "")));
+
+            await _sut.ExchangeDeclareAsync(_exchange);
+
+            _action(_connection.Object);
         }
         #endregion
 
@@ -290,10 +335,10 @@ namespace StarMQ.Test
         {
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             _model.Verify(x => x.QueueBind(_queue.Name, _exchange.Name, RoutingKey), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -302,7 +347,7 @@ namespace StarMQ.Test
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
             await _sut.QueueBindAsync(_exchange, _queue, RoutingKey);
 
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -329,19 +374,43 @@ namespace StarMQ.Test
 
         #region QueueDeclareAsync
         [Test]
+        public async Task QueueDeclareAsyncShouldNotDeclareExistingQueue()
+        {
+            await _sut.QueueDeclareAsync(_queue);
+
+            _action(_connection.Object);
+
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
+            _model.Verify(x => x.QueueDeclarePassive(_queue.Name), Times.Once);
+            _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
+                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Never);
+        }
+
+        [Test]
         public async Task QueueDeclareAsyncShouldDeclareQueue()
         {
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Returns(It.IsAny<QueueDeclareOk>());
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
+            _model.Verify(x => x.QueueDeclarePassive(_queue.Name), Times.Once);
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+        }
+
+        private void QueueDeclareSetup()
+        {
+            _model.Setup(x => x.QueueDeclarePassive(_queue.Name))
+                .Throws(new OperationInterruptedException(
+                    new ShutdownEventArgs(ShutdownInitiator.Library, 404, "")));
+            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
+                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
+                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
+                    (a, b, c, d, x) => _args = x)
+                .Returns(It.IsAny<QueueDeclareOk>());
         }
 
         [Test]
@@ -349,31 +418,32 @@ namespace StarMQ.Test
         {
             _queue.Passive = true;
 
+            QueueDeclareSetup();
+
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
             _model.Verify(x => x.QueueDeclarePassive(_queue.Name), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
+                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Never);
         }
 
         [Test]
         public async Task QueueDeclareAsyncShouldNotSetArgsByDefault()
         {
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.Count, Is.EqualTo(0));
 
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive, _queue.AutoDelete,
                 It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
         }
 
         [Test]
@@ -382,21 +452,18 @@ namespace StarMQ.Test
             const string key = "x-dead-letter-exchange";
             _queue.DeadLetterExchangeName = "StarMQ";
 
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
             Assert.That(_args[key], Is.EqualTo(_queue.DeadLetterExchangeName));
 
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -405,21 +472,18 @@ namespace StarMQ.Test
             const string key = "x-dead-letter-routing-key";
             _queue.DeadLetterRoutingKey = "StarMQ";
 
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
             Assert.That(_args[key], Is.EqualTo(_queue.DeadLetterRoutingKey));
 
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -428,21 +492,18 @@ namespace StarMQ.Test
             const string key = "x-expires";
             _queue.Expires = 5;
 
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
             Assert.That(_args[key], Is.EqualTo(_queue.Expires));
 
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -451,21 +512,18 @@ namespace StarMQ.Test
             const string key = "x-message-ttl";
             _queue.MessageTimeToLive = 42;
 
-            _model.Setup(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
-                _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()))
-                .Callback<string, bool, bool, bool, IDictionary<string, object>>(
-                    (a, b, c, d, x) => _args = x);
+            QueueDeclareSetup();
 
             await _sut.QueueDeclareAsync(_queue);
 
-            _action(_model.Object);
+            _action(_connection.Object);
 
             Assert.That(_args.ContainsKey(key), Is.True);
             Assert.That(_args[key], Is.EqualTo(_queue.MessageTimeToLive));
 
             _model.Verify(x => x.QueueDeclare(_queue.Name, _queue.Durable, _queue.Exclusive,
                 _queue.AutoDelete, It.IsAny<Dictionary<string, object>>()), Times.Once);
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -474,7 +532,7 @@ namespace StarMQ.Test
             await _sut.QueueDeclareAsync(_queue);
             await _sut.QueueDeclareAsync(_queue);
 
-            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IModel>>()), Times.Once);
+            _dispatcher.Verify(x => x.Invoke(It.IsAny<Action<IConnection>>()), Times.Once);
         }
 
         [Test]
@@ -482,6 +540,19 @@ namespace StarMQ.Test
         public async Task QueueDeclareAsyncShouldThrowExceptionIfQueueIsNull()
         {
             await _sut.QueueDeclareAsync(null);
+        }
+
+        [Test]
+        [ExpectedException(typeof(OperationInterruptedException))]
+        public async Task QueueDeclareAsyncShouldNotHandleExceptionsOtherThanNotFoundExceptions()
+        {
+            _model.Setup(x => x.QueueDeclarePassive(_queue.Name))
+                .Throws(new OperationInterruptedException(
+                    new ShutdownEventArgs(ShutdownInitiator.Library, 0, "")));
+
+            await _sut.QueueDeclareAsync(_queue);
+
+            _action(_connection.Object);
         }
         #endregion
 

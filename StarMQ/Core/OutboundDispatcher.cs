@@ -14,7 +14,6 @@
 
 namespace StarMQ.Core
 {
-    using RabbitMQ.Client;
     using System;
     using System.Collections.Concurrent;
     using System.Threading;
@@ -28,7 +27,7 @@ namespace StarMQ.Core
     public interface IOutboundDispatcher : IDisposable
     {
         Task Invoke(Action action);
-        Task Invoke(Action<IModel> action);
+        Task Invoke(Action<IConnection> action);
     }
 
     internal class OutboundDispatcher : IOutboundDispatcher
@@ -41,7 +40,6 @@ namespace StarMQ.Core
         private readonly ManualResetEvent _disposeSignal = new ManualResetEvent(false);
 
         private bool _disposed;
-        private IModel _model;
 
         public OutboundDispatcher(IConnectionConfiguration configuration, IConnection connection,
             ILog log)
@@ -50,18 +48,10 @@ namespace StarMQ.Core
             _connection = connection;
             _log = log;
 
-            OpenChannel();
             Dispatch();
 
             connection.OnConnected += OnConnected;
             connection.OnDisconnected += OnDisconnected;
-        }
-
-        private void OpenChannel()
-        {
-            _model = _connection.CreateModel();
-
-            _log.Info("Channel opened.");
         }
 
         private void Dispatch()
@@ -81,10 +71,7 @@ namespace StarMQ.Core
 
         private void OnConnected()
         {
-            OpenChannel();
-
             _dispatchSignal.Set();
-
             _log.Info("Dispatch unblocked.");
         }
 
@@ -106,12 +93,12 @@ namespace StarMQ.Core
             return Task.FromResult<object>(null);
         }
 
-        public Task Invoke(Action<IModel> action)
+        public Task Invoke(Action<IConnection> action)
         {
             if (action == null)
                 throw new ArgumentNullException("action");
 
-            return Invoke(() => action(_model));
+            return Invoke(() => action(_connection));
         }
 
         private void InvokeAction(Action action)
@@ -149,7 +136,6 @@ namespace StarMQ.Core
 
             _queue.CompleteAdding();
             _disposeSignal.WaitOne();
-            _model.Dispose();
             _connection.Dispose();
 
             _log.Info("Dispose completed.");
