@@ -2,7 +2,7 @@
 <package >
   <metadata>
     <id>StarMQ</id>
-    <version>0.7.2-beta</version>
+    <version>0.7.3-beta</version>
     <title>StarMQ</title>
     <authors>Stephen Yu</authors>
     <owners>Stephen Yu</owners>
@@ -15,7 +15,7 @@
     <tags>RabbitMQ AMQP messaging</tags>
     <dependencies>
         <dependency id="Newtonsoft.Json" version="5.0.1" />
-        <dependency id="RabbitMQ.Client" version="3.3.2" />
+        <dependency id="RabbitMQ.Client" version="[3.3.2]" />
     </dependencies>
   </metadata>
 </package>
