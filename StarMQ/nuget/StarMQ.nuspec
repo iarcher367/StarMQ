@@ -1,17 +1,21 @@
 <?xml version="1.0"?>
 <package >
   <metadata>
-    <id>$id$</id>
-    <version>0.7.1-beta</version>
-    <title>$title$</title>
-    <authors>$author$</authors>
-    <owners>$author$</owners>
+    <id>StarMQ</id>
+    <version>0.7.2-beta</version>
+    <title>StarMQ</title>
+    <authors>Stephen Yu</authors>
+    <owners>Stephen Yu</owners>
     <licenseUrl>https://github.com/iarcher367/StarMQ/blob/master/License.txt</licenseUrl>
     <projectUrl>https://github.com/iarcher367/StarMQ</projectUrl>
     <requireLicenseAcceptance>false</requireLicenseAcceptance>
-    <description>$description$</description>
+    <description>A highly-configurable, opinionated .NET library for the popular RabbitMQ messaging broker.</description>
     <releaseNotes>Pre-release package with publish/subscribe support.</releaseNotes>
     <copyright>Copyright 2014</copyright>
     <tags>RabbitMQ AMQP messaging</tags>
+    <dependencies>
+        <dependency id="Newtonsoft.Json" version="5.0.1" />
+        <dependency id="RabbitMQ.Client" version="3.3.2" />
+    </dependencies>
   </metadata>
 </package>
